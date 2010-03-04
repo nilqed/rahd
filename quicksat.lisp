@@ -192,24 +192,25 @@
 ;;;
 
 (defun format-model (m)
-  (let ((m* (reverse (cadadr m))))
-    (format nil 
+  (cond ((not m) " model not constructed.")
+	(t (let ((m* (reverse (cadadr m))))
+	     (format nil
 	    " model: [~A"
-   (let ((out-str "")
-	 (count 0)
-	 (total (length m*)))
-     (dolist (b m*)
-       (let ((var (car b))
-	     (val (cadr b)))
-	 (setq out-str (format nil "~A~A" out-str
-			       (format nil (if (= count 0) 
-					       "~A=~A~A"
-					       "         ~A=~A~A") 
-				       var (if (rationalp val) 
-					       val
-					       (simp-val val m* b))
-				       (if (= count (1- total))
-					   (format nil "].~%")
-					   (format nil ",~%"))))))
-       (setq count (1+ count)))
-     out-str))))
+	    (let ((out-str "")
+		  (count 0)
+		  (total (length m*)))
+	      (dolist (b m*)
+		(let ((var (car b))
+		      (val (cadr b)))
+		  (setq out-str (format nil "~A~A" out-str
+					(format nil (if (= count 0) 
+							"~A=~A~A"
+						      "         ~A=~A~A") 
+						var (if (rationalp val) 
+							val
+						      (simp-val val m* b))
+						(if (= count (1- total))
+						    (format nil "].~%")
+						  (format nil ",~%"))))))
+		(setq count (1+ count)))
+	      out-str))))))

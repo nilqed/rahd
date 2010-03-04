@@ -10,7 +10,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;; 
 ;;; This file: began on         29-July-2008,
-;;;            last updated on  02-March-2010.
+;;;            last updated on  04-March-2010.
 ;;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -112,9 +112,10 @@
 ;;;    (CASE-ID  CASE  STATUS  VT-BINDINGS)
 ;;;
 ;;; where CASE-ID is an array-index, CASE is a case to be refuted in CNF, and
-;;; STATUS is either :UNKNOWN (must still be refuted) or :UNSAT (with a justification),
-;;; and VT-BINDINGS is a list of (v tm) pairs (variable, term) which logs substitutions
-;;; that are reflected in the corresponding case.
+;;; STATUS is either :UNKNOWN (must still be refuted) or :UNSAT (with a justification)
+;;; or :SAT (possibly with a model assigning algebraic (currently rational) values to
+;;; variables), and VT-BINDINGS is a list of (v tm) pairs (variable, term) which logs 
+;;; substitutions that are reflected in the corresponding case.
 ;;;
 ;;; Note: The GOAL-SETS record for the current goal under question is bound to *GS*.
 ;;;
@@ -183,7 +184,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; *GS-UNKNOWN-SIZE*: The total number of cases currently with status :UNKNOWN
-;;; in the goal-set (e.g. these are the cases that still remain to be refuted).
+;;; in the goal-set (e.g. these are the cases that still remain to be refuted or
+;;; satisfied).
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -376,6 +378,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; NZ-TERMS: Terms that aren't allowed to be zero (because they were denominators).
+;;;  This matters for potential SAT witnesses: If we have a proposed counter-model
+;;;  with explicit algebraic number values for variables, we must make sure the
+;;;  terms which appeared as denominators in the division formulation of the goal
+;;;  are indeed non-zero.  For UNSAT goals, this doesn't matter.
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -403,6 +409,7 @@
   (setq *global-vt-bindings* nil)
   (setq *goal-refuted?* nil)
   (setq *sat-case-found?* nil)
+  (setq *sat-model* nil)
   (setq *nz-terms* nil)
   (setq *current-goal-key* nil)
   (setq *last-tactic-made-progress* nil)
@@ -1339,6 +1346,22 @@
 					(fmt 2 "~% *** >> COUNTER-EXAMPLE: CASE ~D of GOAL ~A is satisfiable << ***~%" 
 					     i (format-goal-key *current-goal-key*))
 					(fmt 3 "@")
+
+					;; 
+					;; Try to extract a SAT witness from variable bindings, if it
+					;; has been implicitly constructed.
+					;;
+
+					(when (not *sat-model*)
+					  (let* ((var-bindings (aref *gs* i 3))
+						 (candidate-model `(:SAT (:MODEL ,var-bindings))))
+					    ;;
+					    ;; Now, let's check we really have a model.
+					    ;;
+					    
+					    ;(when (eval-c c var-bindings)
+					      (setq *sat-model* candidate-model)))
+
 					(setq *sat-case-found?* (list *current-goal-key* i)))
 
 				       (:DISJ
@@ -1530,15 +1553,16 @@
 ;;;
 
 (defun current-stats ()
-  (if (equal *current-goal-key* 0)
-      (fmt 0 "~% Goal: ~A,~% Unknown cases: ~A of ~A.~%~%"
-	   *current-goal-key*
-	   *gs-unknown-size*
-	   *gs-size*)
+  (when *current-goal-key*
+    (if (equal *current-goal-key* 0)
+	(fmt 0 "~% Goal: ~A,~% Unknown cases: ~A of ~A.~%~%"
+	     *current-goal-key*
+	     *gs-unknown-size*
+	     *gs-size*)
       (multiple-value-bind 
 	  (parent-data p-exists?)
 	  (gethash (car *current-goal-key*) *goal-stack-data*)
-	  (declare (ignore p-exists?))
+	(declare (ignore p-exists?))
 	(fmt 0 "~% Goal: ~A,~% Unknown cases: ~A of ~A,~% Parent: ~A,~% Parent unknown cases: ~A of ~A.~%~%"
 	     *current-goal-key*
 	     *gs-unknown-size*
@@ -1546,6 +1570,11 @@
 	     (car *current-goal-key*)
 	     (aref parent-data 2)
 	     (aref parent-data 1))))
+  (cond ((or (= *gs-unknown-size* 0) *goal-refuted?*) 
+	 (fmt 0 " Decision: unsat (proven).~%~%"))
+	(*sat-case-found?* 
+	 (fmt 0 " Decision: sat (disproven).~%~%~A~%" (format-model *sat-model*)))
+	(t (fmt 0 " Goal status unknown.~%~%"))))
   t)
 
 ;;;
