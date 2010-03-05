@@ -581,6 +581,10 @@
 ;;;
 ;;;        f = u_1*p_1 + ... + u_n*p_n + r.
 ;;;
+;;; The sequence of quotients are returned using an association list, so that we get:
+;;;
+;;;  (((0 u_1) ... (n u_n)) . r).
+;;;
 
 (defun poly-multiv-/ (f P)
   (poly-multiv-/* f P nil nil))

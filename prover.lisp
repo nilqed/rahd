@@ -1555,10 +1555,13 @@
 (defun current-stats ()
   (when *current-goal-key*
     (if (equal *current-goal-key* 0)
-	(fmt 0 "~% Goal: ~A,~% Unknown cases: ~A of ~A.~%~%"
-	     *current-goal-key*
-	     *gs-unknown-size*
-	     *gs-size*)
+	(if *gs*
+	    (fmt 0 "~% Goal: ~A,~% Unknown cases: ~A of ~A.~%~%"
+		 *current-goal-key*
+		 *gs-unknown-size*
+		 *gs-size*)
+	    (fmt 0 "~% Goal: ~A.~% Goal-Set not built (use (b)).~%~%" 
+		 *current-goal-key*))
       (multiple-value-bind 
 	  (parent-data p-exists?)
 	  (gethash (car *current-goal-key*) *goal-stack-data*)
@@ -1570,7 +1573,7 @@
 	     (car *current-goal-key*)
 	     (aref parent-data 2)
 	     (aref parent-data 1))))
-  (cond ((or (= *gs-unknown-size* 0) *goal-refuted?*) 
+  (cond ((and *gs* (or (= *gs-unknown-size* 0) *goal-refuted?*))
 	 (fmt 0 " Decision: unsat (proven).~%~%"))
 	(*sat-case-found?* 
 	 (fmt 0 " Decision: sat (disproven).~%~%~A~%" (format-model *sat-model*)))
