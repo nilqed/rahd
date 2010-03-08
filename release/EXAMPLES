@@ -63,6 +63,14 @@
                              ((< (+ (* 3 X) (* 7 A)) 4)))"
 
 
+
+ ./rahd-v0.6-lx32 -formula "(((> (+ (* x x) y) 10)) 
+                             ((= (* y y 12) (+ x 99997))) 
+                             ((> y 0)) 
+                             ((< z 0)) 
+                             ((> (- x y) (* 50 z))))" -search-model -print-model -verbosity 10
+
+
 ;
 ; An incompleteness: RAHD doesn't prove unsat:
 ;
