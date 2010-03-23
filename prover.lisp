@@ -420,6 +420,7 @@
   (setq *gs-size* 0)
   (setq *gs-unknown-size* 0)
   (setq *gs-max-dim* 0)
+  (setq *gs-vt-bindings* nil)
   (when (not no-output)
     (fmt 2 "~% >> RAHD-RESET-STATE: ~A."
 	 (if keep-hashes "Local goal state successfully reset, but global structures unchanged"

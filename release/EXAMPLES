@@ -71,6 +71,16 @@
                              ((> (- x y) (* 50 z))))" -search-model -print-model -verbosity 10
 
 
+./rahd-v0.6-lx32 -formula "(((> (+ (* x x) y) 10)) 
+                             ((= (* y y 12) (+ x 99997000000))) 
+                             ((> y 111111111111110))
+                             ((< z 100000000000000))
+                             ((> (- x y) (* 500000 z))) 
+                             ((<= (* x x y) (+ (* y (+ 17 x) x (- k 9)) 1))) 
+                             ((<= k 1000)) 
+                             ((> (* (+ w (* k l)) z) 12)))" -search-model -print-model -verbosity 10
+
+
 ;
 ; An incompleteness: RAHD doesn't prove unsat:
 ;

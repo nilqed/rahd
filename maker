@@ -1,3 +1,4 @@
 rm *.fasl
 source ~/.env_paths
 run-sbcl.sh < Makefile.sbcl
+rm *.fasl
