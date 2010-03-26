@@ -989,11 +989,11 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun interval-split (&key case from to tm)
+(defun interval-split (&key case from to tm pt)
   (GENERIC-TACTIC #'split-term-for-case
 		  'INTERVAL-SPLIT
 		  "variable interval splitting"
-		  :case case :from from :to to :tactic-params (list tm)))
+		  :case case :from from :to to :tactic-params (list tm pt)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
