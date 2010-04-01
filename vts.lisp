@@ -10,7 +10,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;; 
 ;;; This file: began on         22-Nov-2009,
-;;;            last updated on  26-Mar-2010.
+;;;            last updated on  01-April-2010.
 ;;;
 
 ;;;
@@ -190,17 +190,24 @@
 ;;;
 
 (defun sre-subst-atom (s atom v)
-  (let ((op (car atom))
+  (let ((pre-op (car atom))
 	(x (cadr atom))
 	(y (caddr atom)))
-    (let* ((p (if (equal y 0) (poly-prover-rep-to-alg-rep x)
-		(poly-prover-rep-to-alg-rep `(- ,x ,y))))
+    (let* ((op pre-op)
+	   (pre-p (if (equal y 0) (poly-prover-rep-to-alg-rep x)
+		    (poly-prover-rep-to-alg-rep `(- ,x ,y))))
+	   (p (case pre-op
+		(> (setq op '<)
+		   (poly-negate pre-p))
+		(>= (setq op '<=)
+		    (poly-negate pre-p))
+		(otherwise pre-p)))
 	   (deg-p-in-v (poly-deg-in-v p (find-var v *vars-table* 0)))
-	   (sre-p* (sre-subst-poly s p v))
+	   (sre-p* (let ((sre-tmp (sre-subst-poly s p v)))
+		     (if sre-tmp sre-tmp (sre-make 0 0 0 1))))
 	   (delta (if (oddp deg-p-in-v) 1 0)))
-      (let ((a (aref s 0)) (b (aref s 1)) (c (aref s 2)) (d (aref s 3))
-	    (a* (aref sre-p* 0)) (b* (aref sre-p* 1)) 
-	    (c* (aref sre-p* 2)) (d* (aref sre-p* 3)))
+      (let ((b (aref s 1)) (c (aref s 2)) (d (aref s 3))
+	    (a* (aref sre-p* 0)) (b* (aref sre-p* 1)))
 	(let ((d^delta (if (= delta 0) 1 d)))
 
 	  ;;
@@ -218,20 +225,57 @@
 		 (case op
 		   (=  `(= ,a* 0))
 		   (<= `(<= (* ,a* ,d^delta) 0))
-		   (<  `(< (* ,a* ,d^delta) 0))
-		   (>  `(> (* ,a* ,d^delta) 0))
-		   (>= `(>= (* ,a* ,d^delta) 0))))
+		   (<  `(< (* ,a* ,d^delta) 0))))
 		
 		;;
 		;; Otherwise, we must take care for arbitrary b.
 		;;
-
+		
 		(t (case op
 		     (= `(:and (<= (* ,a* ,b*) 0)
 			       (= (- (* ,a* ,a*) (* (* ,b* ,b*) ,c)) 0)))
 		     (<= `(:or (:and (<= (* ,a* ,d^delta) 0)
 				     (>= (- (* ,a* ,a*) (* (* ,b* ,b*) ,c)) 0))
 			       (:and (<= (* ,b* ,d^delta) 0)
-				     (<= (- (* ,a* ,a*) (* (* ,b* ,b*) ,c)) 0)))
+				     (<= (- (* ,a* ,a*) (* (* ,b* ,b*) ,c)) 0))))
+		     (< `(:or (:and (< (* ,a* ,d^delta) 0)
+				    (> (- (* ,a* ,a*) (* (* ,b* ,b*) ,c)) 0))
+			      (:and (<= (* ,b* ,d^delta) 0)
+				    (:or (< (* ,a* ,d^delta) 0)
+					 (< (- (* ,a* ,a*) (* (* ,b* ,b*) ,c)) 0)))))
+		     (otherwise (break "OP error: ~A not supported for VTS." op))))))))))
 
-		     )))))))))
+;;;
+;;; QE-QUAD-RESTRICTED: Eliminate a quantifier (exists v) from a 
+;;;  quadratically restricted formula of the form
+;;;         Psi := (av^2 + bv + c = 0   /\   Phi).
+;;;   with quad-f = av^2 + bv + c.
+;;;
+;;; A,B,C,phi given in prover notation.
+;;;
+
+(defun qe-quad-restricted (a b c v phi)
+ 
+  ;;
+  ;; If (a=0, b=0, c=0) then we break.
+  ;;
+  
+  (if (and (equal a 0) (equal b 0) (equal c 0))
+      (break "QE-QUAD-RESTRICTED requires (a!=0 or b!=0 or c!=0)")
+    
+    ;;
+    ;; Otherwise, we eliminate v!
+    ;;
+
+    `(:or (:and (= ,a 0) (not (= ,b 0))
+		,(sre-subst-atom (sre-make 0 0 c `(* -1 ,b)) phi v))
+	  (:and (not (= ,a 0)) (>= (- (* ,b ,b) (* 4 (* ,a ,c))) 0)
+		,(sre-subst-atom (sre-make `(- 0 ,b)
+					   1
+					   `(- (* ,b ,b) (* 4 (* ,a ,c)))
+					   `(* 2 ,a)) phi v))
+	  ,(sre-subst-atom (sre-make `(- 0 ,b)
+				     -1
+				     `(- (* ,b ,b) (* 4 (* ,a ,c)))
+				     `(* 2 ,a))
+			   phi v))))
