@@ -1,4 +1,138 @@
-rm *.fasl
-source ~/.env_paths
-run-sbcl.sh < Makefile.sbcl
-rm *.fasl
+#!/bin/bash
+
+###
+### A configuration and compilation script for RAHD
+###
+###     
+### Copyright (c)2010
+### 
+### 
+### This file: began on         april-1-2010,
+###            last updated on  .
+###
+
+LOGFILE=rahd.log
+SBCL=
+
+#
+# The msg recursive function takes care of the pretty-printing.
+# It uses "fmt" to stick to 75 characters columns.
+#
+function msg() 
+{
+  if [ $# -eq 2 ]; then
+    if [ $1 = "err" ]; then
+      echo ""
+      echo "! maker error: $2." | fmt >&2
+      exit 1
+    elif [ $1 = "inf" ]; then
+      echo "* $2." | fmt
+      return 0
+    fi
+  elif [ $# -eq 3 ]; then
+    if [ $1 = "ser" ]; then
+      echo ""
+      echo "! script error ($2): $3. Please file a bug." | fmt >&2
+      exit 1
+    fi
+    msg "ser" "msg" "unexpected message type"
+  else
+    msg "ser" "msg" "incorrect number of message arguments"
+  fi
+}
+
+
+#
+# The option parsing function. Uses getopt, a more full-featured command than
+# the getopts bash built-in function.
+#
+tmpopt=`getopt -o hn --long help,sbcl:,logfile:,noclean -n \`basename $0\` -- "$@"`
+# Check the getopt return code
+if [ $? != 0 ]; then 
+   msg "err" "option parse error"
+fi
+
+eval set -- "$tmpopt"
+
+#for arg do echo '--> '"\`$arg'" ; done
+while true ; do
+  case "$1" in
+    --sbcl) 
+        localsbcl=`(cd \`dirname $2\` && pwd) 2>/dev/null`/`basename $2 2>/dev/null`
+        if [ $? != 0 ]; then
+          msg "err" "SBCL binary not found at $2. Would you mind double-checking?"
+        fi
+        msg "inf" "SBCL binary set to '$localsbcl'"
+        shift 2;;
+    --logfile)
+        LOGFILE=`(cd \`dirname $2\` && pwd) 2>/dev/null`/`basename $2 2>/dev/null`
+        if [ $? != 0 ]; then
+          msg "err" "the log file path at $2 seems incorrect. Would you mind double-checking?"
+        fi
+        msg "inf" "Compilation output into '$LOGFILE'"
+        shift 2;;
+    -n|--noclean)
+        msg "inf" "Fasl files will be preserved"
+        keepfasl="yes"
+        shift;;
+    -h|--help) 
+        echo -e "Usage: `basename $0` [--sbcl=FILE] [--noclean] [--help]
+Options:
+  --sbcl=FILE \t\t Specify the location of the SBCL executable.
+  --logfile=FILE\t Specify where to store the compilation verbiage.
+  -n, --noclean \t Don't remove fasl files before or after the compilation step.
+  -h, --help  \t\t Print this message and exit."
+        exit 0;;
+    --) shift; break;;
+    *) msg "ser" "option parsing" "unrecognized argument '$1'";;
+  esac
+done
+
+
+#
+# Find the SBCL executable
+#
+if [ -f ~/.env_paths ]; then
+  msg "inf" "Sourcing local path definitions"
+  source ~/.env_paths
+fi
+
+if [ -n "$localsbcl" ]; then
+  SBCL=$localsbcl
+else
+  SBCL=`which sbcl`
+  if [ $? != 0 ]; then
+    msg "err" "SBCL binary not found. Check your installation and path"
+  fi
+fi
+msg "inf" "SBCL binary set to $SBCL"
+
+#
+# Clear potential remaining binary files
+#
+if [ "$keepfasl" != "yes" ]; then
+  msg "inf" "Clearing stray fasl files"
+  rm -f *.fasl
+fi
+
+#
+# Run the compiler
+#
+msg "inf" "Initiating RAHD compilation"
+echo -n "  Compiling... "
+($SBCL < Makefile.sbcl) &> $LOGFILE
+if [ $? != 0 ]; then
+  msg "err" "compilation error. See file $LOGFILE for details"
+else
+  echo "done."
+  msg "inf" "Compilation succeded. Good to go"
+fi
+
+#
+# Clean binary files
+#
+if [ "$keepfasl" != "yes" ]; then
+  msg "inf" "Cleaning generated fasl files"
+  rm -f *.fasl
+fi
+
