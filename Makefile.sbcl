@@ -1,0 +1,4 @@
+(load "rahd")
+(in-package rahd)
+(rahd-reboot)
+(make-sbcl-binary "rahd-v0.6-lx32")
