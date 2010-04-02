@@ -10,7 +10,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;; 
 ;;; This file: began on         22-Nov-2009,
-;;;            last updated on  01-April-2010.
+;;;            last updated on  02-April-2010.
 ;;;
 
 ;;;
@@ -41,7 +41,9 @@
 (defun s* (x y)
   (if (and (rationalp x) (rationalp y))
       (* x y)
-    `(* ,x ,y)))
+    (if (or (equal x 0) (equal y 0))
+	0
+      `(* ,x ,y))))
 
 ;;;
 ;;; Add two square-root expressions with the same radicand (c).
@@ -223,27 +225,38 @@
 	  
 	  (cond ((equal b 0)
 		 (case op
-		   (=  `(= ,a* 0))
-		   (<= `(<= (* ,a* ,d^delta) 0))
-		   (<  `(< (* ,a* ,d^delta) 0))))
+		   (=  `(= ,(simplify-term a* nil) 0))
+		   (<= `(<= ,(simplify-term `(* ,a* ,d^delta) nil) 0))
+		   (<  `(< ,(simplify-term `(* ,a* ,d^delta) nil) 0))))
 		
 		;;
 		;; Otherwise, we must take care for arbitrary b.
 		;;
 		
 		(t (case op
-		     (= `(:and (<= (* ,a* ,b*) 0)
-			       (= (- (* ,a* ,a*) (* (* ,b* ,b*) ,c)) 0)))
-		     (<= `(:or (:and (<= (* ,a* ,d^delta) 0)
-				     (>= (- (* ,a* ,a*) (* (* ,b* ,b*) ,c)) 0))
-			       (:and (<= (* ,b* ,d^delta) 0)
-				     (<= (- (* ,a* ,a*) (* (* ,b* ,b*) ,c)) 0))))
-		     (< `(:or (:and (< (* ,a* ,d^delta) 0)
-				    (> (- (* ,a* ,a*) (* (* ,b* ,b*) ,c)) 0))
-			      (:and (<= (* ,b* ,d^delta) 0)
-				    (:or (< (* ,a* ,d^delta) 0)
-					 (< (- (* ,a* ,a*) (* (* ,b* ,b*) ,c)) 0)))))
+		     (= `(:and (<= ,(simplify-term `(* ,a* ,b*) nil) 0)
+			       (= ,(simplify-term `(- (* ,a* ,a*) (* (* ,b* ,b*) ,c)) nil) 0)))
+		     (<= `(:or (:and (<= ,(simplify-term `(* ,a* ,d^delta) nil) 0)
+				     (>= ,(simplify-term `(- (* ,a* ,a*) (* (* ,b* ,b*) ,c)) nil) 0))
+			       (:and (<= ,(simplify-term `(* ,b* ,d^delta) nil) 0)
+				     (<= ,(simplify-term `(- (* ,a* ,a*) (* (* ,b* ,b*) ,c)) nil) 0))))
+		     (< `(:or (:and (< ,(simplify-term `(* ,a* ,d^delta) nil) 0)
+				    (> ,(simplify-term `(- (* ,a* ,a*) (* (* ,b* ,b*) ,c)) nil) 0))
+			      (:and (<= ,(simplify-term `(* ,b* ,d^delta) nil) 0)
+				    (:or (< ,(simplify-term `(* ,a* ,d^delta) nil) 0)
+					 (< ,(simplify-term `(- (* ,a* ,a*) (* (* ,b* ,b*) ,c)) nil) 0)))))
 		     (otherwise (break "OP error: ~A not supported for VTS." op))))))))))
+
+;;;
+;;; VTS-SIMPLIFIER: A simplifier for VTS formulae.
+;;;
+
+(defun vts-simplifier (f)
+  (vts-simplifier* f nil))
+
+(defun vts-simplifier* (f acc)
+  (cond ((endp f) acc)
+	(t (let 
 
 ;;;
 ;;; QE-QUAD-RESTRICTED: Eliminate a quantifier (exists v) from a 
@@ -251,7 +264,8 @@
 ;;;         Psi := (av^2 + bv + c = 0   /\   Phi).
 ;;;   with quad-f = av^2 + bv + c.
 ;;;
-;;; A,B,C,phi given in prover notation.
+;;; A,B,C,phi given in prover notation.  Right now, phi must be
+;;;  an atomic formula.
 ;;;
 
 (defun qe-quad-restricted (a b c v phi)
@@ -265,17 +279,28 @@
     
     ;;
     ;; Otherwise, we eliminate v!
+    ;; If we see explicitly that (a!=0 \/ b!=0 \/ c!=0) then we 
+    ;;  may skip expressing the degenerate 0=0 SAT case in QE out.
     ;;
 
-    `(:or (:and (= ,a 0) (not (= ,b 0))
-		,(sre-subst-atom (sre-make 0 0 c `(* -1 ,b)) phi v))
-	  (:and (not (= ,a 0)) (>= (- (* ,b ,b) (* 4 (* ,a ,c))) 0)
-		,(sre-subst-atom (sre-make `(- 0 ,b)
-					   1
-					   `(- (* ,b ,b) (* 4 (* ,a ,c)))
-					   `(* 2 ,a)) phi v))
-	  ,(sre-subst-atom (sre-make `(- 0 ,b)
-				     -1
-				     `(- (* ,b ,b) (* 4 (* ,a ,c)))
-				     `(* 2 ,a))
-			   phi v))))
+    (let ((explicit-non-degenerate
+	   (or (and (numberp a) (not (= a 0)))
+	       (and (numberp b) (not (= b 0)))
+	       (and (numberp c) (not (= c 0)))))
+	  
+	  (pre-out `(:or (:and (= ,a 0) (not (= ,b 0))
+			       ,(sre-subst-atom (sre-make 0 0 c `(* -1 ,b)) phi v))
+			 (:and (not (= ,a 0)) (>= (- (* ,b ,b) (* 4 (* ,a ,c))) 0)
+			       ,(sre-subst-atom (sre-make `(- 0 ,b)
+							  1
+							  `(- (* ,b ,b) (* 4 (* ,a ,c)))
+							  `(* 2 ,a)) phi v))
+			 ,(sre-subst-atom (sre-make `(- 0 ,b)
+						    -1
+						    `(- (* ,b ,b) (* 4 (* ,a ,c)))
+						    `(* 2 ,a))
+					  phi v))))
+
+	  (if explicit-non-degenerate 
+	      pre-out
+	    `(:or (:meta-assumption (:or (not (= a 0)) (not (= b 0)) (not (= c 0)))) ,@(cdr pre-out))))))
