@@ -59,6 +59,9 @@
 (defun swap-to-subgoal (k)
   (swap-to-goal k))
 
+(defun cd (k)
+  (swap-to-goal k))
+
 (defparameter *rrs*
   *regression-suite*)
 
