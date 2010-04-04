@@ -1,3 +1,10 @@
+;;
+
+Some ideas (25-March-2010):
+ - Instrument generalization from <,> to (not =) and then apply GB method a la 
+    http://www.risc.uni-linz.ac.at/research/theorema/software/demos/issac/Links/Proof-groebner-bases/index.html.
+ - Check out Brown's recent work on simplification re PROP and MONO: http://issac2009.kias.re.kr/Brown.pdf
+
 ;; Standalone version crashing (CCL issue) on the following as of 23-Nov-2009:
 
 (g '(((> (+ (* a a) (/ 1 (* x y))) 0))))
