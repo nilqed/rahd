@@ -274,13 +274,15 @@
   ;; If (a=0, b=0, c=0) then we break.
   ;;
   
-  (if (and (equal a 0) (equal b 0) (equal c 0))
+  (if (and (equal (simplify-term a nil) 0) 
+	   (equal (simplify-term b nil) 0) 
+	   (equal (simplify-term c nil) 0))
       (break "QE-QUAD-RESTRICTED requires (a!=0 or b!=0 or c!=0)")
     
     ;;
     ;; Otherwise, we eliminate v!
     ;; If we see explicitly that (a!=0 \/ b!=0 \/ c!=0) then we 
-    ;;  may skip expressing the degenerate 0=0 SAT case in QE out.
+    ;;  may skip expressing the degenerate (0=0 /\ Phi) case in QE out.
     ;;
 
     (let ((explicit-non-degenerate
@@ -303,4 +305,4 @@
 
 	  (if explicit-non-degenerate 
 	      pre-out
-	    `(:or (:meta-assumption (:or (not (= a 0)) (not (= b 0)) (not (= c 0)))) ,@(cdr pre-out))))))
+	    `(:or (:meta-assumption (:or (not (= ,a 0)) (not (= ,b 0)) (not (= ,c 0)))) ,@(cdr pre-out))))))
