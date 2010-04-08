@@ -161,7 +161,7 @@
     (if (not var-id)
 	p
       (dolist (m p)
-	(setq out 
+	(setq out
 	      (if (not out)
 		  (sre-subst-monomial s m var-id)
 		(sre-add 
@@ -249,12 +249,15 @@
 
 ;;;
 ;;; VTS-SIMPLIFIER: A simplifier for VTS formulae.
+;;;   This simplifier takes a theory argument (thy) which consists
+;;;   of a list of implicitly conjoined atomic formulas in the
+;;;   method of Dolzmann's thesis.
 ;;;
 
-(defun vts-simplifier (f)
-  (vts-simplifier* f nil))
+(defun vts-simplifier (f thy)
+  (vts-simplifier* f thy nil))
 
-(defun vts-simplifier* (f acc)
+(defun vts-simplifier* (f thy acc)
   (cond ((endp f) acc)
 	(t (let 
 

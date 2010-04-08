@@ -1,3 +1,8 @@
+;; 
+
+Some ideas (7-April-2010)
+ - For dealing with arbitrary FOFs, write a `map-over-literals' macro.
+
 ;;
 
 Some ideas (25-March-2010):

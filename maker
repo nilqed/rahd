@@ -1,14 +1,12 @@
 #!/bin/bash
 
 ###
-### A configuration and compilation script for RAHD
-###
-###     
-### Copyright (c)2010
+### A configuration and compilation script for RAHD.
+###  This installation script written by Florent Kirchner
+###   for RAHD written by Grant Olney Passmore.
 ### 
-### 
-### This file: began on         april-1-2010,
-###            last updated on  .
+### This file: began on         April-1-2010 by F.Kirchner,
+###            last updated on  April-8-2010 by F.Kirchner.
 ###
 
 LOGFILE=rahd.log
