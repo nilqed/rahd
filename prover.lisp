@@ -218,6 +218,18 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
+;;; LAST-TACTIC-PROGRESS-LST: What kind of progress did the last tactic make?
+;;;
+;;;   For F.Kirchner's Coq integration.  This is a list of the following shape,
+;;;    consisting of entries for each case upon which the tactic made progress:
+;;;     (:CASE-ID CASE-ID :FORMULA FORMULA :STATUS STATUS :GOAL-KEY GOAL-KEY :CMF CMF).
+;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defparameter *last-tactic-progress-lst* nil)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
 ;;; I-BOXES-NUM-LOCAL: A hash-table mapping polynomials in Q[*VARS-TABLE*] into 
 ;;;  numerical interval boxes (e.g., connected subsets of (R \union {-inf, +inf})) with
 ;;;  endpoints in Q \union {-inf, +inf}.
@@ -1303,6 +1315,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun GENERIC-TACTIC (fcn-case-manip fcn-symbol fcn-desc &key case from to tactic-params)
+  (setq *last-tactic-progress-lst* nil)
   (cond ((= *gs-unknown-size* 0) (progn (setq *last-tactic-made-progress* nil) t))
 	(*sat-case-found?* nil)
 	(t (let* ((num-changed 0)
@@ -1339,6 +1352,9 @@
 					(setf (aref *gs* i 2)
 					      `(:UNSAT ,(append (cdr c-status) (cons fcn-symbol (cdr fcn-result)))))
 					(setq num-refuted (1+ num-refuted))
+					(setq *last-tactic-progress-lst* 
+					      (cons `(:CASE-ID ,i :STATUS :UNSAT :CMF ,fcn-symbol)
+						    *last-tactic-progress-lst*))
 					(fmt 3 "!"))
 				       
 				       (:SAT 
@@ -1346,6 +1362,9 @@
 					      `(:SAT nil ,(append (cdr c-status) (cons fcn-symbol (cdr fcn-result)))))
 					(fmt 2 "~% *** >> COUNTER-EXAMPLE: CASE ~D of GOAL ~A is satisfiable << ***~%" 
 					     i (format-goal-key *current-goal-key*))
+					(setq *last-tactic-progress-lst*
+					      (cons `(:CASE-ID ,i :STATUS :SAT :CMF ,fcn-symbol)
+						    *last-tactic-progress-lst*))
 					(fmt 3 "@")
 
 					;; 
@@ -1388,7 +1407,10 @@
 						  (setq num-refuted (1+ num-refuted))
 						  (setf (aref *gs* i 2)
 							`(:UNSAT :DISCHARGED-BY-SUBGOAL ,new-subgoal-key
-								 ,(append (cdr c-status) (cons fcn-symbol (list (cdr fcn-result)))))))
+								 ,(append (cdr c-status) (cons fcn-symbol (list (cdr fcn-result))))))
+						  (setq *last-tactic-progress-lst* 
+							(cons `(:CASE-ID ,i :STATUS (:UNSAT :DISCHARGED-BY-SUBGOAL) :CMF ,fcn-symbol)
+							      *last-tactic-progress-lst*)))
 					      
 					      ;;
 					      ;; If the subgoal isn't automatically discharged, we'll just leave it for the user to attack manually,
@@ -1403,6 +1425,9 @@
 					(setf (aref *gs* i 1) fcn-result)
 					(setf (aref *gs* i 2) (append c-status `(,fcn-symbol)))
 					(setq num-changed (1+ num-changed))
+					(setq *last-tactic-progress-lst*
+					      (cons `(:CASE-ID ,i :STATUS :UNKNOWN :CMF ,fcn-symbol)
+						    *last-tactic-progress-lst*))
 					(fmt 2 "$"))))
 
 			       ;;; Tactic execution on case i did nothing, so we print `.' at verbosity level 2.

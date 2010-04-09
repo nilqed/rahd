@@ -98,6 +98,7 @@
    "interval"
    "intvlcp"
    "gbrnull"
+   "vts"
    "cnf"
    "division"
    "quicksat"
