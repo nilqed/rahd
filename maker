@@ -3,10 +3,10 @@
 ###
 ### A configuration and compilation script for RAHD.
 ###  This installation script written by Florent Kirchner
-###   for RAHD written by Grant Olney Passmore.
+###   for RAHD v0.6 written by Grant Olney Passmore.
 ### 
 ### This file: began on         April-1-2010 by F.Kirchner,
-###            last updated on  April-8-2010 by F.Kirchner.
+###            last updated on  April-8-2010 by G.O.Passmore.
 ###
 
 LOGFILE=rahd.log
@@ -50,7 +50,9 @@ function msg()
 #
 function print_usage()
 {
-  echo -e "Usage: `basename $0` [-c FILE] [-l FILE] [-n] [-h]
+  echo -e "
+RAHD Maker: Real Algebra in High Dimensions v0.6
+Usage: `basename $0` [-c FILE] [-l FILE] [-n] [-h]
 Options:
   -c FILE \t Provide the location of the SBCL compiler and toplevel.
   -l FILE \t Specify where to store the compilation output.
@@ -90,6 +92,8 @@ done
 
 shift $(($OPTIND - 1))
 
+echo "
+RAHD Maker: Real Algebra in High Dimensions v0.6"
 
 #
 # Find the SBCL executable

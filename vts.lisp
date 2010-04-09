@@ -257,9 +257,9 @@
 (defun vts-simplifier (f thy)
   (vts-simplifier* f thy nil))
 
-(defun vts-simplifier* (f thy acc)
-  (cond ((endp f) acc)
-	(t (let 
+;; (defun vts-simplifier* (f thy acc)
+;;   (cond ((endp f) acc)
+;; 	(t (let 
 
 ;;;
 ;;; QE-QUAD-RESTRICTED: Eliminate a quantifier (exists v) from a 
