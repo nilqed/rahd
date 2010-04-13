@@ -10,7 +10,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;; 
 ;;; This file: began on         29-July-2008,
-;;;            last updated on  04-March-2010.
+;;;            last updated on  13-March-2010.
 ;;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -222,7 +222,7 @@
 ;;;
 ;;;   For F.Kirchner's Coq integration.  This is a list of the following shape,
 ;;;    consisting of entries for each case upon which the tactic made progress:
-;;;     (:CASE-ID CASE-ID :FORMULA FORMULA :STATUS STATUS :GOAL-KEY GOAL-KEY :CMF CMF).
+;;;     (:CASE-ID CASE-ID :STATUS STATUS :CMF CMF).
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -1432,7 +1432,10 @@
 
 			       ;;; Tactic execution on case i did nothing, so we print `.' at verbosity level 2.
 
-			       (fmt 2 ".")))))))
+			       (fmt 2 ".")))))
+                     (ecdb::feed-db (aref (gethash 0 *goal-stack-data*) 0) *current-goal-key* c
+                                    *last-tactic-progress-lst*)
+                     (fmt 10 "*** Progress recorded into the ECDB~%")))
 
 	     (if (or (> num-changed 0) (> num-refuted 0) *sat-case-found?*)
 		 (progn 

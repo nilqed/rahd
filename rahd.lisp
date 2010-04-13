@@ -25,6 +25,12 @@
 ;;;
 
 ;;;
+;;; Create a stub ECDB package
+;;;
+
+(defpackage :ECDB)
+
+;;;
 ;;; Create the RAHD package and make it our current home.
 ;;;
 
