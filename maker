@@ -9,6 +9,7 @@
 ###            last updated on  April-8-2010 by G.O.Passmore.
 ###
 
+RAHD_VERSION="v0.6"
 LOGFILE=rahd.log
 SBCL=
 
@@ -51,7 +52,7 @@ function msg()
 function print_usage()
 {
   echo -e "
-RAHD Maker: Real Algebra in High Dimensions v0.6
+RAHD Maker: Real Algebra in High Dimensions $RAHD_VERSION
 Usage: `basename $0` [-c FILE] [-l FILE] [-n] [-h]
 Options:
   -c FILE \t Provide the location of the SBCL compiler and toplevel.
@@ -93,7 +94,7 @@ done
 shift $(($OPTIND - 1))
 
 echo "
-RAHD Maker: Real Algebra in High Dimensions v0.6"
+RAHD Maker: Real Algebra in High Dimensions $RAHD_VERSION"
 
 #
 # Find the SBCL executable
