@@ -243,10 +243,10 @@
 	;; There are two reasons an interval will be empty:
 	;; 
 	;; (a) i=[x,y] with
-	;;                  (x>y) \/ (x=+-inf) \/ (y=-inf),
+	;;                  (x>y) \/ (x=+inf) \/ (y=-inf),
 	;;
 	;; (b) i=[x,y[ or i=]x,y] or i=]x,y[ with
-	;;                 (x>=y) \/ (x=+-inf) \/ (y=-inf).
+	;;                 (x>=y) \/ (x=+inf) \/ (y=-inf).
 	;;
 
     (case i-bt
