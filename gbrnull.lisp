@@ -150,14 +150,34 @@
        c))))
 
 ;;;
+;;; POLY-SUMMANDS: Given a list of polynomials PS, return a list of the
+;;;  form (+ p q) for p,q in PS (not necessarily different).
+;;;
+
+(defun poly-summands (ps)
+  (let ((out nil)
+	(qs ps))
+    (dolist (p ps)
+      (dolist (q qs)
+	(setq out (cons `(+ ,p ,q) out)))
+      (setq qs (cdr qs)))
+    out))
+
+;;;
 ;;; CHECK-SAT-EQ-SYS: Given an equational system with >,>= -vars,
 ;;;  use ICP to check SAT.
 ;;;
+;;; We now take a parameter, SUMMAND-LEVEL, which if >0 will add (+ p q)
+;;;  to the equational (=0) system for polynomials appearing in
+;;;  equational system level n-1, with level n being the normal
+;;;  system arising during basis satuation (passed as ps).
+;;;
 
-(defun check-sat-eq-sys (ps >-vars >=-vars &key union-case)
+(defun check-sat-eq-sys (ps >-vars >=-vars &key union-case summand-level)
   (let ((>-atoms (make->-atoms >-vars))
 	(>=-atoms (make->=-atoms >=-vars))
-	(=-atoms (make-=-atoms ps)))
+	(=-atoms (make-=-atoms 
+		  (if summand-level (union ps (poly-summands ps)) ps))))
     (icp-on-case (union (union >-atoms 
 			       (union >=-atoms =-atoms))
 			union-case))))
@@ -176,7 +196,7 @@
      ,@body))
 
 (defun bounded-gb-real-null (ps >-vars >=-vars 
-				&key gb-bound icp-period iht union-case)
+				&key gb-bound icp-period iht union-case summand-level)
   (let ((gb-bound (or gb-bound 20))
 	(icp-period (or icp-period 5))
 	(iht (or iht (iht-clone *i-boxes-num-local*)))
@@ -200,7 +220,8 @@
 		   (setq unsat-witness-found? 
 			 (equal (car (check-sat-eq-sys 
 				      (mapcar #'poly-alg-rep-to-prover-rep G) 
-				      >-vars >=-vars :union-case union-case)) 
+				      >-vars >=-vars :union-case union-case
+				      :summand-level summand-level)) 
 				':UNSAT)))
 		 (setq done? (or (endp s-pair-lst)
 				 (> count gb-bound)
@@ -217,7 +238,7 @@
 ;;; BOUNDED-GB-REAL-NULL-ON-CASE:.
 ;;;
 
-(defun bounded-gb-real-null-on-case (c gb-bound icp-period union-case)
+(defun bounded-gb-real-null-on-case (c gb-bound icp-period union-case summand-level)
   (cond ((> (length c) 1)
 	 (let ((vars-table *vars-table*))
 	   (multiple-value-bind 
@@ -227,7 +248,8 @@
 	     (let ((icp-result (bounded-gb-real-null ps >-vars >=-vars 
 						     :gb-bound gb-bound
 						     :icp-period icp-period
-						     :union-case (when union-case c))))
+						     :union-case (when union-case c)
+						     :summand-level summand-level)))
 	       (setq *vars-table* vars-table)
 	       (if (and (consp icp-result) (equal (car icp-result) ':UNSAT))
 		   `(:UNSAT (:REAL-NULLSTELLENSATZ-WITNESS :INDUCED-EMPTY-INTERVAL

@@ -10,7 +10,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;; 
 ;;; This file: began on         29-July-2008,
-;;;            last updated on  04-March-2010.
+;;;            last updated on  09-April-2010.
 ;;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -425,6 +425,7 @@
   (setq *nz-terms* nil)
   (setq *current-goal-key* nil)
   (setq *last-tactic-made-progress* nil)
+  (setq *last-tactic-progress-lst* nil)
   (setq *tactic-replay* nil)
   (setq *exact-real-arith-used* nil)
   (setq *g* nil)
@@ -452,6 +453,7 @@
 		       :goal-set-unknown-size *gs-unknown-size*
 		       :goal-set-max-dim *gs-max-dim*
 		       :goal-set-tactic-replay *tactic-replay*
+		       :goal-set-last-tactic-progress-lst *last-tactic-progress-lst*
 		       :goal-set-local-interval-boxes *i-boxes-num-local*
 		       :goal-set-local-vt-bs *gs-vt-bindings*)
   (setf (gethash *current-goal-key* *goal-sets*) *gs*)
@@ -491,7 +493,8 @@
 	      (setq *tactic-replay* (aref goal-stack-record 4))
 	      (when (not (consp *tactic-replay*))
 		(setq *tactic-replay* nil))
-	      (setq *i-boxes-num-local* (aref goal-stack-record 5))
+	      (setq *last-tactic-progress-lst* (aref goal-stack-record 5))
+	      (setq *i-boxes-num-local* (aref goal-stack-record 6))
 	      
 	      ;; Load GOAL-SET record
 	      
@@ -582,7 +585,8 @@
 ;;; SET-GOAL-STACK-DATA: 
 ;;;
 ;;;  (goal-key   <array: goal-in-cnf, goal-set-size, goal-set-unknown-size, goal-set-max-dim,
-;;;      |               goal-set-tactic-replay, goal-set-local-interval-boxes, goal-set-vt-bs>)
+;;;      |               goal-set-tactic-replay, goal-set-last-tactic-progress-lst, 
+;;;      |               goal-set-local-interval-boxes, goal-set-vt-bs>)
 ;;;      |
 ;;;   hash key for GOAL-STACK-DATA.
 ;;; 
@@ -590,6 +594,7 @@
 
 (defun set-goal-stack-data (goal-key &key goal-in-cnf goal-set-size goal-set-unknown-size
 				     goal-set-max-dim goal-set-tactic-replay
+				     goal-set-last-tactic-progress-lst
 			             goal-set-local-interval-boxes 
 			             goal-set-local-vt-bs)
   (let ((goal-stack-record (gethash goal-key *goal-stack-data*)))
@@ -599,10 +604,12 @@
     (if goal-set-unknown-size (setf (aref goal-stack-record 2) goal-set-unknown-size))
     (if goal-set-max-dim  (setf (aref goal-stack-record 3) goal-set-max-dim))
     (if goal-set-tactic-replay (setf (aref goal-stack-record 4) goal-set-tactic-replay))
+    (if goal-set-last-tactic-progress-lst
+	(setf (aref goal-stack-record 5) goal-set-last-tactic-progress-lst))
     (if goal-set-local-interval-boxes 
-	(setf (aref goal-stack-record 5) goal-set-local-interval-boxes))
+	(setf (aref goal-stack-record 6) goal-set-local-interval-boxes))
     (if goal-set-local-vt-bs
-	(setf (aref goal-stack-record 6) goal-set-local-vt-bs))
+	(setf (aref goal-stack-record 7) goal-set-local-vt-bs))
   t))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1051,12 +1058,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun bounded-gbrni (&key case from to gb-bound icp-period union-case)
+(defun bounded-gbrni (&key case from to gb-bound icp-period union-case summand-level)
   (GENERIC-TACTIC #'bounded-gb-real-null-on-case
 		  'bounded-gbrni
 		  "Real Nullstellensatz witness search (bounded GB + ICP)"
 		  :case case :from from :to to :tactic-params 
-		  (list gb-bound icp-period union-case)))
+		  (list gb-bound icp-period union-case summand-level)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -1751,6 +1758,8 @@ RAHD: Real Algebra in High Dimensions ~A
   with options:
     -verbosity n      (0<=n<=10)     degree of proof search output
     -search-model                    search for counter-models
+    -search-model-end                search for counter-models, but only
+                                       after refutation cycle.
     -print-model                     print a counter-model, if found~%~%"
               (car opts)))))
 	 (cond (regression? (wrv (if (rationalp verbosity) verbosity 1) (rrs)))
