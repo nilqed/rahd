@@ -10,7 +10,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;; 
 ;;; This file: began on         06-April-2010,
-;;;            last updated on  04-May-2010.
+;;;            last updated on  08-May-2010.
 ;;;
 
 ;;;
@@ -80,8 +80,14 @@
 ;;;
 
 (defun degshift-v-by-gcd-poly (p var-id gcd) 
-  (let ((p* (poly-prover-rep-to-alg-rep p)))
-    
+  (let ((out-p nil))
+    (dolist (m p)
+      (let ((pp (cdr m)))
+	(dolist (vp pp)
+	  (let ((var-id (car vp))
+		(var-pow (cdr vp)))
+	    (when vp
+	      (fmt 0 "~% vp: ~A.~%" vp))))))))
 
 ;;;
 ;;; DEGSHIFT-V-BY-GCD: Given a RAHD formula, a variable v, and a gcd,

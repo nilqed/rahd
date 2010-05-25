@@ -1,6 +1,6 @@
 ;;;
-;;; RAHD: Real Algebra in High Dimensions v0.5
-;;; A feasible decision method for the existential theory of real closed fields.
+;;; RAHD: Real Algebra in High Dimensions v0.6
+;;; A decision method for the existential theory of real closed fields.
 ;;;
 ;;; ** Linear demodulation routines with rewriting directed by the governing
 ;;;    active monomial ordering, MO< **

@@ -1,6 +1,6 @@
 ;;;
-;;; RAHD: Real Algebra in High Dimensions v0.5
-;;; A feasible decision method for the existential theory of real closed fields.
+;;; RAHD: Real Algebra in High Dimensions v0.6
+;;; A proof procedure for the existential theory of real closed fields.
 ;;;
 ;;; ** Ideal triviality checking,
 ;;;    Morphism of terms in case inequalities into their canonical representatives in

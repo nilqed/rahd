@@ -1,6 +1,6 @@
 ;;;
 ;;; RAHD: Real Algebra in High Dimensions v0.6
-;;; A feasible decision method for the existential theory of real closed fields.
+;;; A proof procedure for the existential theory of real closed fields.
 ;;;
 ;;; ** Top level system compiler/loader **
 ;;;
@@ -85,7 +85,7 @@
    "ineqfert"
    "canonizer"
    "ideals"
-   "opencad"
+   "qepcad"
    "cocoa"
    "cases"
    "realnull"

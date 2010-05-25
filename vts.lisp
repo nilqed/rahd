@@ -1,6 +1,6 @@
 ;;;
 ;;; RAHD: Real Algebra in High Dimensions v0.6
-;;; A feasible decision method for the existential theory of real closed fields.
+;;; A proof procedure for the existential theory of real closed fields.
 ;;;
 ;;; ** Quantifier Elimination by Quadratic Virtual Term Substitution **
 ;;;
@@ -10,7 +10,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;; 
 ;;; This file: began on         22-Nov-2009,
-;;;            last updated on  02-April-2010.
+;;;            last updated on  24-May-2010.
 ;;;
 
 ;;;
@@ -24,21 +24,21 @@
 		:initial-contents (list a b c d))))
 
 ;;;
-;;; S+: If x,y are rationals, return x+y.
+;;; SR+: If x,y are rationals, return x+y.
 ;;;  Otherwise, if x or y are symbolic, return `(+ ,x ,y).
 ;;;
 
-(defun s+ (x y)
+(defun sr+ (x y)
   (if (and (rationalp x) (rationalp y))
       (+ x y)
     `(+ ,x ,y)))
 
 ;;;
-;;; S*: If x,y are rationals, return x*y.
+;;; SR*: If x,y are rationals, return x*y.
 ;;;  Otherwise, if x or y are symbolic, return `(* ,x ,y).
 ;;;
 
-(defun s* (x y)
+(defun sr* (x y)
   (if (and (rationalp x) (rationalp y))
       (* x y)
     (if (or (equal x 0) (equal y 0))
@@ -56,10 +56,10 @@
 	(x_d (aref x 3)) (y_d (aref y 3)))
     (if (not (equal x_c y_c))
 	(break "VTS sqr-exprs can only be added with same radicand")
-      (sre-make	(s+ (s* x_a y_d) (s* y_a x_d))
-		(s+ (s* x_b y_d) (s* y_b x_d))
+      (sre-make	(sr+ (sr* x_a y_d) (sr* y_a x_d))
+		(sr+ (sr* x_b y_d) (sr* y_b x_d))
 		x_c
-		(s* x_d y_d)))))
+		(sr* x_d y_d)))))
 ;;;
 ;;; Multiply two square-root expressions with the same radicand (c).
 ;;;
@@ -71,10 +71,10 @@
 	(x_d (aref x 3)) (y_d (aref y 3)))
     (if (not (equal x_c y_c))
 	(break "VTS sqr-exprs can only be multiplied with same radicand")
-      (sre-make (s+ (s* x_a y_a) (s* x_c (s* y_b x_b)))
-		(s+ (s* x_a y_b) (s* y_a x_b))
+      (sre-make (sr+ (sr* x_a y_a) (sr* x_c (sr* y_b x_b)))
+		(sr+ (sr* x_a y_b) (sr* y_a x_b))
 		x_c
-		(s* x_d y_d)))))
+		(sr* x_d y_d)))))
 
 ;;;
 ;;; Multiply a square-root expression by a polynomial.
@@ -83,8 +83,8 @@
 (defun sre-mult-poly (s k)
   (let ((s_a (aref s 0)) (s_b (aref s 1))
 	(s_c (aref s 2)) (s_d (aref s 3)))
-    (sre-make (s* k s_a)
-	      (s* k s_b)
+    (sre-make (sr* k s_a)
+	      (sr* k s_b)
 	      s_c
 	      s_d)))
 

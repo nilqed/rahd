@@ -11,7 +11,7 @@
 ;;;
 ;;;   v0.6,
 ;;;
-;;; A feasible decision method for the existential theory of real closed fields.
+;;; A proof procedure for the existential theory of real closed fields.
 ;;; Written by Grant Olney Passmore
 ;;; Ph.D. Student, University of Edinburgh
 ;;; Visiting Fellow, SRI International

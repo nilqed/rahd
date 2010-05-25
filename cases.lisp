@@ -1,6 +1,6 @@
 ;;;
-;;; RAHD: Real Algebra in High Dimensions v0.5
-;;; A feasible decision method for the existential theory of real closed fields.
+;;; RAHD: Real Algebra in High Dimensions v0.6
+;;; A decision method for the existential theory of real closed fields.
 ;;;
 ;;; ** Case-splitting routines, and some simple case manipulation functions **
 ;;;
@@ -21,7 +21,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;; 
 ;;; This file: began on         22-July-2008,
-;;;            last updated on  22-Nov-2009.
+;;;            last updated on  24-May-2010.
 ;;;
 
 (in-package RAHD)
@@ -508,7 +508,13 @@
 	(setq out (cons out-clause out))))
     out))
 
+;;;
+;;; PTA: Polynomial in generic (possibly non-binary) prover notation
+;;;  to algebraic representation.
+;;;
 
+(defun pta (p)
+  (poly-prover-rep-to-alg-rep (term-to-bin-ops p)))
 
 
 #|

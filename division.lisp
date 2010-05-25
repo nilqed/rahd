@@ -1,6 +1,6 @@
 ;;;
-;;; RAHD: Real Algebra in High Dimensions v0.5
-;;; A feasible decision method for the existential theory of real closed fields.
+;;; RAHD: Real Algebra in High Dimensions v0.6
+;;; A proof procedure for the existential theory of real closed fields.
 ;;;
 ;;; Goal pre-processing and side-condition generation / checking for goals
 ;;;  that involve division.

@@ -1,6 +1,6 @@
 ;;;
 ;;; RAHD: Real Algebra in High Dimensions v0.6
-;;; A feasible decision method for the existential theory of real closed fields.
+;;; A proof procedure for the existential theory of real closed fields.
 ;;;
 ;;; ** Interval arithmetic core routines **
 ;;;

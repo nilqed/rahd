@@ -10,15 +10,13 @@
 ;;; 
 ;;;     RAHD: Real Algebra in High Dimensions
 ;;;   
-;;;   v0.5,
+;;;   v0.6,
 ;;;
-;;; A feasible decision method for the existential theory of real closed fields.
+;;; A proof procedure for the existential theory of real closed fields.
 ;;; Written by Grant Olney Passmore
 ;;; Ph.D. Student, University of Edinburgh
 ;;; Visiting Fellow, SRI International
 ;;; Contact: (g.passmore@ed.ac.uk . http://homepages.inf.ed.ac.uk/s0793114/)
-;;;
-;;; >>> Requires: sturm.lisp, polyeval.lisp, polyconv.lisp
 ;;;
 ;;;
 ;;; This file: began on         30-July-2008,

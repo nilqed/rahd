@@ -1,6 +1,6 @@
 ;;;
 ;;; RAHD: Real Algebra in High Dimensions v0.6
-;;; A feasible decision method for the existential theory of real closed fields.
+;;; A proof procedure for the existential theory of real closed fields.
 ;;;
 ;;; ** Core prover interface routines **
 ;;;
@@ -10,7 +10,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;; 
 ;;; This file: began on         29-July-2008,
-;;;            last updated on  09-April-2010.
+;;;            last updated on  25-May-2010.
 ;;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1585,21 +1585,23 @@
 ;;;  within a proof tree.
 ;;;
 
-(defun current-stats ()
+(defun current-stats (&key show-goal)
+  (when show-goal
+    (fmt 0 "~% Goal: ~A,~%" *g*))
   (when *current-goal-key*
     (if (equal *current-goal-key* 0)
 	(if *gs*
-	    (fmt 0 "~% Goal: ~A,~% Unknown cases: ~A of ~A.~%~%"
+	    (fmt 0 "~% Goal-key: ~A,~% Unknown cases: ~A of ~A.~%~%"
 		 *current-goal-key*
 		 *gs-unknown-size*
 		 *gs-size*)
-	    (fmt 0 "~% Goal: ~A.~% Goal-Set not built (use (b)).~%~%" 
+	    (fmt 0 "~% Goal-key: ~A.~% Goal-Set not built (use (b)).~%~%" 
 		 *current-goal-key*))
       (multiple-value-bind 
 	  (parent-data p-exists?)
 	  (gethash (car *current-goal-key*) *goal-stack-data*)
 	(declare (ignore p-exists?))
-	(fmt 0 "~% Goal: ~A,~% Unknown cases: ~A of ~A,~% Parent: ~A,~% Parent unknown cases: ~A of ~A.~%~%"
+	(fmt 0 "~% Goal-key: ~A,~% Unknown cases: ~A of ~A,~% Parent: ~A,~% Parent unknown cases: ~A of ~A.~%~%"
 	     *current-goal-key*
 	     *gs-unknown-size*
 	     *gs-size*
