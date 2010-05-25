@@ -1,6 +1,6 @@
 ;;;
 ;;; RAHD: Real Algebra in High Dimensions v0.6
-;;; A decision method for the existential theory of real closed fields.
+;;; A proof procedure for the existential theory of real closed fields.
 ;;;
 ;;; ** Real nullstellensatz equational refutation routines for simple (explicit) 
 ;;;    real nullstellensatz certificates **
