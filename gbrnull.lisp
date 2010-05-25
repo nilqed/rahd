@@ -1,6 +1,6 @@
 ;;;
-;;; RAHD: Real Algebra in High Dimensions v0.5
-;;; A feasible decision method for the existential theory of real closed fields.
+;;; RAHD: Real Algebra in High Dimensions v0.6
+;;; A proof procedure for the existential theory of real closed fields.
 ;;;
 ;;; ** GB-based Real Nullstellensatz procedure, using interval constraints **
 ;;;
@@ -245,6 +245,7 @@
 		 (ps >-vars >=-vars)
 	       (build-eq-sys c)
 	     (when union-case (fmt 2 "~% union-case ~%"))
+	     (when summand-level (fmt 2 "~% summand-level: ~A~%" summand-level))
 	     (let ((icp-result (bounded-gb-real-null ps >-vars >=-vars 
 						     :gb-bound gb-bound
 						     :icp-period icp-period

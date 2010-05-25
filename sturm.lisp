@@ -1,33 +1,32 @@
 ;;;
-;;; Univariate Sturm Theory 
+;;; Univariate Sturm Theory and Cauchy Bound based Real Root Isolation
 ;;;
 ;;;   including: partial derivatives for polynomials in Q[\vec{x}],
 ;;;              derivations of univariate Sturm chains,
 ;;;              extraction of sign change sequences from evaluated Sturm chains,
+;;;              square-free part reduction for univariate polynomials,
 ;;;              local determination of number of real roots of a univariate 
 ;;;                polynomial in a closed real interval with rational endpoints,
-;;; TODO:
-;;;             *global determination of number of real roots of a univariate 
-;;;                polynomial in [-inf, +inf] using Cauchy root bounds.
-;;;              
+;;;              global determination of number of real roots of a univariate 
+;;;                polynomial in ]-inf, +inf[ using Cauchy root bounds,
+;;;              univariate exhaustive real root isolation w.r.t. pairwise disjount
+;;;                sequence of root bounding rational intervals
 ;;;
 ;;;    for
 ;;; 
 ;;;     RAHD: Real Algebra in High Dimensions
 ;;;   
-;;;   v0.5,
+;;;   v0.6,
 ;;;
-;;; A feasible decision method for the existential theory of real closed fields.
+;;; A proof procedure for the existential theory of real closed fields.
 ;;; Written by Grant Olney Passmore
 ;;; Ph.D. Student, University of Edinburgh
 ;;; Visiting Fellow, SRI International
 ;;; Contact: (g.passmore@ed.ac.uk . http://homepages.inf.ed.ac.uk/s0793114/)
 ;;;
-;;; >>> Requires: polyalg.lisp, polyeval.lisp, (polyrtbd.lisp).
-;;;
 ;;;
 ;;; This file: began on         16-July-2008,
-;;;            last updated on  16-July-2008.
+;;;            last updated on  25-May-2010.
 ;;;
 
 (in-package RAHD)
@@ -69,6 +68,27 @@
 		   (t (dpp/dv (cdr pp) v (append accum-pp (cons (car pp) nil)))))))))
 
 ;;;
+;;; MK-SQR-FREE: Given a univariate polynomial p, return its square-free part.
+;;;  (Of course, we should never need count to reach 2!)
+;;;
+
+(defun mk-sqr-free (p)
+  (let* ((out p)
+	 (gcd 1)
+	 (count 0)
+	 (v (caadar p))
+	 (var-name (nth v *vars-table*)))
+    (fmt 8 "~%~%>> Reducing Polynomial to its Square-free Part:~%~%    P_{0} = ~A," (poly-print p))
+    (while (progn (setq gcd (poly-univ-gcd out (dp/dv out v)))
+		  (not (equal gcd '((1)))))
+      (fmt 8 "~%    P_{~A} = P_{~A}/[gcd(P_{~A},dP_{~A}/d~A)] = P_{~A}/[~A] = " 
+	   (1+ count) count count count var-name count (poly-print gcd))
+      (setq count (1+ count))
+      (setq out (car (poly-univ-/ out gcd)))
+      (fmt 8 "~A.~%~%" (poly-print out)))
+    out))
+
+;;;
 ;;; STURM-CHAIN: Given a polynomial, p, univariate in v, return the Sturm Chain
 ;;; derived from p w.r.t. v.
 ;;;
@@ -86,7 +106,7 @@
 
 ;;;
 ;;; SIGN-CHANGES: Given a sequence of rational numbers, S, calculate the number of
-;;; sign changes (ignoring zeroes) that occur are in S.
+;;; sign changes (ignoring zeroes) that occur in S.
 ;;;
 
 (defun sign-changes (S)
@@ -111,15 +131,98 @@
 ;;; rational numbers, a and b, compute the number of (unique) real roots of p there are in [a,b].
 ;;;
 
-(defun poly-univ-interval-real-root-count (p a b)
-  (let ((v (caadar p)))
-    (let ((cur-sturm-chain (sturm-chain p v)))
-      (+ (if (= (poly-univ-eval p a) 0) 1 0) 
-	 (- (sign-changes 
-	     (mapcar #'(lambda (poly) (poly-univ-eval poly a)) cur-sturm-chain)) 
-	    (sign-changes 
-	     (mapcar #'(lambda (poly) (poly-univ-eval poly b)) cur-sturm-chain)))))))
+(defun poly-univ-interval-real-root-count (p a b &key p-sqr-free)
+  (let ((v (caadar p))
+	(sqr-free-p (if p-sqr-free p-sqr-free (mk-sqr-free p))))
+    (cond ((> a b) 0)
+	  ((= a b) (if (= (poly-univ-eval sqr-free-p a) 0) 1 0))
+	  (t (let ((cur-sturm-chain (sturm-chain sqr-free-p v)))
+	       (+ (if (= (poly-univ-eval sqr-free-p a) 0) 1 0) 
+		  (- (sign-changes 
+		      (mapcar #'(lambda (poly) (poly-univ-eval poly a)) cur-sturm-chain)) 
+		     (sign-changes 
+		      (mapcar #'(lambda (poly) (poly-univ-eval poly b)) cur-sturm-chain)))))))))
 
+;;;
+;;; CAUCHY-ROOT-BOUND: Given a univariate polynomial p in v, use the Cauchy root bound
+;;;  formula to compute a rational interval containing all real roots of p.
+;;;
+;;; Bound:
+;;;          p = a_k x^k + a_{k-1} x^{k-1} + ... + a_1 x^1 + a_0.
+;;;
+;;;  Let C(p)  = \sum_{0 <= i <= k} \frac{|a_i|}{|a_k|},
+;;;
+;;;  Then, p(r) = 0  ==> |r| in [-C(p), C(P)].
+;;;  
+;;; We return C(p).
+;;;
+
+(defun cauchy-root-bound (p)
+  (fmt 8 "~%>> Preparing Cauchy root bound:~%")
+  (let ((abs-a_k nil) (abs-coeff-lst nil))
+    (dolist (m p)
+      (when (equal abs-a_k nil) (setq abs-a_k (abs (car m))))
+      (setq abs-coeff-lst (cons (abs (car m)) abs-coeff-lst)))
+    (fmt 8 "~%    <|a_i|>: ~A,~%     |a_k|:  ~A.~%" 
+	 abs-coeff-lst abs-a_k)
+    (let ((up-c 
+	   (reduce '+ (mapcar #'(lambda (x) (/ x abs-a_k)) abs-coeff-lst))))
+      (fmt 8 "~%>> Result of Cauchy root bound:~%~%     P:    ~A,
+     C(p): ~A,~%     So, p(r) = 0  ==>  r in [~A, ~A].~%~%"
+	   (poly-print p) up-c (- 0 up-c) up-c)
+      up-c)))
+
+;;;
+;;; NUM-REAL-ROOTS: Given a univariate polynomial p, return the total number of
+;;;  real roots it has.
+;;;
+
+(defun num-real-roots (p)
+  (let* ((sqr-free-p (mk-sqr-free p))
+	 (b (cauchy-root-bound sqr-free-p)))
+    (poly-univ-interval-real-root-count p (- 0 b) b :p-sqr-free sqr-free-p)))
+
+;;;
+;;;
+;;; REAL-ROOT-ISOLATION: Given a univariate polynomial p, return a list of intervals
+;;;  I_1, ..., I_k (pairwise disjoint) s.t. each I_i contains exactly one real root of p.
+;;;  This list is exhaustive (p has exactly k real roots, multiplicity ignored).
+;;;
+;;; We return a list of elements which are either open intervals (as pairs) or 
+;;;  single points.
+;;;
+
+(defun real-root-isolation (p)
+  (let ((b (cauchy-root-bound p)))
+    (real-root-isolation* p (- 0 b) b)))
+
+(defun real-root-isolation* (p a b)
+  (cond ((> a b) nil)
+	(t (let ((n (poly-univ-interval-real-root-count p a b)))
+	     (cond ((= n 0) nil)
+		   ((= n 1) (cond ((= (poly-univ-eval p a) 0)
+				   (list a))
+				  ((= (poly-univ-eval p b) 0)
+				   (list b))
+				  (t (list (cons a b)))))
+		   (t (let ((mid (/ (+ a b) 2)))
+			(union (real-root-isolation* p a mid)
+			       (real-root-isolation* p mid b)))))))))
+
+;;;
+;;; FLOAT-RRI: Given a real root isolation list as computed above,
+;;;  map its entries to floats.  This is just for gaining intuition when
+;;;  investigating root diagrams interactively.
+;;;
+
+(defun float-rri (rri)
+  (let ((out nil))
+    (dolist (r rri)
+      (cond ((consp r) (setq out 
+			     (cons (cons (float (car r))
+					 (float (cdr r))) out)))
+	    (t (setq out (cons (float r) out)))))
+    out))
 
 #|
 
