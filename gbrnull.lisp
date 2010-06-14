@@ -10,7 +10,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;; 
 ;;; This file: began on         21-Nov-2009,
-;;;            last updated on  22-Nov-2009.
+;;;            last updated on  31-May-2010.
 ;;;
 
 ;;;
@@ -197,7 +197,7 @@
 
 (defun bounded-gb-real-null (ps >-vars >=-vars 
 				&key gb-bound icp-period iht union-case summand-level)
-  (let ((gb-bound (or gb-bound 20))
+  (let ((gb-bound (or gb-bound 8))
 	(icp-period (or icp-period 5))
 	(iht (or iht (iht-clone *i-boxes-num-local*)))
 	(G (remove-if #'(lambda (x) (or (equal x nil) (equal x 0))) 

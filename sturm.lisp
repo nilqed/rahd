@@ -26,10 +26,15 @@
 ;;;
 ;;;
 ;;; This file: began on         16-July-2008,
-;;;            last updated on  25-May-2010.
+;;;            last updated on  27-May-2010.
 ;;;
 
 (in-package RAHD)
+
+;;;
+;;; Notes: [26-May-2010]: Added caching of Sturm sequences and square-free
+;;;                        reductions.
+;;;
 
 ;;;
 ;;; DP/DV: Given a polynomial p and a variable ID v (w.r.t. *VARS-TABLE*),
@@ -71,31 +76,48 @@
 ;;; MK-SQR-FREE: Given a univariate polynomial p, return its square-free part.
 ;;;  (Of course, we should never need count to reach 2!)
 ;;;
+;;; Now uses global square-free poly cache.
+;;;
 
 (defun mk-sqr-free (p)
-  (let* ((out p)
-	 (gcd 1)
-	 (count 0)
-	 (v (caadar p))
-	 (var-name (nth v *vars-table*)))
-    (fmt 8 "~%~%>> Reducing Polynomial to its Square-free Part:~%~%    P_{0} = ~A," (poly-print p))
-    (while (progn (setq gcd (poly-univ-gcd out (dp/dv out v)))
-		  (not (equal gcd '((1)))))
-      (fmt 8 "~%    P_{~A} = P_{~A}/[gcd(P_{~A},dP_{~A}/d~A)] = P_{~A}/[~A] = " 
-	   (1+ count) count count count var-name count (poly-print gcd))
-      (setq count (1+ count))
-      (setq out (car (poly-univ-/ out gcd)))
-      (fmt 8 "~A.~%~%" (poly-print out)))
-    out))
+  (multiple-value-bind
+      (sqr-free-hash-val sqr-free-hash-exists?)
+      (gethash p *sqr-free-cache*)
+    (if sqr-free-hash-exists?
+	sqr-free-hash-val 
+      (let* ((out p)
+	     (gcd 1)
+	     (count 0)
+	     (v (caadar p))
+	     (var-name (nth v *vars-table*)))
+	(fmt 8 "~%~%>> Reducing Polynomial to its Square-free Part:~%~%    P_{0} = ~A," (poly-print p))
+	(while (progn (setq gcd (poly-univ-gcd out (dp/dv out v)))
+		      (not (equal gcd '((1)))))
+	  (fmt 8 "~%    P_{~A} = P_{~A}/[gcd(P_{~A},dP_{~A}/d~A)] = P_{~A}/[~A] = " 
+	       (1+ count) count count count var-name count (poly-print gcd))
+	  (setq count (1+ count))
+	  (setq out (car (poly-univ-/ out gcd)))
+	  (fmt 8 "~A.~%~%" (poly-print out)))
+	(setf (gethash p *sqr-free-cache*) out)
+	out))))
 
 ;;;
 ;;; STURM-CHAIN: Given a polynomial, p, univariate in v, return the Sturm Chain
 ;;; derived from p w.r.t. v.
 ;;;
+;;; Now uses global Sturm chain cache.
+;;;
 
 (defun sturm-chain (p v)
-  (let ((cur-dp/dv (dp/dv p v)))
-    (append `(,p ,cur-dp/dv) (sturm-chain* p cur-dp/dv nil))))
+  (multiple-value-bind 
+      (sturm-seq-hash-val sturm-seq-hash-exists?)
+      (gethash p *sturm-seq-cache*)
+    (if sturm-seq-hash-exists?
+	sturm-seq-hash-val
+      (let* ((cur-dp/dv (dp/dv p v))
+	     (chain (append `(,p ,cur-dp/dv) (sturm-chain* p cur-dp/dv nil))))
+	(setf (gethash p *sturm-seq-cache*) chain)
+	chain))))
 
 (defun sturm-chain* (p1 p2 sc-accum)
   (let ((cur-rem (cdr (poly-univ-/ p1 p2))))
@@ -130,10 +152,12 @@
 ;;; POLY-UNIV-INTERVAL-REAL-ROOT-COUNT: Given a polynomial p, univariate in v, and two 
 ;;; rational numbers, a and b, compute the number of (unique) real roots of p there are in [a,b].
 ;;;
+;;; Note: If p-sqr-free? is true, then we assume p is already square-free.
+;;;
 
-(defun poly-univ-interval-real-root-count (p a b &key p-sqr-free)
+(defun poly-univ-interval-real-root-count (p a b &key p-sqr-free?)
   (let ((v (caadar p))
-	(sqr-free-p (if p-sqr-free p-sqr-free (mk-sqr-free p))))
+	(sqr-free-p (if p-sqr-free? p (mk-sqr-free p))))
     (cond ((> a b) 0)
 	  ((= a b) (if (= (poly-univ-eval sqr-free-p a) 0) 1 0))
 	  (t (let ((cur-sturm-chain (sturm-chain sqr-free-p v)))
@@ -152,7 +176,7 @@
 ;;;
 ;;;  Let C(p)  = \sum_{0 <= i <= k} \frac{|a_i|}{|a_k|},
 ;;;
-;;;  Then, p(r) = 0  ==> |r| in [-C(p), C(P)].
+;;;  Then, p(r) = 0  ==> r in [-C(p), C(P)].
 ;;;  
 ;;; We return C(p).
 ;;;
@@ -173,6 +197,50 @@
       up-c)))
 
 ;;;
+;;; MINIMIZE-CAUCHY-BOUND: Given a Cauchy root bound, minimize it by the
+;;;  highest power of two s.t. the resulting bound still contains all roots.
+;;;
+;;; We assume p is given square-free.
+;;;
+
+(defun minimize-cauchy-bound (p b base)
+  (minimize-cauchy-bound* 
+   p 
+   b 
+   (poly-univ-interval-real-root-count 
+    p 
+    (- 0 b) 
+    b
+    :p-sqr-free? t)
+   base))
+
+(defun minimize-cauchy-bound* (p b k base)
+  (let* ((b* (/ b base))
+	 (k* (poly-univ-interval-real-root-count 
+	      p 
+	      (- 0 b*)
+	      b
+	      :p-sqr-free? t)))
+    (cond ((= k* k) 
+	   (fmt 8 ".")
+	   (minimize-cauchy-bound* p b* k base))
+	  ((< k* k) b))))
+
+;;;
+;;; Compute a minimal root bound by minimizing Cauchy bound w.r.t. 2^{-k} sequence.
+;;;
+
+(defun min-root-bound (p &key p-sqr-free? min-base)
+  (let* ((p* (if p-sqr-free? p (mk-sqr-free p)))
+	 (b (cauchy-root-bound p*))
+	 (mb (or min-base 2))
+	 (b* (progn 
+	       (fmt 8 "~%>> Minimizing Cauchy root bound (kth `.' means ~A^k pruned):~%~%    " mb)
+	       (minimize-cauchy-bound p* b mb))))
+    (fmt 8 "~%    Revised root bound: [~A, ~A].~%" (- 0 b*) b*)
+    b*))
+
+;;;
 ;;; NUM-REAL-ROOTS: Given a univariate polynomial p, return the total number of
 ;;;  real roots it has.
 ;;;
@@ -180,7 +248,7 @@
 (defun num-real-roots (p)
   (let* ((sqr-free-p (mk-sqr-free p))
 	 (b (cauchy-root-bound sqr-free-p)))
-    (poly-univ-interval-real-root-count p (- 0 b) b :p-sqr-free sqr-free-p)))
+    (poly-univ-interval-real-root-count sqr-free-p (- 0 b) b :p-sqr-free? t)))
 
 ;;;
 ;;;
@@ -191,28 +259,69 @@
 ;;; We return a list of elements which are either open intervals (as pairs) or 
 ;;;  single points.
 ;;;
+;;; Epsilon is a rational W s.t. the interval given for each real root
+;;;  must have width <= W.
+;;;
 
-(defun real-root-isolation (p)
-  (let ((b (cauchy-root-bound p)))
-    (real-root-isolation* p (- 0 b) b)))
 
-(defun real-root-isolation* (p a b)
+(defun rri (p &key use-min-bound? min-base epsilon)
+  (real-root-isolation 
+   p 
+   :use-min-bound? use-min-bound? 
+   :min-base min-base
+   :epsilon epsilon))
+
+(defun real-root-isolation (p &key use-min-bound? min-base epsilon)
+  (let* ((sqr-free-p (mk-sqr-free p))
+	 (b (if use-min-bound?
+		(min-root-bound sqr-free-p :p-sqr-free? t :min-base min-base)
+	      (cauchy-root-bound sqr-free-p))))
+    (fmt 8 "~%>> Isolating roots:~%~%")
+    (let ((rri (real-root-isolation* sqr-free-p (- 0 b) b 0 :epsilon epsilon)))
+      (fmt 8 "~%")
+      rri)))
+
+(defun real-root-isolation* (p a b d &key epsilon)
   (cond ((> a b) nil)
-	(t (let ((n (poly-univ-interval-real-root-count p a b)))
+	(t (let ((n (poly-univ-interval-real-root-count p a b :p-sqr-free? t)))
 	     (cond ((= n 0) nil)
-		   ((= n 1) (cond ((= (poly-univ-eval p a) 0)
-				   (list a))
-				  ((= (poly-univ-eval p b) 0)
-				   (list b))
-				  (t (list (cons a b)))))
+		   ((= n 1) (fmt 8 "    .. Root isolated at depth ~A~%" d)
+		    (cond ((= (poly-univ-eval p a) 0)
+			   (list a))
+			  ((= (poly-univ-eval p b) 0)
+			   (list b))
+			  (t (cond 
+			      (epsilon (let ((tightened-root (tighten-root p a b epsilon)))
+					 (fmt 8 "~%~%")
+					 tightened-root))
+			      (t (list (cons a b)))))))
 		   (t (let ((mid (/ (+ a b) 2)))
-			(union (real-root-isolation* p a mid)
-			       (real-root-isolation* p mid b)))))))))
+			(union (real-root-isolation* p a mid (+ d 1) :epsilon epsilon)
+			       (real-root-isolation* p mid b (+ d 1) :epsilon epsilon)))))))))
+
+;;;
+;;; TIGHTEN-ROOT: Given a root of a polynomial p as given by a rational interval,
+;;;  tighten the interval so that its width is <= a given W.
+;;;
+
+(defun tighten-root (p a b w)
+  (fmt 8 "~%       ..: Tightening root (~A . ~A) to epsilon width ~A (cur: ~A)" a b w (abs (- a b)))
+  (cond ((<= (abs (- a b)) w) (list (cons a b)))
+	((= (poly-univ-eval p a) 0) (list a))
+	((= (poly-univ-eval p b) 0) (list b))
+	(t (let* ((mid (/ (+ a b) 2))
+		  (root-l? (= 1 (poly-univ-interval-real-root-count p a mid :p-sqr-free? t)))
+		  (root-r? (= 1 (poly-univ-interval-real-root-count p mid b :p-sqr-free? t))))
+	     (cond ((and root-l? root-r?) (list mid))
+		   (root-l? (tighten-root p a mid w))
+		   (root-r? (tighten-root p mid b w)))))))
 
 ;;;
 ;;; FLOAT-RRI: Given a real root isolation list as computed above,
 ;;;  map its entries to floats.  This is just for gaining intuition when
-;;;  investigating root diagrams interactively.
+;;;  investigating root diagrams interactively (I find it easier to
+;;;  read floats so as to get a picture of the placement of roots than
+;;;  I do reading rationals with large numerators/denominators).
 ;;;
 
 (defun float-rri (rri)
@@ -224,40 +333,3 @@
 	    (t (setq out (cons (float r) out)))))
     out))
 
-#|
-
- Some examples:
-
- (defparameter *p1* '( (2 . ((3 . 2) (2 . 7) (0 . 9)))  (3 . ((2 . 11)))))
-
- (poly-print *p1*)
-"2x^9 z^7 u^2  +  3z^11"
-
-(poly-print (dp/dv *p1* 2))
-"14x^9 z^6 u^2  +  33z^10"
-
-(poly-print (dp/dv *p1* 4))
-"2x^9 z^7 u^2  +  3z^11"
-
-
-(defparameter *f*
-  '((1 . ((0 . 3))) (-2 . ((0 . 2))) (2 . ((0 . 1))) (8 . nil)))
-
-
-(mapcar #'poly-print (sturm-chain *f* 0))
-("3x^2  +  -4x  +  2" "4/9x  +  76/9" "1161")
-
-
-(defparameter *p2*
-  '( (1 . ((0 . 4))) (-5 . ((0 . 2))) (4)))
-
-(poly-print *p2*)
-"x^4  +  -5x^2  +  4"
-
-(mapcar #'poly-print (sturm-chain *p2* 0))
-("x^4  +  -5x^2  +  4" "4x^3  +  -10x" "5/2x^2  +  -4" "18/5x" "4")
-
-(poly-univ-interval-real-root-count *p2* -2 2)
-4
-
-|#

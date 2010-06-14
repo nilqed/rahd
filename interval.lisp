@@ -270,9 +270,13 @@
 	 (i0-or? (i-or? i0)) (i1-or? (i-or? i1))
 	 (i0-empty? (i-empty? i0))
 	 (i1-empty? (i-empty? i1)))
+     (declare (ignorable i0-bt i1-bt i0-lb i0-ub i1-lb
+			 i1-ub i0-ol? i1-or? i0-ol? i0-or?
+			 i0-empty? i1-empty?))
      (let ((i0-cl? (not i0-ol?)) (i1-cl? (not i1-ol?))
 	   (i0-cr? (not i0-or?)) (i1-cr? (not i1-or?)))
-     (cond ,@rst))))
+       (declare (ignorable i0-cl? i0-cr? i1-cl? i1-cr?))
+       (cond ,@rst))))
 
 ;;;
 ;;; I-+-NUM: Add two numerical intervals.

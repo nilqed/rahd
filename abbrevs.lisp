@@ -53,6 +53,11 @@
 (defun ctr ()
   (setq *tactic-replay* nil))
 
+(defun srv (n)
+  (setq *rahd-verbosity*  n)
+  (fmt 0 "~% RAHD verbosity set to ~A.~%~%" n)
+  t)
+
 (defun u ()
   (up))
 
@@ -104,3 +109,4 @@
     (dolist (r rst)
       (setq out (cons `(when (not *sat-case-found?*) ,r) out)))
     `(progn ,@(reverse out))))
+

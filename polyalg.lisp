@@ -712,7 +712,7 @@
 	(t (let ((f_i (nth i F)) (f_j (nth j F)))
 	     (if (ignore-s-poly f_i f_j)
 		 (progn
-		   (fmt 2 "~% Superfluous critical pair (S-poly) ignored in GBasis construction! ~%")
+		   (fmt 7 "~% Superfluous critical pair (S-poly) ignored in GBasis construction! ~%")
 		   (s-pairs* F
 			     (if (= j ub) (1+ i) i)
 			     (if (= j ub) (+ i 2) (1+ j)) ub))
@@ -732,7 +732,7 @@
   (let ((out s-polys))
     (dolist (g G)
       (if (ignore-s-poly p g)
-	  (fmt 2 "~% Superfluous critical pair (S-poly) ignored in GBasis construction! ~%")
+	  (fmt 7 "~% Superfluous critical pair (S-poly) ignored in GBasis construction! ~%")
 	(setq out (cons (s-poly p g) out))))
     out))
 

@@ -60,12 +60,12 @@
 	  (setq top (car out))	  
 	  (setq out (remove-if #'(lambda (x) (subseteq top x)) out))
 	  (setq kept (cons top kept))
-	  (fmt 9 "~% *** Subset subsumption: Top = ~A, Out = ~A, Kept = ~A ***~%~%" top out kept))
+	  (fmt 9 "~% Subset subsumption: Top = ~A, Out = ~A, Kept = ~A. ~%~%" top out kept))
     (when out (setq kept (cons (car out) kept)))
     (if (< (length kept) f-original-length)
-	(fmt 2 "~% *** RAHD Pre-processor: Successful formula subsumption reduction from ~A ~A to ~A ~A ***~%~%"
+	(fmt 2 "~% Formula subsumption reduction from ~A ~A to ~A ~A. ~%~%"
 	     f-original-length obj-str (length kept) obj-str)
-      (fmt 9 "~% *** RAHD Pre-processor: Subsumption checks performed no formula reductions (F:~A, K:~A). ***~%~%"
+      (fmt 9 "~% Subsumption checks performed no formula reductions (F:~A, K:~A). ~%~%"
 	   f-original-length (length kept)))
     kept))
 	
@@ -179,7 +179,9 @@
 	(if (numberp new-MULTIPLICAND)
 	    (let ((s (calc-sign new-MULTIPLICAND)))
 	      (case op
-		(= `(= ,new-LHS ,new-RHS))
+		(= (case s
+		     (0 (break "Division by zero not allowed in input formulas."))
+		     (otherwise `(= ,new-LHS ,new-RHS))))
 		(> (case s
 		     (-1 `(< ,new-LHS ,new-RHS))
 		     (1  `(> ,new-LHS ,new-RHS))

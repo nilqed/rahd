@@ -4,24 +4,13 @@
 ;;;
 ;;; ** Case-splitting routines, and some simple case manipulation functions **
 ;;;
-;;;
-;;;  A simple case-splitting procedure for drilling down into the 
-;;;   boolean structure of an RCF proof obligation.
-;;;
-;;;   Also contains some core prover procedures:
-;;;     An arithmetic term simplifier,
-;;;     A simple equality inconsistency checker,
-;;;     A converter to HOL-Light REAL_SOS syntax,
-;;;     A simple numerical demodulator.
-;;;
-;;;
 ;;; Written by Grant Olney Passmore
 ;;; Ph.D. Student, University of Edinburgh
 ;;; Visiting Fellow, SRI International
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;; 
 ;;; This file: began on         22-July-2008,
-;;;            last updated on  24-May-2010.
+;;;            last updated on  30-May-2010.
 ;;;
 
 (in-package RAHD)
@@ -145,13 +134,42 @@
 			 (let ((op (car lit-in-question))
 			       (x  (cadr lit-in-question))
 			       (y  (caddr lit-in-question)))
-			   (declare (ignore x y))
-			   (if (not (member op '(= < > <= >=)))
+			   (declare (ignorable x y))
+			   (if (or (not (member op '(= < > <= >=)))
+				   (not (and (rationalfunctionp (term-to-bin-ops x))
+					     (rationalfunctionp (term-to-bin-ops y)))))
 			       (setq clause-ok nil)))))))))
 	  (setq form-ok (and form-ok clause-ok)))))
     form-ok))
 
-	  
+(defun rationalfunctionp (p)
+  (cond ((rationalp p) t)
+	((and (symbolp p) (not (member p '(= <= >= + - *)))) t)
+	((and (consp p) (= (length p) 3)
+	      (and (member (car p) '(+ - * /))
+		   (if (equal (car p) '/)
+		       (not (equal (canonicalize-poly (caddr p)) 0))
+		     t)) ; More complicated for eliminating explicit divs by 0.
+	      (and (rationalfunctionp (cadr p))
+		   (rationalfunctionp (caddr p)))))
+	(t nil)))
+	      
+	 
+;;;
+;;; ALL-VARS-IN-CNF: Return all variables in RAHD top-level formula.
+;;; 
+
+(defun all-vars-in-cnf (cs)
+  (let ((cs-conj nil))
+    (dolist (c cs)
+      (dolist (l c)
+	(setq cs-conj (append (list l) cs-conj))))
+    (all-vars-in-conj cs-conj)))
+
+
+;;;
+;;; A stub for division expansion.
+;;;
 
 (defun expand-divs (x) x)
 

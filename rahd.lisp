@@ -10,7 +10,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;; 
 ;;; This file: began on         22-Sept-2008,
-;;;            last updated on  23-Nov-2009.
+;;;            last updated on  27-May-2010.
 ;;;
 
 ;;;
@@ -58,6 +58,16 @@
 (defparameter *rahd-work-path* "") 
 
 ;;;
+;;; SBCL doesn't have WHILE by default.
+;;;
+
+#-allegro 
+(defmacro while (test &rest body)
+  `(do ()
+       ((not ,test))
+     ,@body))
+
+;;;
 ;;; COMPILE-FILE-AND-LOAD: Given a list of filename strings, compile
 ;;;  and load them.  (We assume the trailing ".lisp" is omitted.)
 ;;;
@@ -74,13 +84,15 @@
 ;;; RAHD-REBOOT: Compile and reload all files in our system.
 ;;;
 
-(defun rahd-reboot (&key hands-off-state)
-  (compile-file-and-load 
+(defun rahd-reboot (&key hands-off-state skip-maxima)
+  (compile-file-and-load
    "polyalg"
    "polyeval"
    "polyconv"
    "sturm"
    "sturmineq"
+   "abbrevs"
+   "debug"
    "strings"
    "ineqfert"
    "canonizer"
@@ -103,11 +115,14 @@
    "division"
    "quicksat"
    "prover"
-   "abbrevs"
    "rahd"
    "regression"
-   "debug"
    "prfanal")
+  (when (not skip-maxima)
+    (compile-file-and-load
+     "maxima-package"
+     "maxima-rahd")
+    (init-maxima))
   (if (not hands-off-state) (rahd-reset-state))
   (format t "~%[RAHD-REBOOT]: RAHD ~D successfully rebooted." *rahd-version*)
   t)
@@ -160,12 +175,12 @@
 #+ccl
 (defun make-ccl-binary (name)
   (rahd-reboot)
-  (ccl:save-application name :toplevel-function #'cl-check :prepend-kernel t))
+  (ccl:save-application name :toplevel-function #'rahd-cl-check :prepend-kernel t))
 
 #+sbcl
 (defun make-sbcl-binary (name)
-  (rahd-reboot)
-  (sb-ext:save-lisp-and-die name :toplevel #'cl-check :executable t))
+  (sb-ext:save-lisp-and-die name :toplevel #'rahd-cl-check :executable t))
 
 (defun quit ()
   #+sbcl (sb-ext:quit))
+

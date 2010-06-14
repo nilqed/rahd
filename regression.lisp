@@ -438,7 +438,7 @@
 			  (if (and live-decision
 				   (eq r-decision ':UNSAT))
 			      (progn
-				(when *enable-proof-analysis* (print-proof-analysis))
+				;(when *enable-proof-analysis* (print-proof-analysis))
 				(format nil
 					"~%    ++ rs(~A) proved (~D s)." 
 					i (float (/ (- (get-internal-real-time) start-time) internal-time-units-per-second))))
@@ -449,9 +449,9 @@
       (setq i (1+ i)))
     (format t 
 "
- /:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::\ 
- ;::  RAHD Regression Suite Report  :::::::::::::::::::::::::::::::::;
- \:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::/
+ /:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::\\ 
+  ::  RAHD Regression Suite Report  :::::::::::::::::::::::::::::::::
+ \\:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::/
 ~A~%" report-str))
   t)
 

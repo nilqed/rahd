@@ -10,7 +10,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;; 
 ;;; This file: began on         29-July-2008,
-;;;            last updated on  25-May-2010.
+;;;            last updated on  31-May-2010.
 ;;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -27,7 +27,7 @@
 ;;;
 ;;;
 ;;; To wipe your session and begin work on a new proof obligation without rebooting, 
-;;; eval (rahd-reset-state).
+;;; eval (r).
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -71,7 +71,7 @@
 ;;;  This verbosity level is cummulative, so that a setting of N causes all information
 ;;;  marked as level n (0 <= n <= N) to be printed (to *standard-output*).
 ;;;
-;;;  Also, see: (WITH-RAHD-VERBOSITY n ...).
+;;;  Also, see: (WITH-RAHD-VERBOSITY n ...), (WRV n ...), (WRD ...).
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -250,6 +250,15 @@
 
 (defparameter *gs-vt-bindings* nil)
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; GLOBAL-VT-BINDINGS: A list of variable bindings that the current global context has
+;;;  used to perform substitutions of smaller terms for variables; these substitutions
+;;;  are valid for all members of all *GS*'s.
+;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defparameter *global-vt-bindings* nil)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -289,6 +298,22 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defparameter *canon-poly-cache* (make-hash-table :test 'equal))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; STURM-SEQ-CACHE: A hash table for caching Sturm sequence computations.
+;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defparameter *sturm-seq-cache* (make-hash-table :test 'equal))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; SQR-FREE-CACHE: A hash table for caching square-free reductions of univariate polys.
+;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defparameter *sqr-free-cache* (make-hash-table :test 'equal))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -368,7 +393,7 @@
 ;;;  goal is satisfiable, and thus we can stop attempting to refute the remaining cases.
 ;;;
 ;;; SAT-MODEL: Have we constructed a counter-model satisfying one of the cases?  If so,
-;;;  it is stored here..
+;;;  it is stored here.
 ;;;
 ;;; GOAL-REFUTED: Has the goal been refuted?  This may happen even before we have 
 ;;;  expanded into a goal-set by Phase I processing of the initial *G*.
@@ -407,17 +432,21 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun rahd-reset-state (&optional no-output &key keep-hashes)
+(defun rahd-reset-state (&key no-output keep-hashes)
   (when (not keep-hashes)
       (progn
 	(clrhash *gbasis-cache*)
 	(clrhash *canon-poly-cache*)
+	(clrhash *sqr-free-cache*)
+	(clrhash *sturm-seq-cache*)
 	(setq *goal-stack-keys* nil)
 	(clrhash *goal-stack-data*)
 	(clrhash *goal-sets*)
 	(clrhash *proof-analysis-cache*)
 	(clrhash *i-boxes-num-local*)
 	(clrhash *i-boxes-num-global*)))
+  (setq *vars-table* nil)
+  (setq *current-tactic-case* nil)
   (setq *global-vt-bindings* nil)
   (setq *goal-refuted?* nil)
   (setq *sat-case-found?* nil)
@@ -435,9 +464,8 @@
   (setq *gs-max-dim* 0)
   (setq *gs-vt-bindings* nil)
   (when (not no-output)
-    (fmt 2 "~% >> RAHD-RESET-STATE: ~A."
-	 (if keep-hashes "Local goal state successfully reset, but global structures unchanged"
-	   "Full RAHD system state successfully reset")))
+    (if keep-hashes (fmt 0 "~% Local goal state reset, but global structures unchanged~%"
+			 (fmt 0 "~% Full RAHD system state successfully reset~%"))))
   t)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -458,7 +486,7 @@
 		       :goal-set-local-vt-bs *gs-vt-bindings*)
   (setf (gethash *current-goal-key* *goal-sets*) *gs*)
   (when (not no-output)
-    (fmt 2 "~% >> SAVE-CURRENT-GOAL: Proof state for GOAL ~A has been successfully saved." 
+    (fmt 2 "~% Proof state for goal ~A has been saved." 
 	 (format-goal-key *current-goal-key*)))
   t)
 
@@ -507,8 +535,8 @@
 	      ;; Synchronization complete
 	      
 	      (when (not no-output)
-		(fmt 2 "~% >> LOAD-GOAL: GOAL ~A successfully loaded into local bindings."
-		     (format-goal-key goal-key)))
+		(fmt 2 "~% Goal ~A loaded into local bindings."
+		     goal-key))
 	      t)
 	  (break (error-string 'g-no-goal-to-load `(,goal-key ',*goal-stack-keys*)))))
 	(break (error-string 'g-no-goal-to-load `(,goal-key ',*goal-stack-keys*))))))
@@ -524,8 +552,8 @@
   (save-current-goal no-output)
   (load-goal goal-key no-output)
   (when (not no-output)
-    (fmt 2 "~% >> SWAP-TO-GOAL: GOAL ~A successfully swapped in as the active goal." 
-	 (format-goal-key goal-key)))
+    (fmt 2 "~% Goal ~A swapped in as the active goal." 
+	 goal-key))
   t)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -533,17 +561,22 @@
 ;;; G: Install new current top-level goal.
 ;;;
 ;;; f: Goal in CNF to be added to goal-stack.
-;;; goal-key: Key to assign to this goal.
 ;;;
 ;;; Keyword parameters:
+;;;  :goal-key     -- Key to assign to this goal.
 ;;;  :abandon-ok   -- Is it OK to abandon current proof session
 ;;;                    and start a new one?
 ;;;  :overwrite-ok -- Is it OK to overwrite the data of a goal 
 ;;;                    that already exists in the GOAL-STACK?
+;;;  :vars-table   -- An explicit ordering of the variables 
+;;;                    If an ordering isn't given, then we compute one (for goal 0) by
+;;;                     (i) keeping the order in the current *vars-table* if nonempty,
+;;;                    (ii) adding all variables appearing in f but not in *vars-table*
+;;;                          at the end of vars-table, in the order they appear in f.
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun g (f &optional (goal-key 0) &key abandon-ok overwrite-ok)
+(defun g (f &key (goal-key 0) abandon-ok overwrite-ok vars-table)
   (if (not f) (break (error-string 'g-empty-goal)))
   (cond ((and (or *current-goal-key* *goal-stack-keys*)
 	      (equal goal-key 0)
@@ -569,14 +602,16 @@
 	     ;;
 
 	     (save-current-goal))
-	   (if *goal-stack-keys* (rahd-reset-state nil :keep-hashes t))
+	   (when (equal goal-key 0)
+	     (setq *vars-table* (or vars-table (all-vars-in-cnf f))))
+	   (if *goal-stack-keys* (rahd-reset-state :keep-hashes t))
 	   (push goal-key *goal-stack-keys*)
 	   (remove-duplicates *goal-stack-keys*)
 	   (setf (gethash goal-key *goal-stack-data*) (make-array 7))
 	   (set-goal-stack-data goal-key :goal-in-cnf f)
 	   (setq *g* f)
 	   (setq *current-goal-key* goal-key)
-	   (fmt 2 "~% >> G: GOAL ~A successfully installed on GOAL-STACK and locally bound to *G*. ~%~%" 
+	   (fmt 2 "~% Goal ~A installed and locally bound to *g*. ~%~%" 
 		(format-goal-key goal-key))
 	   t)))
 
@@ -666,7 +701,7 @@
       (when (equal *current-goal-key* 0)
 	(clrhash *proof-analysis-cache*))
 
-      (fmt 2 "~% >> BUILD-GOAL-SET: GOAL-SET for GOAL ~A successfully built and locally bound to *GS*." 
+      (fmt 2 "~% Goalset for goal ~A built and locally bound to *gs*." 
 	   (format-goal-key *current-goal-key*))
       (prgs))))
 
@@ -697,7 +732,7 @@
   (let ((new-subgoal-key (or explicit-key `(,*current-goal-key* ,*current-tactic-case*)))
 	(parent-goal-key *current-goal-key*)
 	(vars-table *vars-table*))
-    (g f new-subgoal-key)
+    (g f :goal-key new-subgoal-key)
     ;(build-gs) ;;; For now, we let PROC handle build-gs for us.
     (funcall proc)
     (let ((subgoal-refuted? (= *gs-unknown-size* 0)))
@@ -728,7 +763,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; ** Tactics **
+;;; ** Tactics (mapped CMFs) **
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
       
@@ -1038,6 +1073,13 @@
 		  "saturation by all linear orientations"
 		  :case case :from from :to to))
 
+(defun satur-lin (&key case from to)
+  (GENERIC-TACTIC #'saturate-case-with-linear-orientations
+		  'SATUR-LIN
+		  "saturation by all linear orientations"
+		  :case case :from from :to to))
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; FULL-GB-RNULL+ICP: Full GB search for Real Nullstellensatz witnesses using interval
@@ -1122,6 +1164,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun phase-i (&key search-model)
+  (declare (ignore search-model))
   (let ((unit-clauses 
 	 (mapcar #'car (remove-if 
 			#'(lambda (x) 
@@ -1149,8 +1192,8 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun waterfall (&key union-case search-model)
-  (when search-model 
+(defun waterfall (&key union-case search-model search-model* gbrn-depth)
+  (when search-model
     (fp " Searching for trivial models.~%")
     (quick-sat))
   (fp " Contracting intervals.~%")
@@ -1163,11 +1206,12 @@
   (simp-real-null)
   (fert-tsos)
   (univ-sturm-ineqs)
+  (fp " Contracting intervals.~%")
   (interval-cp)
   (fp " Deriving additional linear constraints.~%")
-  (saturate-orient-lin)
+  (satur-lin)
   (fp " Searching for real nullstellensatz interval obstructions.~%")
-  (bounded-gbrni :union-case union-case)
+  (bounded-gbrni :union-case union-case :gb-bound gbrn-depth)
   (fp " Contracting intervals.~%")
   (interval-cp)
   (when *enable-qepcad* 
@@ -1194,29 +1238,10 @@
   (when (and *enable-qepcad* 
 	     (not *disable-gen-cad*)) 
     (gen-ex-cad))
-  (when search-model 
+  (when (or search-model search-model*)
     (fp " Searching for trivial models.~%")
     (quick-sat))
   (if (= *gs-unknown-size* 0) t nil))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; WATERFALL-TACTICS: A copy of the waterfall structure as a list of tactics. 
-;;;  This is to allow users the ability to use the :HANDS-OFF directive together 
-;;;  with the (GO! ...) function to remove tactics from the waterfall.
-;;;
-;;; Note: I decided not to make (waterfall) just loop through evaluating these,
-;;;  as (GO! ...) does if a user passes in a tactic-replay or uses :hands-off,
-;;;  because that would add needless overhead for normal (waterfall) calls.
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defparameter *waterfall*
-  '(SIMP-ZRHS CONTRA-EQS DEMOD-NUM SIMP-GLS SIMP-TVS SIMP-ARITH SIMP-GLS SIMP-TVS 
-    SIMP-REAL-NULL FERT-TSOS UNIV-STURM-INEQS OPEN-EX-INF-CAD TRIV-IDEALS CANON-TMS 
-    RCR-INEQS SIMP-GLS SIMP-TVS CONTRA-EQS FERT-TSOS OPEN-FRAG-EX-INF-CAD RCR-SVARS 
-    SIMP-GLS DEMOD-NUM SIMP-TVS SIMP-ARITH SIMP-GLS DEMOD-NUM SIMP-TVS SIMP-ARITH
-    INT-DOM-ZPB GEN-EX-CAD))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -1226,21 +1251,21 @@
 ;;;
 ;;;  :TACTIC-REPLAY l, where l is a list of tactics that will be applied in order,
 ;;;  :DO-NOT-REBUILD-GS t, causes the goal-set to not be rebuilt,
-;;;  :DO-NOT '(t1 ... tk), causes the listed k tactics to be removed either from
-;;;    the waterfall or from the :TACTIC-REPLAY value (if one is given), with the
-;;;    resulting pruned list used as if it were a :TACTIC-REPLAY parameter.
 ;;;  :DO-NOT-RESET-CPC t, causes the canonicalized poly cache to not be reset.
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun go! (&key tactic-replay do-not-reset-tactic-replay do-not-rebuild-gs do-not 
-		 do-not-reset-cpc verbosity union-case search-model)
+(defun go! (&key tactic-replay do-not-reset-tactic-replay do-not-rebuild-gs
+		 do-not-reset-cpc verbosity union-case search-model search-model*
+		 vars-table gbrn-depth)
   (if (not *G*) (fmt 0 "~%~% *** No goal installed.  See :DOC G. ~%~%")
     (let ((*rahd-verbosity* (if verbosity verbosity *rahd-verbosity*))
 	  (start-time (get-internal-real-time)))
       (setq *current-tactic-case* nil)
+
       (fmt 1 "[Phase I]~%")
       (phase-i)
+
       (cond (*goal-refuted?* (fmt 1 " Real solution set empty.~%"))
 	    (*sat-case-found?* (fmt 1 " Real solution set non-empty.~%"))
 	    (t
@@ -1249,30 +1274,28 @@
 	     (when (not do-not-rebuild-gs) 
 	       (build-goal-set 
 		:do-not-process-div 
-		(if (not (equal *current-goal-key* 0)) t nil)) 
-	       (setq *vars-table* nil))
+		(if (not (equal *current-goal-key* 0)) t nil))
+	       (setq *vars-table* (or vars-table (all-vars-in-cnf *g*))))
 	     (when (and *canon-poly-use-cache* (not do-not-reset-cpc))
 	       (clrhash *canon-poly-cache*))
 	     (setq *exact-real-arith-used* nil)
 	     (when (not do-not-reset-tactic-replay) (ctr))
-	     (if (or tactic-replay do-not)
-		 (let ((adj-tactic-replay
-			(remove-if #'(lambda (x) (member x do-not)) 
-				   (or tactic-replay *waterfall*))))
-		   (mapcar #'(lambda (tactic) (eval `(,tactic))) adj-tactic-replay))
-		 (waterfall :union-case union-case :search-model search-model))))
+	     (if tactic-replay
+		 (mapcar #'(lambda (tactic) (eval `(,tactic))) tactic-replay)
+	       (waterfall :union-case union-case :search-model search-model
+			  :search-model* search-model* :gbrn-depth gbrn-depth))))
       
       (let ((goal-proved-by-waterfall? (not (extract-non-refuted-cases))))
 
 	(fmt 2 (if goal-proved-by-waterfall?
-		   "~%Goal ~A proved (~D).~%"
-		   "~%Goal ~A run complete [~A] (~D).~%")
+		   "~% Goal ~A proved (~D sec).~%"
+		   "~% Goal ~A run complete (~A sec): ~D.~%")
 	     (format-goal-key *current-goal-key*)
 	     (float (/ (- (get-internal-real-time) start-time) internal-time-units-per-second))
 	     (if *sat-case-found?* "counter-example found" 
-		 (format nil "~A/~A unrefuted cases remain" *gs-unknown-size* *gs-size*)))
+		 (format nil "~A of ~A unrefuted cases remain" *gs-unknown-size* *gs-size*)))
 
-	(fmt 3 " *** Goal ~A tactic replay: ~A *** ~%"
+	(fmt 3 "~% Goal ~A tactic replay: ~A.~%"
 	     (format-goal-key *current-goal-key*)
 	     (tactic-replay))
 	  
@@ -1289,12 +1312,6 @@
 ;;;  execution until the proof state is stable under their execution.
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-#-allegro 
-(defmacro while (test &rest body)
-  `(do ()
-       ((not ,test))
-     ,@body))
 
 (defun repeat-until-stable (tactics &key case from to)
   (let ((last-tactic-made-progress? t))
@@ -1322,19 +1339,22 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun GENERIC-TACTIC (fcn-case-manip fcn-symbol fcn-desc &key case from to tactic-params)
+  (declare (ignorable fcn-desc))
   (setq *last-tactic-progress-lst* nil)
   (cond ((= *gs-unknown-size* 0) (progn (setq *last-tactic-made-progress* nil) t))
 	(*sat-case-found?* nil)
 	(t (let* ((num-changed 0)
 		  (num-refuted 0)
+		  (num-satisfied 0)
 		  (start-time (get-internal-real-time))
 		  (case-lb* (if case case (if from from 0)))
 		  (case-ub* (if case case (if to to (1- *gs-size*))))
 		  (case-lb (max case-lb* 0))
-		  (case-ub (min case-ub* (1- *gs-size*))))
+		  (case-ub (min case-ub* (1- *gs-size*)))
+		  (fcn-str (format nil "~(~a~)" (symbol-name fcn-symbol))))
 	     (when (or case from to) 
-	       (fmt 3 "~% >> ~D: *** Thanks for the hint!  ~D is being applied only to cases in the range [~D...~D]." 
-		    fcn-symbol fcn-symbol case-lb case-ub))
+	       (fmt 3 "~% Thanks for the hint!  ~A is being applied only to cases in the range [~D...~D]." 
+		    fcn-str case-lb case-ub))
 	     (loop for i from case-lb to case-ub do
 		   (setq *current-tactic-case* i) ; Used for naming spawned subgoals.
 		   (let ((c        (aref *gs* i 1))
@@ -1362,17 +1382,18 @@
 					(setq *last-tactic-progress-lst* 
 					      (cons `(:CASE-ID ,i :STATUS :UNSAT :CMF ,fcn-symbol)
 						    *last-tactic-progress-lst*))
-					(fmt 3 "!"))
+					(fmt 7 "!"))
 				       
 				       (:SAT 
 					(setf (aref *gs* i 2)
 					      `(:SAT nil ,(append (cdr c-status) (cons fcn-symbol (cdr fcn-result)))))
-					(fmt 2 "~% *** >> COUNTER-EXAMPLE: CASE ~D of GOAL ~A is satisfiable << ***~%" 
+					(fmt 2 "~% *** Counter-example found: Case ~D of goal ~A is satisfiable *** ~%"
 					     i (format-goal-key *current-goal-key*))
+					(setq num-satisfied (1+ num-satisfied))
 					(setq *last-tactic-progress-lst*
 					      (cons `(:CASE-ID ,i :STATUS :SAT :CMF ,fcn-symbol)
 						    *last-tactic-progress-lst*))
-					(fmt 3 "@")
+					(fmt 7 "@")
 
 					;; 
 					;; Try to extract a SAT witness from variable bindings, if it
@@ -1396,7 +1417,7 @@
 					      (new-subgoal-formula (waterfall-disj-to-cnf (cdr fcn-result))))
 					  (setf (aref *gs* i 2) `((:UNKNOWN-WITH-SPAWNED-SUBGOAL ,new-subgoal-key) 
 								  ,(append (cdr c-status) `(,fcn-symbol))))
-					  (fmt 3 "~% ::>> Waterfall disjunction: Spawning SUBGOAL ~A as a sufficient condition for CASE ~A of GOAL ~A.~%"
+					  (fmt 3 "~% W\/ : Spawning subgoal ~A as a sufficient condition for case ~A of goal ~A.~%"
 					       (format-goal-key new-subgoal-key) 
 					       i
 					       (format-goal-key *current-goal-key*))
@@ -1406,7 +1427,7 @@
 										       :explicit-key new-subgoal-key)))
 					    (if result-of-waterfall-on-subgoal
 						(progn
-						  (fmt 3 "~% ::>> Waterfall disjunction: SUBGOAL ~A for GOAL ~A successfully discharged, thus discharging CASE ~A of GOAL ~A.~%"
+						  (fmt 3 "~% W\/ : Subgoal ~A for goal ~A discharged, thus discharging case ~A of goal ~A.~%"
 						       (format-goal-key new-subgoal-key) 
 						       (format-goal-key *current-goal-key*)
 						       i
@@ -1435,17 +1456,18 @@
 					(setq *last-tactic-progress-lst*
 					      (cons `(:CASE-ID ,i :STATUS :UNKNOWN :CMF ,fcn-symbol)
 						    *last-tactic-progress-lst*))
-					(fmt 2 "$"))))
+					(fmt 7 "$"))))
 
 			       ;;; Tactic execution on case i did nothing, so we print `.' at verbosity level 2.
 
-			       (fmt 2 ".")))))))
-
+			       (fmt 7 ".")))))))
+	     
+	     (setq *current-tactic-case* nil)
 	     (if (or (> num-changed 0) (> num-refuted 0) *sat-case-found?*)
 		 (progn 
 		   (setq *last-tactic-made-progress* t)
 		   (setq *tactic-replay* (cons fcn-symbol *tactic-replay*))
-		   (setq *gs-unknown-size* (- *gs-unknown-size* num-refuted))
+		   (setq *gs-unknown-size* (- *gs-unknown-size* (+ num-refuted num-satisfied)))
 		   (let ((tactic-time (float (/ (- (get-internal-real-time) start-time) internal-time-units-per-second))))
 
 		     (when *enable-proof-analysis* 
@@ -1457,35 +1479,35 @@
 				   (+ tactic-time (or cur-tactic-time 0))))))
 
 		     (case (not *sat-case-found?*)
-			   (nil (fmt 2 "~% @@ ~D: A SATisfiable case has been found.  Installed goal is not refutable." fcn-symbol))
+			   (nil (fmt 2 "~%   ~D: Satisfiable case has been found.  Goal is not refutable." fcn-symbol))
 			   (otherwise
-			    (fmt 2 "~% >> ~D: ~A :UNKNOWN cases refuted by ~A." fcn-symbol num-refuted fcn-desc)
-			    (fmt 2 "~% >> ~D: ~A :UNKNOWN cases reduced by ~A." fcn-symbol num-changed fcn-desc)))
+			    (fmt 2 "   ~15A: [~4d refuted, ~4d reduced] ~4d ~A (~7d sec).~%" 
+				 fcn-str num-refuted num-changed *gs-unknown-size* 
+				 (if (= *gs-unknown-size* 1) "case remains" "cases remain") 
+				 tactic-time)))
 
-		     (fmt 2 "~% >> ~D: Tactic execution completed in ~D seconds." 
-			  fcn-symbol tactic-time)
-		     (prgs)))
+		     ;(prgs)
+		     ))
 	       (progn 
 		 (setq *last-tactic-made-progress* nil)
-		 (fmt 2 "~%~%")
-		 (fmt 3 "*** Tactic executed but did not make progress: ~D ~%" (write-to-string fcn-symbol)) 
-		 t))))))
-  
+		 (fmt 8 "~%   Tactic executed but did not make progress: ~A.~%" fcn-str)
+		 t))
+	     (when (or (= *gs-unknown-size* 0) *sat-case-found?*) t)))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; PUG: Print :UNKNOWN Goals reamining on GOAL-STACK.
+;;; PUG: Print :UNKNOWN cases reamining in GOAL-SET.
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun pug (&optional bound)
   (if (> *gs-unknown-size* 0)
       (progn 
-	(fmt 0 "~% >> PUG: Print goals in GOAL-SET (GOAL ~A) marked :UNKNOWN (awaiting refutation). ~%         Printing ~D of the remaining ~R goals.~%" 
-		(format-goal-key *current-goal-key*)
-		(if (not bound) "all" (format nil "the first ~R" bound)) *gs-unknown-size*)
-	(fmt 0 "~% -------     -------------------------------------------------------")
-	(fmt 0 "~% CASE-ID     CASE")
-	(fmt 0 "~% -------     -------------------------------------------------------~%")
+	(fmt 0 "~% Printing ~A of the remaining ~A cases for goal ~A.~%" 
+	     (if (not bound) "all" (format nil "the first ~R" bound)) *gs-unknown-size* *current-goal-key*)
+	(fmt 0 "~% -------     -------------------------------------------------------------------")
+	(fmt 0 "~% case-id     case")
+	(fmt 0 "~% -------     -------------------------------------------------------------------~%")
 	(let ((num-printed 1))
 	  (dotimes (i *gs-size*)
 	    (let ((c-id     (aref *gs* i 0))
@@ -1501,13 +1523,12 @@
 			      c
 			      c-status)
 			 (setq num-printed (1+ num-printed)))
-		t))))
-	(fmt 0 "~%~% >> PUG: Printing complete. ~%~%")))
+		t))))))
 
   ;; If a user invokes (PUG) at any verbosity level, it's clear we should visibly (PRGS).
   ;; So, we dynamically bind *RAHD-VERBOSITY* to 1 for the call below.
 
-  (let ((*rahd-verbosity* 1)) (prgs)))
+  (let ((*rahd-verbosity* 2)) (prgs)))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1518,19 +1539,20 @@
 
 (defun prgs ()
   (cond ((equal *g* nil)
-	 (fmt 2 "~%~%         *** No goal is currently installed.  Use (G <goal-in-cnf>) to do so. ***~%~%"))
-	((<= *gs-size* 0)
-	 (fmt 2 "~%~%         *** No cases installed in GOAL-SET (*GS*).  Use (BUILD-GS) to do so. *** ~%~%"))
+	 (fmt 2 "~%~% No goal is currently installed.  Use (g <goal-in-cnf>).~%~%"))
+	((and (<= *gs-size* 0) (not *goal-refuted?*))
+	 (fmt 2 "~%~% No cases installed in goalset (*gs*).  Use (b).~%~%"))
 	(*sat-case-found?*
-	 (fmt 2 "~%~%         *** Counter-example found.  Installed goal SAT, so unrefutable.       *** ~%~%"))
-	(t (fmt 2 "~%~%         ***~6D cases remain in GOAL-SET (GOAL ~A) awaiting refutation      ***~%~%" 
-		*gs-unknown-size* 
+	 (fmt 2 "~%~% Counter-example found.  Installed goal SAT, so unrefutable. ~%~%"))
+	(t (fmt 2 "~%~% ~6D ~A in goalset (goal ~A) awaiting refutation. ~%~%" 
+		*gs-unknown-size*
+		(if (= *gs-unknown-size* 1) "case" "cases")
 		(format-goal-key *current-goal-key*))
-	   (if *exact-real-arith-used*
-	       (fmt 2 "~%~%     *** NOTE: EXACT REAL ARITHMETIC HAS BEEN USED ***~%~%"))
-	   (if (= *gs-unknown-size* 0)
-	       (fmt 2 "~%~%                  *** THEOREM (GOAL ~A) PROVED ***~%~%" 
-		    (format-goal-key *current-goal-key*)) t)))
+	   (when (or (= *gs-unknown-size* 0) *goal-refuted?*)
+	     (if (equal *current-goal-key* 0)
+		 (fmt 2 "~% Q.E.D.  Theorem proved.~%~%")
+	       (fmt 2 "~% .:. Goal ~A proved.~%~%" 
+		    (format-goal-key *current-goal-key*))))))
   t)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1591,17 +1613,17 @@
   (when *current-goal-key*
     (if (equal *current-goal-key* 0)
 	(if *gs*
-	    (fmt 0 "~% Goal-key: ~A,~% Unknown cases: ~A of ~A.~%~%"
+	    (fmt 0 "~% Goalkey: ~A,~% Unknown cases: ~A of ~A.~%~%"
 		 *current-goal-key*
 		 *gs-unknown-size*
 		 *gs-size*)
-	    (fmt 0 "~% Goal-key: ~A.~% Goal-Set not built (use (b)).~%~%" 
+	    (fmt 0 "~% Goalkey: ~A.~% Goal-Set not built (use (b)).~%~%" 
 		 *current-goal-key*))
       (multiple-value-bind 
 	  (parent-data p-exists?)
 	  (gethash (car *current-goal-key*) *goal-stack-data*)
 	(declare (ignore p-exists?))
-	(fmt 0 "~% Goal-key: ~A,~% Unknown cases: ~A of ~A,~% Parent: ~A,~% Parent unknown cases: ~A of ~A.~%~%"
+	(fmt 0 "~% Goalkey: ~A,~% Unknown cases: ~A of ~A,~% Parent: ~A,~% Parent unknown cases: ~A of ~A.~%~%"
 	     *current-goal-key*
 	     *gs-unknown-size*
 	     *gs-size*
@@ -1662,12 +1684,12 @@
 		    (setf (aref parent-gs-data 2) 
 			  (1- (aref parent-gs-data 2))))
 		    
-		  (fmt 1 "[UP] Trickled refutation up to Case ~A of Goal ~A.~%"
+		  (fmt 1 "~% Trickled refutation up to Case ~A of Goal ~A.~%"
 		       child-gs-idx parent-key))))))
       
 	(swap-to-goal (car *current-goal-key*)))
 
-    (fmt 0 "~% >> You are already at the root goal. ~%"))
+    (fmt 0 "~% You are already at the root goal. ~%"))
   t)
 
 ;;;
@@ -1686,14 +1708,17 @@
 ;;; CHECK: Front-end ``unsat'' or ``unknown'' function.
 ;;;
 
-(defun check (f &key verbosity print-model search-model)
+(defun check (f &key verbosity print-model search-model search-model*
+		gbrn-depth)
   (cond 
    ((top-level-syntax-check f)
     (let ((*rahd-verbosity* 
 	   (if (rationalp verbosity) verbosity 1)))
       (when *current-goal-key* (r))
       (g f)
-      (let ((result (go! :search-model search-model)))
+      (let ((result (go! :search-model search-model
+			 :search-model* search-model*
+			 :gbrn-depth gbrn-depth)))
 	(fmt 1 "~%[Decision]")
 	(fmt 0 "~%")
 	(cond (result " unsat~%")
@@ -1726,52 +1751,89 @@
 	(t (cl-find-option f (cdr opts) arg?))))
 
 ;;;
-;;; CL-CHECK: Command-line version of CHECK that accepts
+;;; RAHD-CL-CHECK: Command-line version of CHECK that accepts
 ;;;  an S-expression RAHD formula.
 ;;;
 
-(defun cl-check ()
+(defun rahd-cl-check ()
   (in-package rahd)
   (let ((opts #+ccl ccl:*command-line-argument-list* 
 	      #+sbcl sb-ext:*posix-argv*))
     (multiple-value-bind (formula-given? formula)
-			 (cl-find-option '-FORMULA opts t)
-     (multiple-value-bind (verbosity-given? verbosity)
-			  (cl-find-option '-VERBOSITY opts t)
-       (declare (ignore verbosity-given?))
-       (let ((print-model? (cl-find-option '-PRINT-MODEL opts nil))
-	     (search-model? (cl-find-option '-SEARCH-MODEL opts nil))
-	     (regression? (cl-find-option '-REGRESSION opts nil)))
-	 (when (or (not formula-given?) 
-		   (or (not verbosity)
-		       (and (rationalp verbosity) (>= verbosity 1))))
-	   (progn
-	     (fmt 0 "
+	(cl-find-option '-FORMULA opts t)
+      (multiple-value-bind (verbosity-given? verbosity)
+	  (cl-find-option '-VERBOSITY opts t)
+	(multiple-value-bind (gbrn-depth-given? gbrn-depth)
+	    (cl-find-option '-GBRN-DEPTH opts t)
+	  (declare (ignorable verbosity-given? gbrn-depth-given?))
+	  (let ((print-model? (cl-find-option '-PRINT-MODEL opts nil))
+		(search-model? (cl-find-option '-SEARCH-MODEL opts nil))
+		(search-model*? (cl-find-option '-SEARCH-MODEL! opts nil))
+		(regression? (cl-find-option '-REGRESSION opts nil)))
+	    (when (or (not formula-given?) 
+		      (or (not verbosity)
+			  (and (rationalp verbosity) (>= verbosity 1))))
+	      (progn
+		(fmt 0 "
 RAHD: Real Algebra in High Dimensions ~A
- designed and programmed by g.o.passmore {g.o.passmore@sms.ed.ac.uk}
-  with intellectual contributions from p.b.jackson, b.boyer, 
-  b.dutertre, j.harrison, j.moore, l.de moura, s.owre, j.rushby, 
-  n.shankar, a.tiwari, v.weispfenning, and many others.~%~%" *rahd-version*)
-	     (when (not formula-given?) 
-	       (fmt 0 
+ designed and programmed by grant o. passmore {g.o.passmore@sms.ed.ac.uk}
+  with intellectual contributions from p.b.jackson, b.boyer, g.collins, 
+  h.hong, f.kirchner, j moore, l.de moura, s.owre, n.shankar, a.tiwari,
+  v.weispfenning and many others.  This version of RAHD is using Maxima 
+  multivariate factorisation & SARAG subresultant PRS + Bernstein bases.~%~%" 
+		     *rahd-version*)
+		(when (not formula-given?) 
+		  (fmt 0 
 " Error: No formula given.
 
  Usage: ~A -formula \"RAHD formula\" <options>
   with options:
-    -verbosity n      (0<=n<=10)     degree of proof search output
+
+    -verbosity q      (0<=q<=10)     degree of proof search output (def: 1)
     -search-model                    search for counter-models
-    -search-model-end                search for counter-models, but only
-                                       after refutation cycle.
-    -print-model                     print a counter-model, if found~%~%"
-              (car opts)))))
-	 (cond (regression? (wrv (if (rationalp verbosity) verbosity 1) (rrs)))
-	       (formula-given?
-		(fmt 0 (check formula 
+    -search-model!                   search for counter-models, but only
+                                      after refutation cycle
+    -fdep-cad $                      full-dimensional extended partial
+                                      cylindrical algebraic decomposition
+    -quad-vts $                      quadratic virtual term substitution
+    -muchnik-qe $                    Muchnik full quantifier elimination
+    -phase-i $                       phase i proof search
+    -phase-ii $                      phase ii proof search
+    -rri %                           method for real root isolation
+    -rri-only                        only perform real root isolation
+    -rri-epsilon q                   maximum width of open real root 
+                                      isolation intervals (def: 1/1024)
+    -gbrn-depth n                    depth of GB real nullstellensatz search
+    -crb-quotient q                  quotient base for refining Cauchy root
+                                      bounds (def: 1000)
+    -smsp-base q                     sample-point selection base for
+                                      counter-model search (def: 10)
+    -do-not-refine-crb               do not refine Cauchy root bounds before
+                                      performing real root isolation
+    -do-not-sat-disc                 do not perform discriminant saturation
+                                      during GB real Nullstellensatz search
+    -print-model                     print a counter-model, if found
+    -print-tactics                   print a tactic replay of proof search
+    -print-failure                   if a decision is not reached, print 
+                                      a failure report (unrefuted cases)
+    -regression                      run regression suite for testing build
+
+  where n is a natural, q is a rational presented as `a/b' or `a' for integers a,b,
+        $ is either `on' `off' or `only' (def: `on'), and
+        % is either `sturm' or `bernstein' (def: `sturm').~%"
+
+    (car opts)))))
+	    (cond (regression? (wrv (if (rationalp verbosity) verbosity 1) 
+				    (rahd-regression-suite)))
+		  (formula-given?
+		   (fmt 0 (check formula 
 			      :verbosity (when (rationalp verbosity)
 					   (min verbosity 10))
 			      :print-model print-model?
-			      :search-model search-model?))))
-	   (fmt 0 "~%"))))))
+			      :search-model search-model?
+			      :search-model* search-model*?
+			      :gbrn-depth gbrn-depth))))
+	    (fmt 0 "~%")))))))
 
 ;;;
 ;;; ABANDON-SUBGOALS: Given a case, range of cases, or
