@@ -11,7 +11,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;; 
 ;;; This file: began on         17-Nov-2009,
-;;;            last updated on  17-Nov-2009.
+;;;            last updated on  30-May-2010.
 ;;;
 
 ;;;
@@ -36,7 +36,7 @@
 ;;;
 
 (defun smallest-monomial-in-v (p v)
-  (fmt 2 "~%~% >> Searching polynomial for smallest monomial solely in ~A.~%     p: ~A,"
+  (fmt 3 "~%~%    Searching polynomial for smallest monomial solely in ~A.~%     p: ~A,"
        v (poly-print p))
   (let ((rev-zrhs-oriented-alg-rep
 	 (reverse p))
@@ -44,12 +44,12 @@
 	(out-m nil)
 	(count 0))
     (dolist (m rev-zrhs-oriented-alg-rep)
-      (fmt 2 "~%     m_~A: ~A; match? ~A,"
+      (fmt 3 "~%     m_~A: ~A; match? ~A,"
 	   count (mprint m) (equal (mvars m) (list v-id)))
       (setq count (1+ count))
       (when (equal (mvars m) (list v-id))
 	(return (setq out-m m))))
-    (fmt 2 "~%     Found?: ~A.~%~%"
+    (fmt 3 "~%     Found?: ~A.~%~%"
 	 (when out-m (mprint out-m)))
     out-m))
 		   
@@ -103,9 +103,9 @@
 		  (a-rhs-vars (all-vars-in-conj `((= ,(poly-alg-rep-to-prover-rep a-final-rhs) 0)))))
 	      (if (not (member (car a-target-var) a-rhs-vars))
 		  (progn 
-		    (fmt 2 "~% >> Orienting a partially linear atom.  ~%     Atom: ~A~%     Target monomial: ~A.~%" 
+		    (fmt 3 "~%   Orienting a partially linear atom.  ~%     Atom: ~A~%     Target monomial: ~A.~%" 
 			 a (mprint a-target-monomial))
-		    (fmt 2 "     Final oriented atom: ~A ~A ~A.~%     Representative RAHD atom: ~A.~%~%"
+		    (fmt 3 "     Final oriented atom: ~A ~A ~A.~%     Representative RAHD atom: ~A.~%~%"
 			 (poly-print a-final-lhs) adj-op (if a-final-rhs (poly-print a-final-rhs) 0) a-final-directed-atom)
 	      
 		    a-final-directed-atom)
@@ -160,4 +160,6 @@
 	(when orientations
 	  (setq derived-atoms
 		(append orientations derived-atoms)))))
-    (union c derived-atoms :test 'equal)))
+    (if derived-atoms
+	(union c derived-atoms :test 'equal)
+      c)))

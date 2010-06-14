@@ -1,12 +1,5 @@
 ;;;
-;;; A decision method for testing the emptiness of open semialgebraic sets,
-;;;  each defined as the intersection of finitely many open sets, each defined
-;;;  as the set of satisfying real vectors of a polynomial strict inequality.
-;;;
-;;; This is done via a connection to the cylindrical algebraic decomposition
-;;;  package QEPCAD-B, by quantifying every variable in an open semialgebraic
-;;;  definition with the EXISTS-INFINITELY-MANY quantifier ((F x) in QEPCAD-B
-;;;  notation).
+;;; An interface to the QEPCAD-B tool
 ;;;
 ;;;    for
 ;;; 

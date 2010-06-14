@@ -10,7 +10,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;; 
 ;;; This file: began on         25-Feb-2009,
-;;;            last updated on  28-Feb-2009.
+;;;            last updated on  31-May-2010.
 ;;;
 ;;;
 
@@ -41,7 +41,7 @@
     (if possible-demods
 	(let ((var (cadar possible-demods))
 	      (rst (caddar possible-demods)))
-	  (fmt 2 "~% -- RAHD Pre-processor: Successful demodulation of ~%~%      VAR: ~A~%~%  into~%~%      P:   ~A~%~%" 
+	  (fmt 2 "~% -- RAHD Pre-processor: Successful demodulation of ~%~%      VAR: ~A~%~%  into~%~%      P:   ~A.~%~%" 
 	       var rst)
 	  (add-vt-binding var rst)
 	  (subst rst var f))

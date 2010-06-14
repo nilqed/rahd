@@ -124,7 +124,7 @@
   (declare (ignore gen-pt-bound))
   (let ((iht* (if (not iht) 
 		  (let ((iht** (make-hash-table :test 'equal)))
-		    (icp-on-case c iht**)
+		    (icp-on-case c :iht iht**)
 		    iht**)
 		  iht)))
   (let ((vs (all-vars-in-conj c)))

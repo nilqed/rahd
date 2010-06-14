@@ -394,7 +394,7 @@
 ;;;  fixed point is reached.
 ;;;
 
-(defun icp-on-case (c &optional iht &key max-contractions)
+(defun icp-on-case (c &key iht max-contractions)
   (let ((internal-iht (or iht (make-hash-table :test 'equal)))
 	(prev-iht nil)
 	(icp-output nil)
@@ -406,7 +406,8 @@
 	  (setq prev-iht (iht-clone internal-iht))
 	  (multiple-value-bind
 	   (tightened-iht status)
-	   (icp-on-case-with-iht c internal-iht 
+	   (icp-on-case-with-iht c 
+				 internal-iht 
 				 :max-contractions max-cs
 				 :count count)
 	   (setq icp-output status)

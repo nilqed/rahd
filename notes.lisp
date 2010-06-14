@@ -1,3 +1,84 @@
+Need to deal with catching (- x x)=0 here:
+
+./rahd-v0.6-lx32 -formula "(((> x (/ x (/ y (- x x))))))" -search-model! -print-model
+
+
+
+
+We catch (soundly) a divby0 here:
+
+./rahd-v0.6-lx32 -formula "(((NOT (>= (- (* A1 A2) (* B1 B2)) 0)))
+                             ((= (+ (* A1 A1) (* A2 A2))
+                                 (+ (* B1 B1) (+ (* B2 B2) 2))))
+                             ((= (+ (* A1 B1) (* A2 B2)) 0))
+                             ((>= A1 0))
+                             ((= (* A1 A2 A3) 0)) ((> A1 (/ 1 A3))))" -verbosity 2
+
+
+
+
+
+
+
+The following causes a waterfall disjunction and we need it to print nicely using cli:
+
+./rahd-v0.6-lx32 -formula "(((NOT (>= (- (* A1 A2) (* B1 B2)) 0)))
+                             ((= (+ (* A1 A1) (* A2 A2))
+                                 (+ (* B1 B1) (+ (* B2 B2) 2))))
+                             ((= (+ (* A1 B1) (* A2 B2)) 0))
+                             ((>= A1 0))
+                             ((= (* A1 A2) 0)))"
+
+
+
+
+The following makes INTERVAL-CP loop:
+
+     1     ((= (* X X) Y) (> Y 10) (> (+ (* Z Y) -11) 0) (> X Y))    (UNKNOWN
+                                                                        SIMP-ZRHS) 
+
+
+
+Interesting example re having symbolic values in models:
+
+./rahd-v0.6-lx32 -verbosity 1 -formula "(((> x 10)) ((< x 12)) ((> (+ 12 (* x y 2)) 2000)) ((< y 1000)) ((>= x 10)) ((>= z w)) ((>= k (* z z))))" -search-model! -print-model
+
+[Decision]
+ sat
+ model: [Y=999,
+         X=11,
+         K=(* Z Z),
+         W=Z].
+
+This is very cool, as it shows us that Z can be any real and then the simple given constraints must be met.
+Is this good in general as a feature to have?  Or should we give the user a model w.r.t. an instantiation of Z?
+
+* Note that if we do the counter-model search before we do the refutation cycle, then we find a different
+   instantiated model:
+
+./rahd-v0.6-lx32 -verbosity 1 -formula "(((> x 10)) ((< x 12)) ((> (+ 12 (* x y 2)) 2000)) ((< y 1000)) ((>= x 10)) ((>= z w)) ((>= (+ 1 k) (* z z 2))))" -search-model -print-model  
+
+[Decision]
+ sat
+ model: [Z=0,
+         K=-1,
+         Y=999,
+         X=11,
+         W=0].
+
+
+
+
+* Another interesting example where it's better to do counter-model search *before* the refutation cycle, as
+   Bounded-GBRNI takes a long time:
+
+./rahd-v0.6-lx32 -verbosity 1 -formula "(((> x 10)) ((< x 12)) ((> (+ 12 (* x y 2)) 2000)) ((< y 1000)) ((>= (* x z) 10)) ((>= z w)) ((>= (+ 1 k) (* z z 2))))" -search-model! -print-model
+
+   ** But if we do the search before, a model is found instantly.
+
+
+
+
 - Idea: Allow Bounded-GBRNI to add PSD >= constraints for discriminants.
 
 (dolist (G685 '(0 1 2))

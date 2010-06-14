@@ -11,7 +11,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;; 
 ;;; This file: began on         23-Oct-2008,
-;;;            last updated on  18-Nov-2009.
+;;;            last updated on  29-May-2010.
 ;;;
 
 (in-package RAHD)
@@ -91,9 +91,9 @@
 		    (e-rhs-vars (all-vars-in-conj `((= ,(poly-alg-rep-to-prover-rep e-final-rhs) 0)))))
 		(if (not (member (car e-target-var) e-rhs-vars))
 		    (progn 
-		      (fmt 2 "~% >> Orienting a partially linear equation for inducing dimensional-reduction via demodulation.  ~%     Eq: ~A~%     Target monomial: ~A.~%" 
+		      (fmt 3 "~% >> Orienting a partially linear equation for variable elimination.  ~%     Eq: ~A~%     Target monomial: ~A.~%" 
 			   e (mprint e-target-monomial))
-		      (fmt 2 "     Final directed demodulator: ~A --> ~A.~%     Representative RAHD eq: ~A.~%~%"
+		      (fmt 3 "     Final directed demodulator: ~A --> ~A.~%     Representative RAHD eq: ~A.~%~%"
 			   (poly-print e-final-lhs) (if e-final-rhs (poly-print e-final-rhs) 0) e-final-directed-eq)
 	      
 		      e-final-directed-eq)
@@ -122,7 +122,7 @@
 
     (if derived-demods 
 	(let ((demod-out (subst-eqs c derived-demods #'(lambda (x) (declare (ignore x)) t))))
-	  (fmt 2 "~% >> Applying derived demodulators (listed above) to case.  ~%     Case before demodulation: ~A. ~%     Case after demodulation: ~A.~%"
+	  (fmt 3 "~% >> Applying derived demodulators (listed above) to case.  ~%     Case before demodulation: ~A. ~%     Case after demodulation: ~A.~%"
 	       c demod-out)
 	  demod-out)
       c)))
