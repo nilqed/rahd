@@ -1,0 +1,315 @@
+This is maxima.info, produced by makeinfo version 4.7 from maxima.texi.
+
+   Esse é um Manual do Maxima no formato Texinfo
+
+   Copyright 1994,2001 William F. Schelter
+
+START-INFO-DIR-ENTRY
+* Maxima: (maxima).     Um sistema de álgebra computacional.
+END-INFO-DIR-ENTRY
+
+
+Indirect:
+maxima.info-1: 269
+maxima.info-2: 279535
+maxima.info-3: 579166
+maxima.info-4: 874286
+maxima.info-5: 1152008
+maxima.info-6: 1443888
+maxima.info-7: 1741473
+
+Tag Table:
+(Indirect)
+Node: Top269
+Node: Introdução ao Maxima14395
+Node: Detecção e Relato de Erros21878
+Node: Definições para Detecção e Relato de Erros22103
+Node: Ajuda24797
+Node: Lisp e Maxima25025
+Node: Descartando29002
+Node: Documentação29809
+Node: Funções e Variáveis Definidas para Ajuda30874
+Node: Linha de Comando38118
+Node: Introdução a Linha de Comando38346
+Node: Funções e Variáveis Definidas para Linha de Comando47681
+Node: Operadores74706
+Node: N-Argumentos74999
+Node: Operador não fixado75605
+Node: Operador Pósfixado76195
+Node: Operador Préfixado76711
+Node: Operadores Aritméticos77128
+Node: Operadores Relacionais85582
+Node: Operadores Geral85829
+Node: Expressões142670
+Node: Introdução a Expressões142993
+Node: Complexo144669
+Node: Substantivos e Verbos145339
+Node: Identificadores147931
+Node: Seqüências de caracteres150280
+Node: Desigualdade153212
+Node: Sintaxe153496
+Node: Funções e Variáveis Definidas para Expressões157872
+Node: Simplificação220039
+Node: Funções e Variáveis Definidas para Simplificação220233
+Node: Montando Gráficos241071
+Node: Funções e Variáveis Definidas para Montagem de Gráficos241285
+Node: Entrada e Saída277371
+Node: Comentários277607
+Node: Arquivos279002
+Node: Funções e Variáveis Definidas para Entrada e Saída279535
+Node: Ponto Flutuante341976
+Node: Funções e Variáveis Definidas para ponto Flutuante342177
+Node: Contextos346771
+Node: Funções e Variáveis Definidas para Contextos346949
+Node: Polinômios360013
+Node: Introdução a Polinômios360217
+Node: Funções e Variáveis Definidas para Polinômios363431
+Node: Constantes416485
+Node: Funções e Variáveis Definidas para Constantes416662
+Node: Logarítmos420293
+Node: Funções e Variáveis Definidas para Logarítmos420473
+Node: Trigonometria428978
+Node: Introdução ao Pacote Trigonométrico429214
+Node: Funções e Variáveis Definidas para Trigonometria430243
+Node: Funções Especiais439555
+Node: Introdução a Funções Especiais439805
+Node: Funções e Variáveis Definidas para Funções Especiais441453
+Node: Funções Elípticas455751
+Node: Introdução a Funções Elípticas e Integrais456066
+Node: Funções e Variáveis Definidas para Funções Elípticas459866
+Node: Funções e Variáveis Definidas para Integrais Elípticas462385
+Ref: elliptic_f462661
+Ref: elliptic_e462878
+Ref: elliptic_eu463110
+Ref: elliptic_kc463703
+Ref: elliptic_ec463992
+Node: Limites464277
+Node: Funções e Variáveis Definidas para Limites464452
+Node: Diferenciação467080
+Node: Funções e Variáveis Definidas para Diferenciação467324
+Node: Integração491777
+Node: Introdução a Integração492057
+Node: Funções e Variáveis Definidas para Integração493052
+Node: Introdução a QUADPACK515740
+Ref: Introdução a QUADPACK-Footnote-1519383
+Ref: Introdução a QUADPACK-Footnote-2519449
+Ref: Introdução a QUADPACK-Footnote-3519515
+Ref: Introdução a QUADPACK-Footnote-4519558
+Ref: Introdução a QUADPACK-Footnote-5519620
+Ref: Introdução a QUADPACK-Footnote-6519657
+Ref: Introdução a QUADPACK-Footnote-7519696
+Node: Funções e Variáveis Definidas para QUADPACK519879
+Node: Equações538193
+Node: Funções e Variáveis Definidas para Equações538373
+Node: Equações Diferenciais578872
+Node: Introdução a Equações Diferenciais579166
+Node: Funções e Variáveis Definidas para Equações Diferenciais579826
+Node: Numérico588191
+Node: Introdução a Numérico588473
+Node: Pacotes de Fourier588638
+Node: Funções e Variáveis Definidas para Numérico589309
+Node: Funções e Variáveis Definidas para Séries de Fourier603612
+Node: Arrays606853
+Node: Funções e Variáveis Definidas para Arrays607027
+Node: Matrizes e Álgebra Linear627575
+Node: Introdução a Matrizes e Álgebra Linear627905
+Node: Ponto628238
+Node: Vetores629624
+Node: auto630624
+Node: Funções e Variáveis Definidas para Matrizes e Álgebra Linear631380
+Node: Funções Afins680601
+Node: Funções e Variáveis Definidas para Funções Afins680802
+Node: itensor686531
+Node: Introdução a itensor686721
+Node: Funções e Variáveis Definidas para itensor698979
+Node: ctensor769650
+Node: Introdução a ctensor769841
+Node: Funções e Variáveis Definidas para ctensor774393
+Node: Pacote atensor835135
+Node: Introdução ao Pacote atensor835356
+Node: Funções e Variáveis Definidas para o Pacote atensor839443
+Node: Séries845064
+Node: Introdução a Séries845261
+Node: Funções e Variáveis Definidas para Séries845820
+Node: Teoria dos Números874082
+Node: Funções e Variáveis Definidas para Teoria dos Números874286
+Node: Simetrias892183
+Node: Funções e Variáveis Definidas para Simetrias892360
+Node: Grupos928540
+Node: Funções e Variáveis Definidas para Grupos928719
+Node: Ambiente em Tempo de Execução930669
+Node: Introdução a Ambiente em Tempo de Execução930987
+Node: Interrupções932198
+Node: Funções e Variáveis Definidas para Ambiente em Tempo de Execução933475
+Node: Opções Diversas940415
+Node: Introdução a Opções Diversas940688
+Node: Compartilhado941092
+Node: Funções e Variáveis Definidas para Opções Diversas941890
+Node: Regras e Modelos956716
+Node: Introdução a Regras e Modelos956952
+Node: Funções e Variáveis Definidas para Regras e Modelos958059
+Node: Listas1003945
+Node: Introdução a Listas1004135
+Node: Funções e Variáveis Definidas para Listas1005045
+Node: Conjuntos1017399
+Node: Introdução a Conjuntos1017604
+Node: Funções e Variáveis Definidas para Conjuntos1028111
+Ref: adjoin1028333
+Ref: belln1028820
+Ref: cardinality1029807
+Ref: cartesian_product1030351
+Ref: disjoin1031087
+Ref: disjointp1031787
+Ref: divisors1032184
+Ref: elementp1033798
+Ref: emptyp1034196
+Ref: equiv_classes1034516
+Ref: every1035782
+Ref: extremal_subset1038693
+Ref: flatten1039406
+Ref: full_listify1042037
+Ref: fullsetify1042617
+Ref: identity1043298
+Ref: integer_partitions1043584
+Ref: intersect1045537
+Ref: intersection1045642
+Ref: listify1051020
+Ref: lreduce1051474
+Ref: makeset1052900
+Ref: moebius1054548
+Ref: multinomial_coeff1055779
+Ref: num_distinct_partitions1057057
+Ref: num_partitions1057917
+Ref: partition_set1058848
+Ref: permutations1059604
+Ref: powerset1060224
+Ref: rreduce1062205
+Ref: setdifference1063750
+Ref: setequalp1064623
+Ref: setify1065260
+Ref: setp1065844
+Ref: set_partitions1066447
+Ref: some1068213
+Ref: stirling11071245
+Ref: stirling21073274
+Ref: subset1075660
+Ref: subsetp1076283
+Ref: symmdifference1076693
+Ref: tree_reduce1077781
+Ref: union1079189
+Ref: xreduce1080172
+Node: Definição de Função1081923
+Node: Introdução a Definição de Função1082191
+Node: Função1082399
+Node: Macros1087531
+Node: Funções e Variáveis para Definição de Função1096257
+Node: Fluxo de Programa1151418
+Node: Introdução a Fluxo de Programa1151666
+Node: Funções e Variáveis Definidas para Fluxo de Programa1152008
+Node: Depurando1180019
+Node: Depurando o Código Fonte1180265
+Node: Comandos Palavra Chave1184352
+Node: Funções e Variáveis Definidas para Depuração1186975
+Node: augmented_lagrangian1196959
+Node: Funções e Variáveis Definidas para augmented_lagrangian1197169
+Node: bode1199666
+Node: Funções e Variáveis Definidas para bode1199830
+Node: contrib_ode1203145
+Node: Introdução a contrib_ode1203481
+Node: Funções e Variáveis Definidas para contrib_ode1209060
+Node: Possibilidades de melhorias em contrib_ode1213942
+Node: Casos de teste para contrib_ode1215311
+Node: Referências bibliográficas para contrib_ode1216178
+Node: descriptive1217764
+Node: Introdução ao pacote descriptive1218203
+Node: Funções e Variáveis Definidas para manipulação da dados1223830
+Node: Funções e Variáveis Definidas para estatística descritiva1232605
+Node: Funções e Variáveis Definidas específicas para estatística descritiva de várias variáveis1250670
+Node: Funções e Variáveis Definidas para gráficos estatísticos1261098
+Node: diag1273231
+Node: Funções e Variáveis Definidas para diag1273382
+Node: distrib1290344
+Node: Introdução a distrib1290601
+Node: Funções e Variáveis Definidas para distribuições contínuas1298661
+Node: Funções e Variáveis Definidas para distribuições discretas1356573
+Node: draw1381732
+Node: Introdução a draw1381902
+Node: Funções e Variáveis Definidas para draw1382391
+Node: dynamics1441998
+Node: Introdução a dynamics1442188
+Node: Funções e Variáveis Definidas para dynamics1443888
+Ref: Funções e Variáveis Definidas para dynamics-Footnote-11459820
+Node: eval_string1459889
+Node: Funções e Variáveis Definidas para eval_string1460061
+Node: f901461780
+Node: Funções e Variáveis Definidas para f901461923
+Node: ggf1463771
+Node: Funções e Variáveis Definidas para ggf1463910
+Node: grobner1465780
+Node: Introdução a grobner1466006
+Node: Funções e Variáveis Definidas para grobner1468046
+Node: impdiff1481632
+Node: Funções e Variáveis Definidas para impdiff1481797
+Node: implicit_plot1482443
+Node: Funções e Variáveis Definidas para implicit_plot1482627
+Node: interpol1483904
+Node: Introdução a interpol1484097
+Node: Funções e Variáveis Definidas para interpol1484497
+Node: lbfgs1494194
+Node: Introdução a lbfgs1494371
+Node: Funções e Variáveis Definidas para lbfgs1495493
+Node: lindstedt1504940
+Node: Funções e Variáveis Definidas para lindstedt1505111
+Node: linearalgebra1506711
+Node: Introdução a linearalgebra1506928
+Node: Funções e Variáveis Definidas para linearalgebra1511423
+Node: lsquares1537015
+Node: Funções e Variáveis Definidas para lsquares1537187
+Node: makeOrders1546424
+Node: Funções e Variáveis Definidas para makeOrders1546596
+Node: mnewton1547647
+Node: Funções e Variáveis Definidas para mnewton1547813
+Node: numericalio1549525
+Node: Introdução a numericalio1549729
+Node: Funções e Variáveis Definidas para numericalio1552510
+Node: opsubst1556324
+Node: Funções e Variáveis Definidas para opsubst1556490
+Node: orthopoly1558985
+Node: Introdução a polinômios ortogonais1559202
+Ref: Avaliação em Ponto Flutuante1570455
+Node: Funções e Variáveis Definidas para polinômios ortogonais1578046
+Node: plotdf1585691
+Node: Introdução a plotdf1585872
+Node: Funções e Variáveis Definidas para plotdf1587331
+Node: romberg1597165
+Node: Funções e Variáveis Definidas para romberg1597323
+Node: simplex1604357
+Node: Introdução a simplex1604548
+Node: Funções e Variáveis Definidas para simplex1605027
+Node: simplification1608949
+Node: Introdução a simplification1609170
+Node: Funções e Variáveis Definidas para simplification1609571
+Node: solve_rec1630928
+Node: Introdução a solve_rec1631127
+Node: Funções e Variáveis Definidas para solve_rec1631866
+Node: stats1640566
+Node: Introdução a stats1640862
+Node: Funções e Variáveis Definidas para inference_result1642098
+Node: Funções e Variáveis Definidas para stats1647025
+Node: Funções e Variáveis Definidas para distribuições especiais1676021
+Node: stirling1677298
+Node: Funções e Variáveis Definidas para stirling1677462
+Node: stringproc1679475
+Node: Introdução a manipulação de seqüências de caracteres1679790
+Node: Funções e Variáveis para entrada e saída1684800
+Node: Funções e Variáveis para caracteres1691318
+Node: Funções e Variáveis para seqüências de caracteres1694703
+Node: unit1708561
+Node: Introdução a Units1708738
+Node: Funções e Variáveis Definidas para Units1712858
+Node: zeilberger1733059
+Node: Introdução a zeilberger1733277
+Node: Funções e Variáveis Definidas para zeilberger1735456
+Node: Índice de Funções e Variáveis1741473
+
+End Tag Table
