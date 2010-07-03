@@ -1,3 +1,192 @@
+;;;
+;;; An utterly disorganised scratch-sheet of personal RAHD notes.
+;;;  g.o.passmore (2008-2010)
+;;;
+
+
+;;;
+;;; RRS(2):
+;;;
+
+* (p)
+
+ Printing all of the remaining 1 cases for goal 0.
+
+ -------     -------------------------------------------------------------------
+ case-id     case
+ -------     -------------------------------------------------------------------
+
+       0     ((= (+ (* B1 A1) (* B2 A2)) 0)
+              (=
+               (+ (* A1 A1)
+                  (+ (* A2 A2) (+ (* -1 (* B1 B1)) (+ (* -1 (* B2 B2)) -2))))
+               0)
+              (< (+ (* A2 A1) (* -1 (* B2 B1))) 0) (> A2 0) (> A1 0))    (UNKNOWN
+                                                                          SIMP-ZRHS
+                                                                          SATUR-LIN
+                                                                          CANON-TMS) 
+
+But, if we use simple inequality chaining/squeezing, and obtain:
+
+(g '(((= (+ (* B1 A1) (* B2 A2)) 0))
+     ((= (+ (* A1 A1) (+ (* A2 A2) (+ (* -1 (* B1 B1)) (+ (* -1 (* B2 B2)) -2))))
+	 0))
+     ((< (+ (* A2 A1) (* -1 (* B2 B1))) 0)) ((> A2 0)) ((> A1 0)) 
+     ((> B1 0)) ((> B2 0))))
+
+We get it easily just by ICP!
+
+So, must instrument inequality chaining/squeezing.
+
+;;
+;; Examining factor-sign in waterfall:
+;;
+
+Before factor-sign was in waterfall:
+
+ ++ rs(0) proved (0.028f0 s). 
+    ++ rs(1) proved (0.03f0 s). 
+    -- rs(2) failed. 
+    ++ rs(3) proved (0.017f0 s). 
+    -- rs(4) failed. 
+    -- rs(5) failed. 
+    -- rs(6) failed. 
+    ++ rs(7) proved (0.072f0 s). 
+    -- rs(8) failed. 
+    -- rs(9) failed. 
+    ++ rs(10) proved (0.036f0 s). 
+    -- rs(11) failed. 
+    -- rs(12) failed. 
+    -- rs(13) failed. 
+    ++ rs(14) proved (0.029f0 s). 
+    -- rs(15) failed. 
+    -- rs(16) failed. 
+    -- rs(17) failed. 
+    -- rs(18) failed. 
+    ++ rs(19) proved (0.184f0 s). 
+    -- rs(20) failed. 
+    -- rs(21) failed. 
+    -- rs(22) failed. 
+    ++ rs(23) proved (0.064f0 s). 
+    -- rs(24) failed. 
+    ++ rs(25) proved (0.042f0 s). 
+    ++ rs(26) proved (0.066f0 s). 
+    ++ rs(27) proved (0.007f0 s). 
+    ++ rs(28) proved (0.009f0 s). 
+    -- rs(29) failed. 
+    ++ rs(30) proved (0.452f0 s). 
+    ++ rs(31) proved (0.063f0 s). 
+    -- rs(32) failed. 
+    -- rs(33) failed. 
+    ++ rs(34) proved (0.03f0 s). 
+    -- rs(35) failed. 
+    ++ rs(36) proved (0.019f0 s). 
+    ++ rs(37) proved (0.003f0 s). 
+    -- rs(38) failed. 
+    ++ rs(39) proved (0.05f0 s).
+
+
+After factor-sign was in waterfall:
+
+    ++ rs(0) proved (0.029f0 s). 
+    ++ rs(1) proved (0.076f0 s). 
+    -- rs(2) failed. 
+    ++ rs(3) proved (0.041f0 s). 
+    ++ rs(4) proved (0.054f0 s). 
+    ++ rs(5) proved (0.077f0 s). 
+    -- rs(6) failed. 
+    -- rs(7) failed. 
+    -- rs(8) failed. 
+    -- rs(9) failed. 
+    ++ rs(10) proved (0.031f0 s). 
+    -- rs(11) failed. 
+    -- rs(12) failed. 
+    -- rs(13) failed. 
+    ++ rs(14) proved (0.0f0 s). 
+    -- rs(15) failed. 
+    -- rs(16) failed. 
+    -- rs(17) failed. 
+    -- rs(18) failed. 
+    -- rs(19) failed. 
+    -- rs(20) failed. 
+    -- rs(21) failed. 
+    -- rs(22) failed. 
+    ++ rs(23) proved (0.097f0 s). 
+    -- rs(24) failed. 
+    ++ rs(25) proved (0.024f0 s). 
+    ++ rs(26) proved (0.082f0 s). 
+    ++ rs(27) proved (0.141f0 s). 
+    ++ rs(28) proved (0.098f0 s). 
+    -- rs(29) failed. 
+    ++ rs(30) proved (0.381f0 s). 
+    ++ rs(31) proved (0.065f0 s). 
+    -- rs(32) failed. 
+    -- rs(33) failed. 
+    ++ rs(34) proved (0.001f0 s). 
+    -- rs(35) failed. 
+    ++ rs(36) proved (0.208f0 s). 
+    ++ rs(37) proved (0.088f0 s). 
+    -- rs(38) failed. 
+    ++ rs(39) proved (0.167f0 s).
+
+** Now, after placing it later in the waterfal:
+
+    ++ rs(0) proved (0.013f0 s). 
+    ++ rs(1) proved (0.02f0 s). 
+    -- rs(2) failed. 
+    ++ rs(3) proved (0.021f0 s). 
+    ++ rs(4) proved (0.088f0 s). 
+    ++ rs(5) proved (0.024f0 s). 
+    -- rs(6) failed. 
+    ++ rs(7) proved (0.047f0 s). 
+    -- rs(8) failed. 
+    -- rs(9) failed. 
+    ++ rs(10) proved (0.079f0 s). 
+    -- rs(11) failed. 
+    -- rs(12) failed. 
+    -- rs(13) failed. 
+    ++ rs(14) proved (0.001f0 s). 
+    -- rs(15) failed. 
+    -- rs(16) failed. 
+    -- rs(17) failed. 
+    -- rs(18) failed. 
+    ++ rs(19) proved (0.15f0 s). 
+    -- rs(20) failed. 
+    -- rs(21) failed. 
+    -- rs(22) failed. 
+    ++ rs(23) proved (0.024f0 s). 
+    -- rs(24) failed. 
+    ++ rs(25) proved (0.002f0 s). 
+    ++ rs(26) proved (0.068f0 s). 
+    ++ rs(27) proved (0.006f0 s). 
+    ++ rs(28) proved (0.009f0 s). 
+    -- rs(29) failed. 
+    ++ rs(30) proved (0.415f0 s). 
+    ++ rs(31) proved (0.064f0 s). 
+    -- rs(32) failed. 
+    -- rs(33) failed. 
+    ++ rs(34) proved (0.001f0 s). 
+    -- rs(35) failed. 
+    ++ rs(36) proved (0.055f0 s). 
+    ++ rs(37) proved (0.052f0 s). 
+    -- rs(38) failed. 
+    ++ rs(39) proved (0.058f0 s).
+
+Todo:
+;;;
+;;; ABANDON-SUBGOALS: Given a case, range of cases, or
+;;;  no arguments (interpreted as ``all'') adjust the current
+;;;  goal-set of those cases in range so that their 
+;;;  spawned subgoals are abandoned.  Note, they are still
+;;;  stored in the main *GOAL-SETS* hash-table in case
+;;;  we wish to return to them later.
+;;; 
+
+;(defun abandon-subgoals (&key from to case)
+;  (
+
+
+
 Need to deal with catching (- x x)=0 here:
 
 ./rahd-v0.6-lx32 -formula "(((> x (/ x (/ y (- x x))))))" -search-model! -print-model

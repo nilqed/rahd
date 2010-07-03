@@ -10,7 +10,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;; 
 ;;; This file: began on         22-Sept-2008,
-;;;            last updated on  27-May-2010.
+;;;            last updated on  27-June-2010.
 ;;;
 
 ;;;
@@ -121,7 +121,8 @@
   (when (not skip-maxima)
     (compile-file-and-load
      "maxima-package"
-     "maxima-rahd")
+     "maxima-rahd"
+     "factor")
     (init-maxima))
   (if (not hands-off-state) (rahd-reset-state))
   (format t "~%[RAHD-REBOOT]: RAHD ~D successfully rebooted." *rahd-version*)
