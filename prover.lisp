@@ -10,7 +10,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;; 
 ;;; This file: began on         29-July-2008,
-;;;            last updated on  31-May-2010.
+;;;            last updated on  03-July-2010.
 ;;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -424,6 +424,21 @@
 
 (defparameter *nz-terms* nil)
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; 
+;;; RULE-SETS-TABLE: A table of available RAHD rulesets, indexed by ruleset name (symbol).
+;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defparameter *rule-sets-table* (make-hash-table :test 'eq))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; 
+;;; RULES-TABLE: A table of available RAHD rules, indexed by rule name (symbol).
+;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defparameter *rules-table* (make-hash-table :test 'eq))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -464,8 +479,8 @@
   (setq *gs-max-dim* 0)
   (setq *gs-vt-bindings* nil)
   (when (not no-output)
-    (if keep-hashes (fmt 0 "~% Local goal state reset, but global structures unchanged~%"
-			 (fmt 0 "~% Full RAHD system state successfully reset~%"))))
+    (if keep-hashes (fmt 2 "~% Local goal state reset, but global structures unchanged.~%"
+			 (fmt 2 "~% Full RAHD system state successfully reset.~%"))))
   t)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -606,7 +621,7 @@
 	     (setq *vars-table* (or vars-table (all-vars-in-cnf f))))
 	   (if *goal-stack-keys* (rahd-reset-state :keep-hashes t))
 	   (push goal-key *goal-stack-keys*)
-	   (remove-duplicates *goal-stack-keys*)
+	   (setq *goal-stack-keys* (remove-duplicates *goal-stack-keys*))
 	   (setf (gethash goal-key *goal-stack-data*) (make-array 7))
 	   (set-goal-stack-data goal-key :goal-in-cnf f)
 	   (setq *g* f)
@@ -732,11 +747,11 @@
   (let ((new-subgoal-key (or explicit-key `(,*current-goal-key* ,*current-tactic-case*)))
 	(parent-goal-key *current-goal-key*)
 	(vars-table *vars-table*))
-    (g f :goal-key new-subgoal-key)
+    (g f :goal-key new-subgoal-key :overwrite-ok t)
     ;(build-gs) ;;; For now, we let PROC handle build-gs for us.
     (funcall proc)
     (let ((subgoal-refuted? (= *gs-unknown-size* 0)))
-      (swap-to-goal parent-goal-key)
+      (when parent-goal-key (swap-to-goal parent-goal-key))
       (setq *vars-table* vars-table)
       (if subgoal-refuted? t nil))))
 
@@ -1122,6 +1137,39 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
+;;; FACTOR-SIGN: Use multivariate factorisation to deduce signs of polynomials appearing
+;;;  in literals, adjoining new literals expressing their signs when successful.
+;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun factor-sign (&key case from to)
+  (GENERIC-TACTIC #'factor-sign-case
+		  'factor-sign
+		  "Sign determination by multivariate factorisation"
+		  :case case :from from :to to))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; INEQ-SQUEEZE: Saturate a case with the result of applying the ruleset `inequality-
+;;;  squeeze.'
+;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun ineq-squeeze (&key case from to)
+  (GENERIC-TACTIC #'ineq-squeeze-case
+		  'ineq-squeeze
+		  "Applying ruleset `inequality-squeeze'"
+		  :case case :from from :to to))
+
+(defun apply-ruleset (rs-name &key case from to)
+  (GENERIC-TACTIC #'apply-ruleset-to-case
+		  'apply-ruleset
+		  "Apply a verified ruleset for forward-chaining"
+		  :case case :from from :to to :tactic-params 
+		  (list rs-name)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
 ;;; STABLE-SIMP: A combination of the lightest arithmetical simplifiers that loops until
 ;;;  their composition reaches a fixed point w.r.t. *GS*.
 ;;;
@@ -1157,6 +1205,16 @@
 	    (t nil)))
     (fmt 1 ".~%")))
 
+;;;
+;;; A phase-I rulesets tactic.
+;;;
+
+(defun phase-i-rulesets (c)
+  (let ((c* (ineq-squeeze-case c)))
+    (if (not (equal c* c)) 
+	(icp-on-case c*)
+      c)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; PHASE-I: Apply pre-processing to initial goal, before expanding to goal-sets.
@@ -1174,7 +1232,10 @@
     (let ((full-sys? (= (length *g*) (length unit-clauses))))
       (cond ((= (length unit-clauses) 0) (fmt 1 " No df-units.  Phase I aborted.~%"))
 	    (t (update-status 
-		unit-clauses #'icp-on-case "Contracting intervals" full-sys?))))))
+		unit-clauses #'icp-on-case "Contracting intervals" full-sys?)
+	       (update-status
+		unit-clauses #'phase-i-rulesets "Applying verified ruleset `inequality-squeeze.'\
+ Contracting intervals" full-sys?))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -1212,6 +1273,11 @@
   (satur-lin)
   (fp " Searching for real nullstellensatz interval obstructions.~%")
   (bounded-gbrni :union-case union-case :gb-bound gbrn-depth)
+  (when (ruleset-enabled? 'inequality-squeeze)
+    (fp " Applying verified ruleset `inequality-squeeze.'~%")
+    (apply-ruleset 'inequality-squeeze)
+    (fp " Applying verified ruleset `force-sign.'~%")
+    (apply-ruleset 'force-sign))
   (fp " Contracting intervals.~%")
   (interval-cp)
   (when *enable-qepcad* 
@@ -1231,6 +1297,20 @@
   (when *enable-rcr-svars*
     (rcr-svars))
   (stable-simp)
+  (fp " Contracting intervals.~%")
+  (interval-cp)
+  (fp " Computing multivariate factorisations and deducing signs.~%")
+  (factor-sign)
+  (simp-zrhs)
+  (when (ruleset-enabled? 'inequality-squeeze)
+    (fp " Applying verified ruleset `inequality-squeeze.'~%")
+    (apply-ruleset 'inequality-squeeze)
+    (fp " Applying verified ruleset `force-sign.'~%")
+    (apply-ruleset 'force-sign))
+  (fp " Contracting intervals.~%")
+  (interval-cp)  
+  (fp " Searching for real nullstellensatz interval obstructions.~%")
+  (bounded-gbrni :union-case union-case :gb-bound gbrn-depth)
   (fp " Contracting intervals.~%")
   (interval-cp)
   (fp " Searching for zero-products.~%")
@@ -1353,7 +1433,7 @@
 		  (case-ub (min case-ub* (1- *gs-size*)))
 		  (fcn-str (format nil "~(~a~)" (symbol-name fcn-symbol))))
 	     (when (or case from to) 
-	       (fmt 3 "~% Thanks for the hint!  ~A is being applied only to cases in the range [~D...~D]." 
+	       (fmt 3 "~% Thanks for the hint!  ~A is being applied only to cases in the range [~D..~D]." 
 		    fcn-str case-lb case-ub))
 	     (loop for i from case-lb to case-ub do
 		   (setq *current-tactic-case* i) ; Used for naming spawned subgoals.
@@ -1417,7 +1497,7 @@
 					      (new-subgoal-formula (waterfall-disj-to-cnf (cdr fcn-result))))
 					  (setf (aref *gs* i 2) `((:UNKNOWN-WITH-SPAWNED-SUBGOAL ,new-subgoal-key) 
 								  ,(append (cdr c-status) `(,fcn-symbol))))
-					  (fmt 3 "~% W\/ : Spawning subgoal ~A as a sufficient condition for case ~A of goal ~A.~%"
+					  (fmt 3 "~% W\/: Spawning subgoal ~A as a sufficient condition for case ~A of goal ~A.~%"
 					       (format-goal-key new-subgoal-key) 
 					       i
 					       (format-goal-key *current-goal-key*))
@@ -1427,7 +1507,7 @@
 										       :explicit-key new-subgoal-key)))
 					    (if result-of-waterfall-on-subgoal
 						(progn
-						  (fmt 3 "~% W\/ : Subgoal ~A for goal ~A discharged, thus discharging case ~A of goal ~A.~%"
+						  (fmt 3 "~% W\/: Subgoal ~A for goal ~A discharged, thus discharging case ~A of goal ~A.~%"
 						       (format-goal-key new-subgoal-key) 
 						       (format-goal-key *current-goal-key*)
 						       i
@@ -1466,7 +1546,7 @@
 	     (if (or (> num-changed 0) (> num-refuted 0) *sat-case-found?*)
 		 (progn 
 		   (setq *last-tactic-made-progress* t)
-		   (setq *tactic-replay* (cons fcn-symbol *tactic-replay*))
+		   (setq *tactic-replay* (cons `(,fcn-symbol ,@tactic-params) *tactic-replay*))
 		   (setq *gs-unknown-size* (- *gs-unknown-size* (+ num-refuted num-satisfied)))
 		   (let ((tactic-time (float (/ (- (get-internal-real-time) start-time) internal-time-units-per-second))))
 
@@ -1500,7 +1580,7 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun pug (&optional bound)
+(defun pug (&key bound case)
   (if (> *gs-unknown-size* 0)
       (progn 
 	(fmt 0 "~% Printing ~A of the remaining ~A cases for goal ~A.~%" 
@@ -1517,7 +1597,9 @@
 			   (and (consp (car c-status))
 				(equal (caar c-status) ':UNKNOWN-WITH-SPAWNED-SUBGOAL)))
 		       (or (not bound)
-			   (<= num-printed bound)))
+			   (<= num-printed bound))
+		       (or (not case)
+			   (= i case)))
 		  (progn (fmt 0 "~% ~7D     ~D    ~D ~%" 
 			      c-id 
 			      c
@@ -1547,7 +1629,7 @@
 	(t (fmt 2 "~%~% ~6D ~A in goalset (goal ~A) awaiting refutation. ~%~%" 
 		*gs-unknown-size*
 		(if (= *gs-unknown-size* 1) "case" "cases")
-		(format-goal-key *current-goal-key*))
+		*current-goal-key*)
 	   (when (or (= *gs-unknown-size* 0) *goal-refuted?*)
 	     (if (equal *current-goal-key* 0)
 		 (fmt 2 "~% Q.E.D.  Theorem proved.~%~%")
@@ -1630,7 +1712,7 @@
 	     (car *current-goal-key*)
 	     (aref parent-data 2)
 	     (aref parent-data 1))))
-  (cond ((and *gs* (or (= *gs-unknown-size* 0) *goal-refuted?*))
+  (cond ((and (not *sat-case-found?*) *gs* (or (= *gs-unknown-size* 0) *goal-refuted?*))
 	 (fmt 0 " Decision: unsat (proven).~%~%"))
 	(*sat-case-found?* 
 	 (fmt 0 " Decision: sat (disproven).~%~%~A~%" (format-model *sat-model*)))
@@ -1819,7 +1901,7 @@ RAHD: Real Algebra in High Dimensions ~A
     -regression                      run regression suite for testing build
 
   where n is a natural, q is a rational presented as `a/b' or `a' for integers a,b,
-        $ is either `on' `off' or `only' (def: `on'), and
+        $ is either `on', `off' or `only' (def: `on'), and
         % is either `sturm' or `bernstein' (def: `sturm').~%"
 
     (car opts)))))
@@ -1835,14 +1917,3 @@ RAHD: Real Algebra in High Dimensions ~A
 			      :gbrn-depth gbrn-depth))))
 	    (fmt 0 "~%")))))))
 
-;;;
-;;; ABANDON-SUBGOALS: Given a case, range of cases, or
-;;;  no arguments (interpreted as ``all'') adjust the current
-;;;  goal-set of those cases in range so that their 
-;;;  spawned subgoals are abandoned.  Note, they are still
-;;;  stored in the main *GOAL-SETS* hash-table in case
-;;;  we wish to return to them later.
-;;; 
-
-;(defun abandon-subgoals (&key from to case)
-;  (

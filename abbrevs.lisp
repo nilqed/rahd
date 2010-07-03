@@ -10,7 +10,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;; 
 ;;; This file: began on         28-Feb-2009,
-;;;            last updated on  26-Oct-2009.
+;;;            last updated on  01-July-2010.
 ;;;
 
 ;;;
@@ -21,9 +21,12 @@
 
 (defun b () (build-gs))
 
-(defun p (&optional bound) (pug bound))
+(defun p (&key bound case) 
+  (pug :bound bound :case case))
 
 (defun tr () (tactic-replay))
+
+(defun rtr () (setq *tactic-replay* nil))
 
 (defun epa () (setq *enable-proof-analysis* t))
 (defun ppa () (print-proof-analysis))
@@ -49,6 +52,12 @@
 
 (defmacro rrs (&rest rst)
   `(rahd-regression-suite ,@rst))
+
+(defun gr (n)
+  (r)
+  (g (car (nth n *regression-suite*)))
+  (fmt 0 " Regression suite entry ~A installed as the active goal.~%" n)
+  t)
 
 (defun ctr ()
   (setq *tactic-replay* nil))
