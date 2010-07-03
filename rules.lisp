@@ -14,6 +14,46 @@
 ;;;
 
 ;;;
+;;; WITH-RULE-ARRAY: A simple macro deconstructing a rule array.
+;;;
+
+(defmacro with-rule-array (r &rest rst)
+  `(let ((rule-name (aref ,r 0))
+	 (rule-hvlevel (aref ,r 1))
+	 (rule-conclusion (aref ,r 2))
+	 (rule-hypotheses (aref ,r 3))
+	 (rule-verified? (aref ,r 4))
+	 (rule-proof-tr (aref ,r 5))
+	 (rule-active? (aref ,r 6))
+	 (rule-rulesets (aref ,r 7)))
+     (declare (ignorable rule-name
+			 rule-hvlevel
+			 rule-conclusion
+			 rule-hypotheses
+			 rule-verified?
+			 rule-proof-tr
+			 rule-active?
+			 rule-rulesets))
+     ,@rst))
+
+;;;
+;;; WITH-RULESET-ARRAY: A simple macro deconstructing a ruleset array.
+;;;
+
+(defmacro with-ruleset-array (r &rest rst)
+  `(let ((ruleset-name (aref ,r 0))
+	 (ruleset-rules (aref ,r 1))
+	 (ruleset-hvlevel (aref ,r 2))
+	 (ruleset-verified? (aref ,r 3))
+	 (ruleset-active? (aref ,r 4)))
+     (declare (ignorable ruleset-name
+			 ruleset-rules
+			 ruleset-hvlevel
+			 ruleset-verified?
+			 ruleset-active?))
+     ,@rst))
+
+;;;
 ;;; APPLY-RULESET-TO-CASE: Given a ruleset name and a case, saturate 
 ;;;  the case with the results of applying the ruleset to the case via 
 ;;;  forward-chaining.
@@ -225,46 +265,6 @@
 		,hvlevel
 		,verified?
 		,active?)))
-
-;;;
-;;; WITH-RULE-ARRAY: A simple macro deconstructing a rule array.
-;;;
-
-(defmacro with-rule-array (r &rest rst)
-  `(let ((rule-name (aref ,r 0))
-	 (rule-hvlevel (aref ,r 1))
-	 (rule-conclusion (aref ,r 2))
-	 (rule-hypotheses (aref ,r 3))
-	 (rule-verified? (aref ,r 4))
-	 (rule-proof-tr (aref ,r 5))
-	 (rule-active? (aref ,r 6))
-	 (rule-rulesets (aref ,r 7)))
-     (declare (ignorable rule-name
-			 rule-hvlevel
-			 rule-conclusion
-			 rule-hypotheses
-			 rule-verified?
-			 rule-proof-tr
-			 rule-active?
-			 rule-rulesets))
-     ,@rst))
-
-;;;
-;;; WITH-RULESET-ARRAY: A simple macro deconstructing a ruleset array.
-;;;
-
-(defmacro with-ruleset-array (r &rest rst)
-  `(let ((ruleset-name (aref ,r 0))
-	 (ruleset-rules (aref ,r 1))
-	 (ruleset-hvlevel (aref ,r 2))
-	 (ruleset-verified? (aref ,r 3))
-	 (ruleset-active? (aref ,r 4)))
-     (declare (ignorable ruleset-name
-			 ruleset-rules
-			 ruleset-hvlevel
-			 ruleset-verified?
-			 ruleset-active?))
-     ,@rst))
 
 ;;;
 ;;; PRINT-RULE-ARRAY: Pretty print a rule array.

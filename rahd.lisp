@@ -115,6 +115,8 @@
    "division"
    "quicksat"
    "prover"
+   "rules"
+   "rulesets"
    "rahd"
    "regression"
    "prfanal")
