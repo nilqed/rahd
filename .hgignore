@@ -1,0 +1,12 @@
+# use glob syntax.
+syntax: glob
+
+*.fasl
+*~
+
+rahd-v0.6-lx32
+rahd.log
+
+# switch to regexp syntax.
+syntax: regexp
+#^\.pc/
