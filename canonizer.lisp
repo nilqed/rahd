@@ -88,4 +88,3 @@
 			       ;`(= ,(canonicalize-poly `(- ,cur-x ,cur-y)) 0))   ; x*x = c      ==>  x*x - c = 0
 			       (t l))))
 		   c))))
-				       

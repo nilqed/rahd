@@ -85,6 +85,11 @@
    squeeze-x))
 
 ;;;
+;;; (verify-ruleset 'inequality-squeeze)
+;;;
+
+
+;;;
 ;;; Rules based around some simple sign deductions.
 ;;;
 
@@ -114,6 +119,12 @@
 	       (> Y 0)
 	       (< (+ (* X Y) (* -1 (* W Z))) 0)))
 
+(defrule force-sign-v
+  :conclusion ((< (+ (* Y Z) (* X W)) 0))
+  :hypotheses ((= (+ (* -1 (* X X)) Y) 0)
+	       (< (+ (* X Z) W) 0)
+	       (> X 0)))
+
 (defruleset force-sign
   :verified? system
   :active? t
@@ -121,16 +132,12 @@
   (force-sign-i
    force-sign-ii
    force-sign-iii
-   force-sign-iv))
+   force-sign-iv
+   force-sign-v))
 
 ;;;
-;;; (verify-ruleset inequality-squeeze)
+;;; (verify-ruleset 'force-sign)
 ;;;
 
-;;;
-;;; SQUEEZE-CASE: Given a case, return the result of the
-;;;  inequality-squeeze ruleset upon it.
-;;;
 
-(defun ineq-squeeze-case (c)
-  (apply-ruleset-to-case c 'inequality-squeeze))
+

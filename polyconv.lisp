@@ -8,6 +8,7 @@
 ;;;      as developed and utilised in polyalg.lisp, sturm.lisp, etc., and
 ;;;  (b) The free extended quoted Lisp notation as used in the top-level prover,
 ;;;      simplifier, and case-splitter,
+;;;  (c) Expansion of extended EXPT polynomial to multiplicative form.
 ;;;
 ;;;
 ;;; Written by Grant Olney Passmore
@@ -18,7 +19,7 @@
 ;;; >> Requires: polyalg.lisp
 ;;;
 ;;; This file: began on         30-July-2008,
-;;;            last updated on  22-Oct-2008.
+;;;            last updated on  21-August-2010.
 ;;;
 
 (in-package RAHD)
@@ -161,3 +162,26 @@
   (setq *vars-table* (append *vars-table* `(,v)))
   (1- (length *vars-table*)))
   
+;;;
+;;; POLY-EXPAND-EXPTS: Given a polynomial in extended EXPT form, expand
+;;;  all EXPTs to multiplicative form.  Eventually, we'll want to cache
+;;;  these EXPT representations so we don't lose the information they
+;;;  tell us (about signs, for instance).
+;;;
+
+(defun poly-expand-expts (p)
+  (cond ((not (consp p)) p)
+	(t (let ((op (car p))
+		 (x (cadr p))
+		 (y (caddr p)))
+	     (case op
+	       (EXPT (expand-expt (poly-expand-expts x) y))
+	       (otherwise (list op
+				(poly-expand-expts x)
+				(poly-expand-expts y))))))))
+	
+(defun expand-expt (tm pow)
+  (cond ((= pow 0) 1)
+	((= pow 1) tm)
+	((numberp tm) (expt tm pow))
+	(t `(* ,tm ,(expand-expt tm (1- pow))))))

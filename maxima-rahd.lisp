@@ -4,7 +4,11 @@
 ;;;
 ;;; ** RAHD<->Maxima interface **
 ;;;      exports: multivariate factorisation (factor p),
-;;;               signed subresultant prs (subres p q).
+;;;               signed subresultant prs (subres p q v),
+;;;               multivariate discriminant (discriminant p v),
+;;;               multivariate resultant (resultant p q v),
+;;;               multivariate square-free base (sqr-free-dp p)
+;;;                                         and (sqr-free-dps ps).
 ;;;
 ;;; Written by Grant Olney Passmore
 ;;; Ph.D. Student, University of Edinburgh
@@ -12,7 +16,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;; 
 ;;; This file: began on         28-May-2010,
-;;;            last updated on  27-June-2010.
+;;;            last updated on  21-August-2010.
 ;;;
 
 (in-package rahd)
@@ -73,15 +77,113 @@
 	    (rahd-p-to-maxima (term-to-bin-ops p))))))
 
 
+;;;
+;;; Given two RAHD polynomials in prover representation and a variable
+;;;  s.t. deg(p) > deg(q), use Maxima and SARAG to obtain signed 
+;;;  subresultant polynomial remainder sequence.
+;;;
+;;; We return two lists:
+;;;   (values SSUBRES-PRS SSUBRES-PRS-COEFFS).
+;;;
+;;; The latter is what we use as part of our projection operator for
+;;;  cylindrical algebraic decomposition.
+;;;
 
+(defun ssubres (p q var)
+  (let ((raw-maxima-lsts
+	 (maxima::$eval_string
+	  (format nil "sSubRes(~A,~A,~A)"
+		  (rahd-p-to-maxima (term-to-bin-ops p))
+		  (rahd-p-to-maxima (term-to-bin-ops q))
+		  (rahd-p-to-maxima var)))))
+    (let ((maxima-ssprs-lst (cdadr raw-maxima-lsts))
+	  (maxima-ssprs-coeff-lst (cdaddr raw-maxima-lsts)))
+      (let ((ssprs-lst (mapcar #'maxima-p-to-rahd maxima-ssprs-lst))
+	    (ssprs-coeff-lst (mapcar #'maxima-p-to-rahd maxima-ssprs-coeff-lst)))
+	(values ssprs-lst ssprs-coeff-lst)))))
 
+;;;
+;;; Given a RAHD polynomial in prover representation and a variable,
+;;;  return the discriminant of the polynomial w.r.t. the variable.
+;;;
+
+(defun discriminant (p var)
+  (when (member var (gather-vars p))
+    (maxima-p-to-rahd 
+     (maxima::$eval_string
+      (format nil "discriminant(~A,~A)"
+	      (rahd-p-to-maxima (term-to-bin-ops p))
+	      (rahd-p-to-maxima var))))))
+
+;;;
+;;; Given a RAHD polynomial P in prover representation, return a
+;;;  list of RAHD polynomials corresponding to a square-free
+;;;  decomposition of P.
+;;;
+;;; We also have a version for lists of polynomials: This is
+;;;  SQR-FREE-DPS (PS) below.
+;;;
+;;; List is in prover notation.
+;;;
+
+(defun sqr-free-dps (ps)
+  (let ((sqr-free-base nil))
+    (dolist (p ps)
+      (let ((p-result (sqr-free-dp p)))
+	(setq sqr-free-base
+	      (union sqr-free-base 
+		     p-result
+		     :test 'equal))))
+    sqr-free-base))
+
+(defun sqr-free-dp (p)
+  (let* ((mp (rahd-p-to-maxima (term-to-bin-ops p)))
+	 (sfm (maxima::$eval_string 
+	       (format nil "sqfr(~A)" mp)))
+	 (sfr (maxima-p-to-rahd sfm)))
+    (if (member (car sfr) '(* EXPT))
+	(extract-p-bases sfr)
+      (list sfr))))
+
+(defun extract-p-bases (p)
+  (cond ((rationalp p) nil)
+	((varp p) (list p))
+	((consp p)
+	 (case (car p)
+	   (EXPT (list (cadr p)))
+	   (* (let ((l1 (extract-p-bases (cadr p)))
+		    (l2 (extract-p-bases (caddr p))))
+		(cond ((and l1 l2)
+		       (union l1 l2 :test 'equal))
+		      (l1 l1)
+		      (l2 l2))))
+	   (otherwise (list p))))))
+
+;;;
+;;; Given a pair of polynomials and a var, return the resultant
+;;;  of the two polynomials w.r.t. var.
+;;;
+;;; Polynomials are given in prover notation.
+;;;
+
+(defun resultant (p q var)
+  (maxima-p-to-rahd
+   (maxima::$eval_string 
+    (format nil "resultant(~A,~A,~A)"
+	    (rahd-p-to-maxima (term-to-bin-ops p))
+	    (rahd-p-to-maxima (term-to-bin-ops q))
+	    (rahd-p-to-maxima var)))))
+			 
+  
+  
 
 ;;; ***************************************************************
 ;;;  RAHD<->Maxima translation 
 ;;; ***************************************************************
 
 ;;;
-;;; Convert Maxima polynomial to RAHD (prover notation) polynomial.
+;;; Convert Maxima polynomial to RAHD (prover notation) polynomial
+;;;  extended with the EXPT operator.
 ;;;
 
 (defun maxima-p-to-rahd (m)
@@ -94,10 +196,11 @@
 	       (maxima::mexpt 
 		`(expt ,(maxima-p-to-rahd (cadr m))
 		       ,(maxima-p-to-rahd (caddr m))))
-	       ((maxima::mplus maxima::mtimes)
+	       ((maxima::mplus maxima::mtimes maxima::rat)
 		(let ((rahd-op (case op
 				 (maxima::mplus '+)
-				 (maxima::mtimes '*))))
+				 (maxima::mtimes '*)
+				 (maxima::rat '/))))
 		  (cond ((= (length m) 3)
 			 `(,rahd-op ,(maxima-p-to-rahd (cadr m))
 				    ,(maxima-p-to-rahd (caddr m))))

@@ -10,7 +10,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;; 
 ;;; This file: began on         29-July-2008,
-;;;            last updated on  03-July-2010.
+;;;            last updated on  13-July-2010.
 ;;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1150,16 +1150,9 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; INEQ-SQUEEZE: Saturate a case with the result of applying the ruleset `inequality-
-;;;  squeeze.'
+;;; APPLY-RULESET: Saturate a case with the result of applying a ruleset.
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun ineq-squeeze (&key case from to)
-  (GENERIC-TACTIC #'ineq-squeeze-case
-		  'ineq-squeeze
-		  "Applying ruleset `inequality-squeeze'"
-		  :case case :from from :to to))
 
 (defun apply-ruleset (rs-name &key case from to)
   (GENERIC-TACTIC #'apply-ruleset-to-case
@@ -1210,7 +1203,7 @@
 ;;;
 
 (defun phase-i-rulesets (c)
-  (let ((c* (ineq-squeeze-case c)))
+  (let ((c* (apply-ruleset-to-case c 'inequality-squeeze)))
     (if (not (equal c* c)) 
 	(icp-on-case c*)
       c)))
@@ -1280,8 +1273,6 @@
     (apply-ruleset 'force-sign))
   (fp " Contracting intervals.~%")
   (interval-cp)
-  (when *enable-qepcad* 
-    (open-ex-inf-cad))
   (fp " Examining ideal triviality.~%")
   (triv-ideals)
   (fp " Applying simplifiers.~%")
@@ -1292,8 +1283,6 @@
   (rcr-ineqs)
   (stable-simp)
   (fert-tsos)
-  (when *enable-qepcad* 
-    (open-frag-ex-inf-cad))
   (when *enable-rcr-svars*
     (rcr-svars))
   (stable-simp)
@@ -1315,9 +1304,6 @@
   (interval-cp)
   (fp " Searching for zero-products.~%")
   (int-dom-zpb)
-  (when (and *enable-qepcad* 
-	     (not *disable-gen-cad*)) 
-    (gen-ex-cad))
   (when (or search-model search-model*)
     (fp " Searching for trivial models.~%")
     (quick-sat))
@@ -1899,10 +1885,15 @@ RAHD: Real Algebra in High Dimensions ~A
     -print-failure                   if a decision is not reached, print 
                                       a failure report (unrefuted cases)
     -regression                      run regression suite for testing build
+    -verify-and-extend f             verify a proof strategy (possibly with rulesets)
+                                      and build a new RAHD binary including it
+    -use-strategy s                  use a user-defined strategy for proving formula
+    -list-strategies                 list all built-in verified proof strategies
 
   where n is a natural, q is a rational presented as `a/b' or `a' for integers a,b,
-        $ is either `on', `off' or `only' (def: `on'), and
-        % is either `sturm' or `bernstein' (def: `sturm').~%"
+        $ is either `on', `off' or `only' (def: `on'), 
+        % is either `sturm' or `bernstein' (def: `sturm'),
+        f is a filename, and s is the name of a known verified proof strategy.~%"
 
     (car opts)))))
 	    (cond (regression? (wrv (if (rationalp verbosity) verbosity 1) 
