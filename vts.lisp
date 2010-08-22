@@ -173,14 +173,19 @@
 ;;; Given a polynomial p in algebraic representation and a var-id,
 ;;;  compute the degree of *vars-table*[var-id] in p.
 ;;;
+;;; If p is identically 0, then we break with an error.
+;;;
 
 (defun poly-deg-in-v (p var-id)
+  (when (not p) (break "Asked to compute degree of 0 polynomial."))
   (let ((out nil)
 	(ms p))
-    (while (and ms (not out))
+    (while ms
       (let* ((m (car ms))
 	     (found? (assoc var-id (cdr m))))
-	(when found? (setq out (cdr found?))))
+	(when found? (let ((found-deg (cdr found?)))
+		       (setq out (if out (max out found-deg)
+				   found-deg)))))
       (setq ms (cdr ms)))
     (if out out 0)))
 
