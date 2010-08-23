@@ -440,7 +440,13 @@
 
 (defun vs-proj-order (ps)
   (mapcar #'(lambda (v)
-	      (find-var v *vars-table* 0))
+	      (let ((i (find-var v *vars-table* 0)))
+		(if (not i)
+		    (progn 
+		      (setq *vars-table*
+			    (append *vars-table* `(,v)))
+		      (1- (length *vars-table*)))
+		  i)))
 	  (let ((vs))
 	    (dolist (p ps)
 	      (setq vs (union vs (gather-vars p))))
@@ -478,22 +484,22 @@
 ;;; Polynomials are given in algebraic representation.
 ;;;
 
-(defun std-cad-project (ps var-id)
-  (let ((proj-factor-set nil)
-	(ps-p-hashes (make-hash-table :test 'equal)))
-    (dolist (p ps)
-      (let* ((p-hash (let ((known? (gethash p ps-p-hashes)))
-		       (if known? known? 
-			 (let ((p-hash* (p-hash-in-v p var-id)))
-			   (setf (gethash p ps-p-hashes) p-hash*)
-			   p-hash*))))
-	     (deg-p (p-hash-deg p-hash)))
-	(when (>= deg-p 2)
-	  (let ((trunc-p (trunc-p-hash p-hash var-id)))
-	    (dolist (r trunc-p)
-	      (let ((sres-seq-r-dr/dv (sres-seq-p-dp/dv r var-id)))
-		(setq proj-factor-set
-		      (union proj-factor-set sres-seq-r-dr/dv))))))))
-    (let ((trunc-set-ps (trunc-set ps var-id)))
-      (dolist ((
-    proj-factor-set))
+;; (defun std-cad-project (ps var-id)
+;;   (let ((proj-factor-set nil)
+;; 	(ps-p-hashes (make-hash-table :test 'equal)))
+;;     (dolist (p ps)
+;;       (let* ((p-hash (let ((known? (gethash p ps-p-hashes)))
+;; 		       (if known? known? 
+;; 			 (let ((p-hash* (p-hash-in-v p var-id)))
+;; 			   (setf (gethash p ps-p-hashes) p-hash*)
+;; 			   p-hash*))))
+;; 	     (deg-p (p-hash-deg p-hash)))
+;; 	(when (>= deg-p 2)
+;; 	  (let ((trunc-p (trunc-p-hash p-hash var-id)))
+;; 	    (dolist (r trunc-p)
+;; 	      (let ((sres-seq-r-dr/dv (sres-seq-p-dp/dv r var-id)))
+;; 		(setq proj-factor-set
+;; 		      (union proj-factor-set sres-seq-r-dr/dv))))))))
+;;     (let ((trunc-set-ps (trunc-set ps var-id)))
+;;       (dolist ((
+;;     proj-factor-set))
