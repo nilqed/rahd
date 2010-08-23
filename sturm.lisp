@@ -26,7 +26,7 @@
 ;;;
 ;;;
 ;;; This file: began on         16-July-2008,
-;;;            last updated on  27-May-2010.
+;;;            last updated on  23-August-2010.
 ;;;
 
 (in-package RAHD)
@@ -333,3 +333,123 @@
 	    (t (setq out (cons (float r) out)))))
     out))
 
+;;;
+;;; RRI-PS: Isolate the real roots of a list of univariate polynomials.
+;;;  We must iterate on refining the roots until their containing intervals
+;;;  are sufficiently disjoint so as to be able to select a sample point
+;;;  between each of them.
+;;;
+;;; We assume the set of polynomials is square-free and pair-wise 
+;;;  relatively prime.
+;;;
+;;; We call a list of pairs a `tagged root family' if it is of the form
+;;;   (p . R) s.t. R is a list of either open intervals or points
+;;;   corresponding to a root diagram for p.
+;;;
+
+;(defun rri-ps (ps)
+;  (let ((cur-rf) (cur-epsilon 1/10))
+;    (dolist (p ps)
+;      (let ((tagged-new-roots (cons p (rri p :epsilon cur-epsilon))))
+;	(setq cur-rf (append tagged-new-roots cur-rf))))
+;    (if (rf-tight? cur-rf)
+;	cur-rf
+;      (while (not (rf-tight? cur-rf))
+;	(
+    
+;;;
+;;; RF-TIGHT?: Is a tagged root family tight enough to select a rational
+;;;   point between each root?
+;;;  If it isn't, then we return a polynomial whose roots must be
+;;;   tightened.
+;;;
+
+;(defun rf-tight? (rf)
+;  (dolist (p-rf rf)
+;    (dolist (p-rf* (cdr rf))
+;    (let ((p (car p-rs)) (rf (cdr p-rs)))
+      
+
+;;;
+;;; RRI-PS-MULT: Compute the list of real roots of a family of polynomials
+;;;  (univariate) by first taking their product and then isolating the
+;;;  roots of that product polynomial.
+;;;
+
+(defun rri-ps-mult (ps &key epsilon)
+  (let ((prod (car ps)))
+    (dolist (p (cdr ps))
+      (setq prod (poly-mult p prod)))
+    (rri prod :epsilon epsilon)))
+
+;;;
+;;; SORT-RD: Sort a root diagram.  We assume all members are disjoint.
+;;;
+
+(defun rd-<= (rx ry)
+  (cond ((and (numberp rx) (numberp ry))
+	 (<= rx ry))
+	((and (numberp rx) (consp ry))
+	 (<= rx (car ry)))
+	((and (consp rx) (numberp ry))
+	 (<= (cdr rx) ry))
+	((and (consp rx) (consp ry))
+	 (<= (car rx) (car ry)))))
+
+(defun sort-rd (rd)
+  (sort rd #'rd-<=))
+
+;;;
+;;; RRI-RATIONAL-SAMPLE-PTS: Given a list of root intervals (a root diagram), 
+;;;  return a list of rational sample points in between all roots (and <,> 
+;;;  than all roots).
+;;;
+
+(defun r-ub (r)
+  (cond ((numberp r) r)
+	((consp r) (cdr r))))
+
+(defun r-lb (r)
+  (cond ((numberp r) r)
+	((consp r) (car r))))
+
+(defun rri-rational-sample-pts (rd)
+  (let* ((rd-count (length rd))
+	 (sorted-rd-array 
+	  (make-array rd-count :initial-contents (sort-rd rd)))
+	 (sample-pts-array
+	  (make-array (1+ rd-count))))
+    (loop for i from 0 to rd-count do
+	  (cond ((= i 0)
+		 (setf (aref sample-pts-array 0) 
+		       (1- (r-lb (aref sorted-rd-array 0)))))
+		((= i rd-count)
+		 (setf (aref sample-pts-array rd-count) 
+		       (1+ (r-ub (aref sorted-rd-array (1- rd-count))))))
+		(t (let ((si (aref sorted-rd-array (1- i)))
+			 (si+1 (aref sorted-rd-array i)))
+		     (setf (aref sample-pts-array i)
+			   (/ (+ (r-ub si) (r-lb si+1)) 2))))))
+    sample-pts-array))
+
+;;;
+;;; PS-RATIONAL-SAMPLE-PTS: Given a list of univariate polynomials, return
+;;;  a list of rational sample points extracted from a root diagram for
+;;;  them.
+;;;
+
+(defun ps-rational-sample-pts (ps &key epsilon)
+  (if (or (not ps) (ps-numbers-only ps))
+      '(0)
+    (let ((rd (rri-ps-mult ps :epsilon epsilon)))
+      (rri-rational-sample-pts rd))))
+
+(defun ps-numbers-only (ps)
+  (every #'p-alg-number ps))
+
+(defun p-alg-number (p)
+  (or (equal p nil)
+      (and (consp p)
+	   (consp (car p))
+	   (equal (length (car p)) 1)
+	   (numberp (caar p)))))

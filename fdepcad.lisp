@@ -4,7 +4,7 @@
 ;;;
 ;;; Full-dimensional extended partial cylindrical algebraic decomposition.
 ;;;
-;;; (Explained in detail in my PhD dissertation).
+;;; (Explained in my PhD dissertation).
 ;;;
 ;;;  Note: We support two projection operators -- 
 ;;;    (i) standard projection (e.g., Basu-Pollack-Roy),
@@ -19,7 +19,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;; 
 ;;; This file: began on         03-July-2010,
-;;;            last updated on  21-August-2010.
+;;;            last updated on  22-August-2010.
 ;;;
 
 ;;;
@@ -221,10 +221,16 @@
 ;;;  McCallum-Brown operator, which is valid for full-dimensional lifting.
 ;;;
 ;;; Polynomials are given in algebraic representation.
-;;; Var-order is a list of var-ids w.r.t. VARS-LST.
+;;; VAR-ORDER is a list of var-ids w.r.t. VARS-LST -- we eliminate the
+;;;   variables in the order given in VAR-ORDER.  Intuitively, this
+;;;   means VAR-ORDER is the reverse of the list of variables sequentially
+;;;   appearing in the existential quantification of the input problem
+;;;   when read from left to right.
 ;;;
 ;;; The result is an array A s.t. A[n] is the portion of the projection
-;;;   factor set consisting of polynomials in n variables.
+;;;   factor set consisting of polynomials in n variables.  By virtue of
+;;;   the Brown-McCallum projection used, A[n] may fail to contain all
+;;;   n variables.  We take care of this during lifting/stack construction.
 ;;;
 ;;; Included: LCs, discrim's, resultants.
 ;;;
@@ -232,7 +238,9 @@
 (defun fd-cad-project (ps var-order)
   (let ((sqr-free-base 
 	 (clean-rcs 
-	  (mapcar #'poly-prover-rep-to-alg-rep 
+	  (mapcar #'(lambda (p)
+		      (poly-prover-rep-to-alg-rep 
+		       (poly-expand-expts p)))
 		  (sqr-free-dps (mapcar #'poly-alg-rep-to-prover-rep ps)))))
 	(top-dim (length var-order)))
     (let ((cur-dim top-dim)
@@ -241,7 +249,7 @@
 	  (proj-fs-array (make-array top-dim)))
       (setf (aref proj-fs-array (1- top-dim)) sqr-free-base)
       
-      (fmt 3 "~% CAD projection factor set component for dimension ~A:~%   ~A.~%~%"
+      (fmt 3 "~%   cad pfs component for dimension ~A:~%    ~A.~%"
 	   cur-dim 
 	   (mapcar #'poly-alg-rep-to-prover-rep sqr-free-base))
 
@@ -249,7 +257,7 @@
 	(when (> cur-dim 1)
 	  (setq cur-var (nth var-id *vars-table*))
 	  (setq cur-ps (aref proj-fs-array (1- cur-dim)))
-	  (fmt 9 "~% cur-ps(~A): ~A~%" 
+	  (fmt 9 "~%   cur-ps(~A): ~A~%" 
 	       cur-dim
 	       (mapcar #'poly-alg-rep-to-prover-rep cur-ps))
 
@@ -257,10 +265,12 @@
 		(ds (discrs cur-ps var-id))
 		(rs (ress cur-ps var-id)))
 
-	    (fmt 9 "~%...LCs, Ds, Rs computation completed for FD projection...~%")
+	    (fmt 9 "~%     ...LCs, Ds, Rs computation completed for FD projection...~%")
 
 	    (let ((cur-proj-fs
-		   (mapcar #'poly-prover-rep-to-alg-rep
+		   (mapcar #'(lambda (p) 
+			       (poly-prover-rep-to-alg-rep
+				(poly-expand-expts p)))
 			   (sqr-free-dps
 			    (mapcar #'poly-alg-rep-to-prover-rep
 				    (clean-rcs
@@ -268,7 +278,7 @@
 					    rs
 					    :test 'equal)))))))
 
-	      (fmt 3 "~% CAD projection factor set component for dimension ~A (eliminated ~A):~%   ~A.~%~%"
+	      (fmt 3 "~%   cad pfs component for (R^~A) (eliminated ~A):~%    ~A.~%"
 		   (1- cur-dim) 
 		   cur-var
 		   (mapcar #'poly-alg-rep-to-prover-rep cur-proj-fs))
@@ -278,6 +288,186 @@
 		    cur-proj-fs)))))
       proj-fs-array)))
 
+;;;
+;;; SPT-SUBST: Given a set of polynomials and a list of n variables and
+;;;  an n-dimensional sample points, substitute the components of the 
+;;;  sample point for the variables in the order given.
+;;;
+
+(defun spt-subst (ps pt vars)
+  (when (not (equal (length pt) (length vars)))
+    (break "cad subst error: sample point of wrong dimension"))
+  (let ((out-ps ps) (vs vars))
+    (dolist (c pt)
+      (let ((cur-var (car vs)))
+	(setq out-ps (subst c cur-var out-ps)))
+      (setq vs (cdr vs)))
+    (remove-duplicates out-ps :test 'equal)))
+
+(defun spts-subst (ps pts vars)
+  (mapcar #'(lambda (pt) 
+	      (spt-subst ps pt vars))
+	  pts))
+
+(defun spts-subst-alg (ps pts vars)
+  (let ((ps* (mapcar #'poly-alg-rep-to-prover-rep ps))
+	(vs* (mapcar #'(lambda (i) (nth i *vars-table*)) vars)))
+    (mapcar #'(lambda (ps) 
+		(mapcar #'poly-prover-rep-to-alg-rep ps))
+	    (spts-subst ps* pts vs*))))
+
+;;;
+;;; FD-CAD: Given a set of n-dimensional polynomials construct a CAD of
+;;;  n-dimensional space using sample points only from full-dimensional
+;;;  cells.
+;;;
+;;; Since we're only interested in satisfiability, we need only store
+;;;  the highest dimensional set of sample points.
+;;;
+;;; We return an array of n-dimensional sample points.
+;;;
+
+(defun fd-cad (ps var-order &key epsilon)
+  (fmt 3 "~% [cad: Computing projection factor set (pfs)]")
+  (let ((projfs (fd-cad-project ps var-order))
+	(lift-vars (reverse var-order))
+	(lower-vars) (latest-pts))
+    (fmt 3 "~% [cad: Beginning full-dimensional lifting]")
+    (loop for d from 0 to (1- (length lift-vars)) do
+      (let ((cur-var (car lift-vars))
+	    (cur-pfs (aref projfs d)))
+	(cond ((= d 0)
+	       (fmt 3 "~%   Computing base phase (R^1):")
+	       (setq latest-pts
+		     (mapcar #'list 
+			     (coerce 
+			      (ps-rational-sample-pts cur-pfs :epsilon epsilon)
+			      'list)))
+	       (fmt 3 "~%    ~A base rational sample points isolated: ~A.~%" 
+		    (length latest-pts) latest-pts))
+	      (t (fmt 3 "~%   Computing lifting from (R^~A) to (R^~A):~%" d (1+ d))
+		 (fmt 3 "    Substituting ~A sample points in (R^~A) into (R^~A) pfs: ~%"
+		      (length latest-pts) d (1+ d))
+		 (fmt 4 "     pfs:  ~A,~%" (mapcar #'poly-alg-rep-to-prover-rep
+						 cur-pfs))
+		 (fmt 4 "     pts:  ~A,~%" latest-pts)
+		 (fmt 4 "     lvs:  ~A.~%" (mapcar #'(lambda (i) 
+						    (nth i *vars-table*)) 
+						lower-vars))
+		 (let ((new-pfs-instances
+			(mapcar #'clean-rcs 
+				(spts-subst-alg cur-pfs latest-pts lower-vars))))
+		   (fmt 4 "     npfs: ~A.~%" 
+			(mapcar #'(lambda (ps) 
+				    (mapcar #'poly-alg-rep-to-prover-rep ps))
+				new-pfs-instances))
+		   (fmt 3 "~%    Isolating roots and sample points of new univariate families: ~%")
+		   (let ((new-latest-pts) (cur-instance 0))
+		     (dolist (pfs-instance new-pfs-instances)
+		       (let ((new-roots 
+			      (coerce (ps-rational-sample-pts pfs-instance :epsilon epsilon) 'list))
+			     (parent-sample-pt (nth cur-instance latest-pts)))
+			 (fmt 4 "     upts: ~A.~%" new-roots)
+			 (let ((hd-sample-pts
+				(mapcar #'(lambda (r) (cons r parent-sample-pt)) new-roots)))
+			   (fmt 4 "     nhds: ~A.~%" hd-sample-pts)
+			   (setq new-latest-pts (append hd-sample-pts new-latest-pts))))
+		       (setq cur-instance (1+ cur-instance)))
+		     (setq latest-pts new-latest-pts)))))
+	(setq lower-vars (cons cur-var lower-vars)))
+      (setq lift-vars (cdr lift-vars)))
+    (fmt 3 "~%  Final var-order: ~A." (mapcar #'(lambda (i) (nth i *vars-table*)) lower-vars))
+    (fmt 3 "~%  Success!  Cell decomposition complete (~A sample pts).~%" (length latest-pts))
+    (fmt 4 "  Printing ~A sample points from full-dimensional cells:~%~%    ~A.~%~%"
+	 (length latest-pts) latest-pts)
+    latest-pts))
+
+;;;
+;;; EVAL-SPT-SUBST: Given a case in prover notation, an n-dimensional
+;;;  sample point and a list of n variables, instantiate the case upon
+;;;  the sample point and evaluate it, returning true or false.
+;;;  This is only for full-dimensional sample points.
+;;;
+
+(defun eval-spt-subst (c vars pt)
+  (dolist (v vars)
+    (let ((cur-pt (car pt)))
+      (setq c (subst cur-pt v c))
+      (setq pt (cdr pt))))
+  (fmt 4 "  Evaluating: ~A....." `(and ,@c))
+  (let ((result (eval `(and ,@c))))
+    (fmt 4 "....~A.~%" (if result "SAT" "UNSAT"))
+    result))
+
+;;;
+;;; FD-CAD-SAT?: Given an open RAHD case, check to see if it is
+;;;  satisfied by computing a full-dimensional CAD.
+;;;
+;;; Case is given in prover notation.
+;;;
+
+(defun fd-cad-sat? (c &key epsilon)
+  (let* ((ps* (mapcar #'(lambda (l)
+			  `(- ,(cadr l)
+			      ,(caddr l)))
+		      c))
+	 (vs (vs-proj-order ps*))
+	 (vs* (mapcar #'(lambda (i) (nth i *vars-table*)) vs))
+	 (ps (mapcar #'poly-prover-rep-to-alg-rep ps*))
+	 (spts (fd-cad ps (vs-proj-order ps*) :epsilon epsilon)))
+    (fmt 3 "~% Extracted polynomials: ~A.~%" ps*)
+    (fmt 3 "~% Sample points computed.~%")
+    (fmt 3 "~% Beginning evaluation of formula.~%")
+    (let ((sat? nil))
+      (while (and (not sat?) (consp spts))
+	(let ((spt (car spts)))
+	  (setq sat? (when (eval-spt-subst
+			    c
+			    vs*
+			    spt)
+		       spt))
+	  (setq spts (cdr spts))))
+      (if sat? (fmt 3 "~% Satisfiable!~%  Satisfying assignment: ~A.~%" sat?)
+	(fmt 3 "~% Unsatisfiable!~%")))))
+
+;;;
+;;; VS-PROJ-ORDER: Given a set of polynomials, compute a projection
+;;;  order from the variables given.  Right now, we use no heuristics
+;;;  for this and just use more-or-less the order they appear.
+;;;
+;;; Polynomials are given in prover notation.
+;;;
+
+(defun vs-proj-order (ps)
+  (mapcar #'(lambda (v)
+	      (find-var v *vars-table* 0))
+	  (let ((vs))
+	    (dolist (p ps)
+	      (setq vs (union vs (gather-vars p))))
+	    vs)))
+
+;;;
+;;; MAKE-CAD-TEST: Make a simple test instance for our fdcad.
+;;;
+
+(defparameter *ps* nil)
+(defparameter *vs* nil)
+
+(defun make-cad-test (ps)
+  (let ((new-ps
+	 (mapcar #'(lambda (p)
+		     (poly-prover-rep-to-alg-rep
+		      (poly-expand-expts
+		       (term-to-bin-ops p))))
+		 ps)))
+    (setq *ps* new-ps)
+    (setq *vs*
+	  (mapcar #'(lambda (v)
+		      (find-var v *vars-table* 0))
+		  (let ((vs))
+		    (dolist (p (mapcar #'poly-alg-rep-to-prover-rep new-ps))
+		      (setq vs (union vs (gather-vars p))))
+		    vs)))))
 
 ;;; 
 ;;; *** Standard CAD Projection Operator ***
