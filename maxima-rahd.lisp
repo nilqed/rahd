@@ -105,12 +105,35 @@
 ;;; Given a RAHD polynomial in prover representation and a variable,
 ;;;  return the discriminant of the polynomial w.r.t. the variable.
 ;;;
+;;; For whatever reason, I found that sometimes Maxima's discriminant
+;;;  command returns weirdly unsimplified products of rational functions.
+;;;  Example: 
+;;;
+;;;   (MAXIMA::$EVAL_STRING
+;;;      "discriminant((-1*(X*(C*C))) + (-1*(S*(C*C))) + (X*X),C)")
+;;;
+;;;    returns 
+;;;
+;;;   (+ (* -4 (* (EXPT S 2) (* (EXPT (+ (* -1 S) (* -1 X)) -1) (EXPT X 2))))
+;;;    (+ (* -8 (* S (* (EXPT (+ (* -1 S) (* -1 X)) -1) (EXPT X 3))))
+;;;      (* -4 (* (EXPT (+ (* -1 S) (* -1 X)) -1) (EXPT X 4))))).
+;;;
+;;;  Note that many of the EXPT's have a power of -1.
+;;;  
+;;;  But, it seems that if we apply Maxima's factor command to the result, 
+;;;   it then pushes through the simplification. Very weird. I need to write
+;;;   the Maxima mailing list and figure this out for good.
+;;;
+;;;  Example with applying factor(discriminant(...)):
+;;;    (* 4 (* (EXPT X 2) (+ S X))) as expected.
+;;;  It also works with ratsimp, ratexpand.
+;;;
 
 (defun discriminant (p var)
   (when (member var (gather-vars p))
     (maxima-p-to-rahd 
      (maxima::$eval_string
-      (format nil "discriminant(~A,~A)"
+      (format nil "factor(discriminant(~A,~A))"
 	      (rahd-p-to-maxima (term-to-bin-ops p))
 	      (rahd-p-to-maxima var))))))
 

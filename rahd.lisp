@@ -124,7 +124,8 @@
     (compile-file-and-load
      "maxima-package"
      "maxima-rahd"
-     "factor")
+     "factor"
+     "fdepcad")
     (init-maxima))
   (if (not hands-off-state) (rahd-reset-state))
   (format t "~%[RAHD-REBOOT]: RAHD ~D successfully rebooted." *rahd-version*)
