@@ -76,7 +76,6 @@
     (format nil "factor(~A)" 
 	    (rahd-p-to-maxima (term-to-bin-ops p))))))
 
-
 ;;;
 ;;; Given two RAHD polynomials in prover representation and a variable
 ;;;  s.t. deg(p) > deg(q), use Maxima and SARAG to obtain signed 
@@ -141,7 +140,7 @@
 	 (sfm (maxima::$eval_string 
 	       (format nil "sqfr(~A)" mp)))
 	 (sfr (maxima-p-to-rahd sfm)))
-    (if (member (car sfr) '(* EXPT))
+    (if (and (consp sfr) (member (car sfr) '(* EXPT)))
 	(extract-p-bases sfr)
       (list sfr))))
 
@@ -174,12 +173,11 @@
 	    (rahd-p-to-maxima (term-to-bin-ops q))
 	    (rahd-p-to-maxima var)))))
 			 
-  
-  
-
+;;;
 ;;; ***************************************************************
 ;;;  RAHD<->Maxima translation 
 ;;; ***************************************************************
+;;;
 
 ;;;
 ;;; Convert Maxima polynomial to RAHD (prover notation) polynomial
