@@ -5,6 +5,23 @@
 
 
 ;;;
+;;; Good CAD versus partial CAD example for my thesis:
+;;;  (takes ~60 sec to find satisfying vector when full, but only ~13 when partial).
+;;;
+
+(wrv 3 (fd-cad-sat? '((> (* U1 R1) 1)
+ (> (* U1 X1) (* U1 U3))
+ (< (* U3 R3) 1)
+ (< (* U3 X2) (* (- U2 U1) X1))
+ (> (* U3 X4) (* U2 X3))
+ (< (* X1 X4)
+    (- (* (- X2 U1) X3) (* U1 X1)))
+ (> (* (+ (* 2 (* U2 X4))
+	  (- (- (* 2 (* U3 X3)) (* U3 U3))
+	     (* U2 U2)))
+       R1) 0)) :partial? nil))
+
+;;;
 ;;; RRS(2):
 ;;;
 

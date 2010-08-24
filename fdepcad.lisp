@@ -19,7 +19,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;; 
 ;;; This file: began on         03-July-2010,
-;;;            last updated on  22-August-2010.
+;;;            last updated on  24-August-2010.
 ;;;
 
 ;;;
@@ -317,6 +317,46 @@
 	    (spts-subst ps* pts vs*))))
 
 ;;;
+;;; INSTANTIATE-CASE: Given a case and a list of n variables and an
+;;;  n-dimensional sample point, instantiate the case upon the point
+;;;  w.r.t. the given variable ordering.
+;;;
+
+(defun instantiate-case (c pt vars)
+  (when (not (= (length pt) (length vars)))
+    (break "instantiate-case: dimensional mismatch."))
+  (dolist (q pt)
+    (setq c (subst q (car vars) c))
+    (setq vars (cdr vars)))
+  c)
+
+;;;
+;;; DIRECT-EXCLUDE-CELL?: Given a case and a list of variable bindings
+;;;  corresponding to a cell sample point (given as a list of variables
+;;;  and a list of rationals in the form that SPST-SUBST accepts), see
+;;;  if any conjuncts in the case are falsified by the sample point.
+;;;  If so, then we need not lift over it and can short circuit the
+;;;  corresponding stack construction.
+;;;
+
+(defun direct-exclude-cell? (c pt vars)
+  (let* ((partially-instantiated-case
+	  (instantiate-case c pt vars))
+	 (simplified-pic
+	  (simplify-ground-lits partially-instantiated-case)))
+    (member nil simplified-pic)))
+
+;;;
+;;; DIRECT-EXCLUDE-CELLS: Given a list of sample points, remove those
+;;;  which lead to an unsatisfied input formula.
+;;;
+
+(defun direct-exclude-cells (c pts vars)
+  (remove-if #'(lambda (cell-sample-pt)
+		 (direct-exclude-cell? c cell-sample-pt vars))
+	     pts))
+
+;;;
 ;;; FD-CAD: Given a set of n-dimensional polynomials construct a CAD of
 ;;;  n-dimensional space using sample points only from full-dimensional
 ;;;  cells.
@@ -324,16 +364,21 @@
 ;;; Since we're only interested in satisfiability, we need only store
 ;;;  the highest dimensional set of sample points.
 ;;;
+;;; Also, if :formula is given, then we will perform partial fdcad by
+;;;  not lifting over cells which falsify any literals in the input
+;;;  formula (recall we're dealing only with conjunctions).
+;;;
 ;;; We return an array of n-dimensional sample points.
 ;;;
 
-(defun fd-cad (ps var-order &key epsilon)
+(defun fd-cad (ps var-order &key epsilon formula)
   (fmt 3 "~% [cad: Computing projection factor set (pfs)]")
   (let ((projfs (fd-cad-project ps var-order))
 	(lift-vars (reverse var-order))
-	(lower-vars) (latest-pts))
+	(lower-vars) (latest-pts) (short-circuit?))
     (fmt 3 "~% [cad: Beginning full-dimensional lifting]")
-    (loop for d from 0 to (1- (length lift-vars)) do
+    (loop for d from 0 to (1- (length lift-vars)) 
+	  while (not short-circuit?) do
       (let ((cur-var (car lift-vars))
 	    (cur-pfs (aref projfs d)))
 	(cond ((= d 0)
@@ -361,7 +406,7 @@
 			(mapcar #'(lambda (ps) 
 				    (mapcar #'poly-alg-rep-to-prover-rep ps))
 				new-pfs-instances))
-		   (fmt 3 "~%    Isolating roots and sample points of new univariate families: ~%")
+		   (fmt 3 "~%    Isolating roots and sample points of induced univariate families: ~%")
 		   (let ((new-latest-pts) (cur-instance 0))
 		     (dolist (pfs-instance new-pfs-instances)
 		       (let ((new-roots 
@@ -375,6 +420,24 @@
 		       (setq cur-instance (1+ cur-instance)))
 		     (setq latest-pts new-latest-pts)))))
 	(setq lower-vars (cons cur-var lower-vars)))
+
+      ;;
+      ;; Direct partial CAD check: Remove the new sample points which lead to direct
+      ;;  inconsistency, if formula (conjunctive case) is given.
+      ;;
+
+      (when formula
+	(let ((num-cells-before (length latest-pts)))
+	  (setq latest-pts (direct-exclude-cells 
+			    formula 
+			    latest-pts
+			    (mapcar #'(lambda (i) (nth i *vars-table*)) lower-vars)))
+	  (fmt 3 "~%  :: Direct cell pruning reduced number of new cells from ~A to ~A.~%"
+	       num-cells-before (length latest-pts))
+	  (when (= (length latest-pts) 0)
+	    (setq short-circuit? t)
+	    (fmt 3 "  :: Direct cell pruning has reduced number of cells to 0, so we can short-circuit cad construction!~%~%"))))
+
       (setq lift-vars (cdr lift-vars)))
     (fmt 3 "~%  Final var-order: ~A." (mapcar #'(lambda (i) (nth i *vars-table*)) lower-vars))
     (fmt 3 "~%  Success!  Cell decomposition complete (~A sample pts).~%" (length latest-pts))
@@ -406,7 +469,7 @@
 ;;; Case is given in prover notation.
 ;;;
 
-(defun fd-cad-sat? (c &key epsilon)
+(defun fd-cad-sat? (c &key epsilon partial?)
   (let* ((ps* (mapcar #'(lambda (l)
 			  `(- ,(cadr l)
 			      ,(caddr l)))
@@ -414,7 +477,9 @@
 	 (vs (vs-proj-order ps*))
 	 (vs* (mapcar #'(lambda (i) (nth i *vars-table*)) vs))
 	 (ps (mapcar #'poly-prover-rep-to-alg-rep ps*))
-	 (spts (fd-cad ps (vs-proj-order ps*) :epsilon epsilon)))
+	 (spts (fd-cad ps (vs-proj-order ps*) 
+		       :epsilon epsilon
+		       :formula (when partial? c))))
     (fmt 3 "~% Extracted polynomials: ~A.~%" ps*)
     (fmt 3 "~% Sample points computed.~%")
     (fmt 3 "~% Beginning evaluation of formula.~%")
@@ -428,7 +493,8 @@
 		       spt))
 	  (setq spts (cdr spts))))
       (if sat? (fmt 3 "~% Satisfiable!~%  Satisfying assignment: ~A.~%" sat?)
-	(fmt 3 "~% Unsatisfiable!~%")))))
+	(fmt 3 "~% Unsatisfiable!~%"))
+      sat?)))
 
 ;;;
 ;;; VS-PROJ-ORDER: Given a set of polynomials, compute a projection

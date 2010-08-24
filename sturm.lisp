@@ -375,12 +375,28 @@
 ;;;  (univariate) by first taking their product and then isolating the
 ;;;  roots of that product polynomial.
 ;;;
+;;; Note: We should see if any of the factors are linear (happens often!),
+;;;  and if so, solve for their single real root, keep it, and then remove
+;;;  that factor and divide all remaining factors by it before performing
+;;;  the multiplication.
+;;;
 
 (defun rri-ps-mult (ps &key epsilon)
-  (let ((prod (car ps)))
+  (let ((prod (car ps))
+	(linear-roots)
+	(linear-factors))
     (dolist (p (cdr ps))
-      (setq prod (poly-mult p prod)))
-    (rri prod :epsilon epsilon)))
+      (let* ((p* (poly-alg-rep-to-prover-rep p))
+	     (derived-eq `(= ,p* 0))
+	     (lin-oriented (orient-partial-lineq derived-eq))
+	     (derived-root (when lin-oriented (caddr lin-oriented))))
+	(cond (lin-oriented
+	       (fmt 4 "~%    Avoiding including linear factor in product:~%     p:  ~A,~%     r: ~A.~%"
+		    p* derived-root)
+	       (setq linear-roots (cons derived-root linear-roots))
+	       (setq linear-factors (cons p linear-factors)))
+	      (t (setq prod (poly-mult p prod))))))
+    (union linear-roots (rri prod :epsilon epsilon))))
 
 ;;;
 ;;; SORT-RD: Sort a root diagram.  We assume all members are disjoint.
