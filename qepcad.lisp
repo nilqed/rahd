@@ -17,7 +17,7 @@
 ;;;
 ;;;
 ;;; This file: began on         31-July-2008,
-;;;            last updated on  22-Nov-2009.
+;;;            last updated on  24-August-2010.
 ;;;
 
 (in-package RAHD)
@@ -78,22 +78,22 @@
 ;;;
 
 (defun open-frag-cad (c)
-  (let ((open-frag (gather-soft-ineqs c)))
+  (let ((open-frag (gather-strict-ineqs c)))
     (if open-frag 
 	(let ((result (open-cad open-frag)))
-	  (if (or (equal result open-frag) (equal (car result) ':SAT)) ; Cannot trust :SAT here
+	  (if (or (equal result open-frag) 
+		  (equal (car result) ':SAT)) ; Cannot trust :SAT here
 	      c
 	    result))
     c)))
 
-(defparameter is-open? t)
-
 (defun open-conj (c)
-  (progn
-    (setf is-open? t)
+  (let ((is-open? t))
     (dolist (lit c)
       (let ((cur-r (car lit)))
-	(setf is-open? (and is-open? (or (equal cur-r '<) (equal cur-r '>))))))
+	(setq is-open? 
+	      (and is-open? 
+		   (or (equal cur-r '<) (equal cur-r '>))))))
     is-open?))
 
 ;;;

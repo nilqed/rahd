@@ -1163,6 +1163,18 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
+;;; FDEPCAD: Full-dimensional extended partial CAD.
+;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun fdepcad (&key case from to)
+  (GENERIC-TACTIC #'fdepcad-on-case
+		  'fdepcad
+		  "Full-dimensional extended partial cylindrical algebraic decomposition"
+		  :case case :from from :to to))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
 ;;; STABLE-SIMP: A combination of the lightest arithmetical simplifiers that loops until
 ;;;  their composition reaches a fixed point w.r.t. *GS*.
 ;;;
@@ -1304,6 +1316,8 @@
   (interval-cp)
   (fp " Searching for zero-products.~%")
   (int-dom-zpb)
+  (fp " Performing full-dimensional c.a.d.~%")
+  (fdepcad)
   (when (or search-model search-model*)
     (fp " Searching for trivial models.~%")
     (quick-sat))

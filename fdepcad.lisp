@@ -290,7 +290,7 @@
 
 ;;;
 ;;; SPT-SUBST: Given a set of polynomials and a list of n variables and
-;;;  an n-dimensional sample points, substitute the components of the 
+;;;  an n-dimensional sample point, substitute the components of the 
 ;;;  sample point for the variables in the order given.
 ;;;
 
@@ -426,17 +426,19 @@
       ;;  inconsistency, if formula (conjunctive case) is given.
       ;;
 
-      (when formula
+      (when (and formula (cdr lift-vars))
 	(let ((num-cells-before (length latest-pts)))
 	  (setq latest-pts (direct-exclude-cells 
 			    formula 
 			    latest-pts
 			    (mapcar #'(lambda (i) (nth i *vars-table*)) lower-vars)))
-	  (fmt 3 "~%  :: Direct cell pruning reduced number of new cells from ~A to ~A.~%"
-	       num-cells-before (length latest-pts))
-	  (when (= (length latest-pts) 0)
-	    (setq short-circuit? t)
-	    (fmt 3 "  :: Direct cell pruning has reduced number of cells to 0, so we can short-circuit cad construction!~%~%"))))
+	  (let ((num-cells-after (length latest-pts)))
+	    (when (not (= num-cells-before num-cells-after))
+	      (fmt 3 "~%  :: Direct cell exclusion reduced number of new cells from ~A to ~A.~%"
+		   num-cells-before num-cells-after)
+	      (when (= num-cells-after 0)
+		(setq short-circuit? t)
+		(fmt 3 "  :: Direct cell exclusion has reduced number of cells to 0, so we can short-circuit cad construction!~%~%"))))))
 
       (setq lift-vars (cdr lift-vars)))
     (fmt 3 "~%  Final var-order: ~A." (mapcar #'(lambda (i) (nth i *vars-table*)) lower-vars))
@@ -496,6 +498,21 @@
 	(fmt 3 "~% Unsatisfiable!~%"))
       sat?)))
 
+;;;
+;;; FDEPCAD-ON-CASE: Apply FD-CAD-SAT to a conjunctive case.
+;;;    To do so, we first extract only the strict inequalities.
+;;;   Note that unless c consists only of strict inequalities, then
+;;;    we can't trust SAT answers, only UNSAT.
+;;;
+
+(defun fdepcad-on-case (c)
+  (let* ((sc (gather-strict-ineqs c))
+	 (s? (fd-cad-sat? sc :partial? t)))
+    (cond (s? (if (= (length sc) (length c))
+		  `(:SAT (:SATISFYING-ASSIGNMENT-FOUND-IN-FULL-DIMENSIONAL-CELL))
+		c))
+	  (t `(:UNSAT (:NO-SATISFYING-ASSIGNMENT-FOUND-IN-FULL-DIMENSIONAL-CELLS))))))
+    
 ;;;
 ;;; VS-PROJ-ORDER: Given a set of polynomials, compute a projection
 ;;;  order from the variables given.  Right now, we use no heuristics
