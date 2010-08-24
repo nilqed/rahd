@@ -127,13 +127,14 @@
 ;;;  Example with applying factor(discriminant(...)):
 ;;;    (* 4 (* (EXPT X 2) (+ S X))) as expected.
 ;;;  It also works with ratsimp, ratexpand.
+;;;  Ratsimp seems to be faster than factor.
 ;;;
 
 (defun discriminant (p var)
   (when (member var (gather-vars p))
     (maxima-p-to-rahd 
      (maxima::$eval_string
-      (format nil "factor(discriminant(~A,~A))"
+      (format nil "ratsimp(discriminant(~A,~A))"
 	      (rahd-p-to-maxima (term-to-bin-ops p))
 	      (rahd-p-to-maxima var))))))
 

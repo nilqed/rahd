@@ -91,9 +91,9 @@
 		    (e-rhs-vars (all-vars-in-conj `((= ,(poly-alg-rep-to-prover-rep e-final-rhs) 0)))))
 		(if (not (member (car e-target-var) e-rhs-vars))
 		    (progn 
-		      (fmt 3 "~% >> Orienting a partially linear equation for variable elimination.  ~%     Eq: ~A~%     Target monomial: ~A.~%" 
+		      (fmt 5 "~% >> Orienting a partially linear equation for variable elimination.  ~%     Eq: ~A~%     Target monomial: ~A.~%" 
 			   e (mprint e-target-monomial))
-		      (fmt 3 "     Final directed demodulator: ~A --> ~A.~%     Representative RAHD eq: ~A.~%~%"
+		      (fmt 5 "     Final directed demodulator: ~A --> ~A.~%     Representative RAHD eq: ~A.~%~%"
 			   (poly-print e-final-lhs) (if e-final-rhs (poly-print e-final-rhs) 0) e-final-directed-eq)
 	      
 		      e-final-directed-eq)
@@ -122,7 +122,7 @@
 
     (if derived-demods 
 	(let ((demod-out (subst-eqs c derived-demods #'(lambda (x) (declare (ignore x)) t))))
-	  (fmt 3 "~% >> Applying derived demodulators (listed above) to case.  ~%     Case before demodulation: ~A. ~%     Case after demodulation: ~A.~%"
+	  (fmt 5 "~% >> Applying derived demodulators (listed above) to case.  ~%     Case before demodulation: ~A. ~%     Case after demodulation: ~A.~%"
 	       c demod-out)
 	  demod-out)
       c)))
