@@ -251,6 +251,23 @@
     (poly-univ-interval-real-root-count sqr-free-p (- 0 b) b :p-sqr-free? t)))
 
 ;;;
+;;; SORT-RD: Sort a root diagram.  We assume all members are disjoint.
+;;;
+
+(defun rd-<= (rx ry)
+  (cond ((and (numberp rx) (numberp ry))
+	 (<= rx ry))
+	((and (numberp rx) (consp ry))
+	 (<= rx (car ry)))
+	((and (consp rx) (numberp ry))
+	 (<= (cdr rx) ry))
+	((and (consp rx) (consp ry))
+	 (<= (car rx) (car ry)))))
+
+(defun sort-rd (rd)
+  (sort rd #'rd-<=))
+
+;;;
 ;;;
 ;;; REAL-ROOT-ISOLATION: Given a univariate polynomial p, return a list of intervals
 ;;;  I_1, ..., I_k (pairwise disjoint) s.t. each I_i contains exactly one real root of p.
@@ -333,6 +350,14 @@
 	    (t (setq out (cons (float r) out)))))
     out))
 
+(defun r-ub (r)
+  (cond ((numberp r) r)
+	((consp r) (cdr r))))
+
+(defun r-lb (r)
+  (cond ((numberp r) r)
+	((consp r) (car r))))
+
 ;;;
 ;;; RRI-PS: Isolate the real roots of a list of univariate polynomials.
 ;;;  We must iterate on refining the roots until their containing intervals
@@ -358,17 +383,21 @@
 ;	(
     
 ;;;
-;;; RF-TIGHT?: Is a tagged root family tight enough to select a rational
-;;;   point between each root?
-;;;  If it isn't, then we return a polynomial whose roots must be
-;;;   tightened.
+;;; RRI-TIGHT-ENOUGH?: Is a root diagram tight enough to select a point
+;;;   between each of the roots it isolates?
 ;;;
 
-;(defun rf-tight? (rf)
-;  (dolist (p-rf rf)
-;    (dolist (p-rf* (cdr rf))
-;    (let ((p (car p-rs)) (rf (cdr p-rs)))
-      
+(defun rri-tight-enough? (rri)
+  (let ((rri* (copy-list rri)))
+    (cond ((<= (length rri*) 1) t)
+	  (t (setq rri* (sort-rd rri*))
+	     (let ((tight? t))
+	       (loop for i from 0 to (- (length rri*) 2) do
+		 (when (>= (r-ub (car rri*))
+			   (r-lb (cadr rri*)))
+		   (setq tight? nil))
+		 (setq rri* (cdr rri*)))
+	       tight?)))))
 
 ;;;
 ;;; RRI-PS-MULT: Compute the list of real roots of a family of polynomials
@@ -381,11 +410,11 @@
 ;;;  the multiplication.
 ;;;
 
-(defun rri-ps-mult (ps &key epsilon)
-  (let ((prod (car ps))
+(defun rri-ps-mult* (ps &key epsilon)
+  (let ((prod '((1)))
 	(linear-roots)
 	(linear-factors))
-    (dolist (p (cdr ps))
+    (dolist (p ps)
       (let* ((p* (poly-alg-rep-to-prover-rep p))
 	     (derived-eq `(= ,p* 0))
 	     (lin-oriented (orient-partial-lineq derived-eq))
@@ -396,24 +425,25 @@
 	       (setq linear-roots (cons derived-root linear-roots))
 	       (setq linear-factors (cons p linear-factors)))
 	      (t (setq prod (poly-mult p prod))))))
-    (union linear-roots (rri prod :epsilon epsilon))))
+    (union linear-roots 
+	   (when (> (length ps) (length linear-factors))
+	     (setq prod (mk-sqr-free prod))
+	     (dolist (f linear-factors)
+	       (let ((div-result (poly-univ-/ prod f)))
+		 (when (not (cdr div-result))
+		   (setq prod (car div-result)))))
+	     (when (not (numberp (poly-alg-rep-to-prover-rep prod)))
+	       (rri prod :epsilon epsilon))))))
 
-;;;
-;;; SORT-RD: Sort a root diagram.  We assume all members are disjoint.
-;;;
-
-(defun rd-<= (rx ry)
-  (cond ((and (numberp rx) (numberp ry))
-	 (<= rx ry))
-	((and (numberp rx) (consp ry))
-	 (<= rx (car ry)))
-	((and (consp rx) (numberp ry))
-	 (<= (cdr rx) ry))
-	((and (consp rx) (consp ry))
-	 (<= (car rx) (car ry)))))
-
-(defun sort-rd (rd)
-  (sort rd #'rd-<=))
+(defun rri-ps-mult (ps &key epsilon)
+  (let ((done?) (cur-epsilon epsilon) (cur-rri))
+    (loop until done? do
+      (setq cur-rri (rri-ps-mult* ps :epsilon cur-epsilon))
+      (cond ((not (rri-tight-enough? cur-rri))
+	     (setq cur-epsilon 
+		   (/ (or cur-epsilon 1) 2)))
+	    (t (setq done? t))))
+    cur-rri))
 
 ;;;
 ;;; RRI-RATIONAL-SAMPLE-PTS: Given a list of root intervals (a root diagram), 
@@ -421,32 +451,26 @@
 ;;;  than all roots).
 ;;;
 
-(defun r-ub (r)
-  (cond ((numberp r) r)
-	((consp r) (cdr r))))
-
-(defun r-lb (r)
-  (cond ((numberp r) r)
-	((consp r) (car r))))
-
 (defun rri-rational-sample-pts (rd)
-  (let* ((rd-count (length rd))
-	 (sorted-rd-array 
-	  (make-array rd-count :initial-contents (sort-rd rd)))
-	 (sample-pts-array
-	  (make-array (1+ rd-count))))
-    (loop for i from 0 to rd-count do
-	  (cond ((= i 0)
-		 (setf (aref sample-pts-array 0) 
-		       (1- (r-lb (aref sorted-rd-array 0)))))
-		((= i rd-count)
-		 (setf (aref sample-pts-array rd-count) 
-		       (1+ (r-ub (aref sorted-rd-array (1- rd-count))))))
-		(t (let ((si (aref sorted-rd-array (1- i)))
-			 (si+1 (aref sorted-rd-array i)))
-		     (setf (aref sample-pts-array i)
-			   (/ (+ (r-ub si) (r-lb si+1)) 2))))))
-    sample-pts-array))
+  (cond ((not rd) nil)
+	(t 
+	 (let* ((rd-count (length rd))
+		(sorted-rd-array 
+		 (make-array rd-count :initial-contents (sort-rd rd)))
+		(sample-pts-array
+		 (make-array (1+ rd-count))))
+	   (loop for i from 0 to rd-count do
+		 (cond ((= i 0)
+			(setf (aref sample-pts-array 0) 
+			      (1- (r-lb (aref sorted-rd-array 0)))))
+		       ((= i rd-count)
+			(setf (aref sample-pts-array rd-count) 
+			      (1+ (r-ub (aref sorted-rd-array (1- rd-count))))))
+		       (t (let ((si (aref sorted-rd-array (1- i)))
+				(si+1 (aref sorted-rd-array i)))
+			    (setf (aref sample-pts-array i)
+				  (/ (+ (r-ub si) (r-lb si+1)) 2))))))
+	   sample-pts-array))))
 
 ;;;
 ;;; PS-RATIONAL-SAMPLE-PTS: Given a list of univariate polynomials, return
