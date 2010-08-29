@@ -10,7 +10,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;; 
 ;;; This file: began on         29-July-2008,
-;;;            last updated on  13-July-2010.
+;;;            last updated on  28-August-2010.
 ;;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -441,6 +441,22 @@
 (defparameter *rules-table* (make-hash-table :test 'eq))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; 
+;;; CAD-PFS-CACHE: A hash cache of projection factor sets computed during fd-cad.
+;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defparameter *cad-pfs-cache* (make-hash-table :test 'equal))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; 
+;;; CAD-PFS-CACHE: A hash cache of rational sample points computed during fd-cad.
+;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defparameter *cad-rsp-cache* (make-hash-table :test 'equal))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; RESET-STATE: Reset entire (local and global) proof state.
 ;;; Note: if :keep-hashes is t, then we only reset local proof state.
@@ -449,17 +465,18 @@
 
 (defun rahd-reset-state (&key no-output keep-hashes)
   (when (not keep-hashes)
-      (progn
-	(clrhash *gbasis-cache*)
-	(clrhash *canon-poly-cache*)
-	(clrhash *sqr-free-cache*)
-	(clrhash *sturm-seq-cache*)
-	(setq *goal-stack-keys* nil)
-	(clrhash *goal-stack-data*)
-	(clrhash *goal-sets*)
-	(clrhash *proof-analysis-cache*)
-	(clrhash *i-boxes-num-local*)
-	(clrhash *i-boxes-num-global*)))
+    (clrhash *gbasis-cache*)
+    (clrhash *canon-poly-cache*)
+    (clrhash *sqr-free-cache*)
+    (clrhash *sturm-seq-cache*)
+    (setq *goal-stack-keys* nil)
+    (clrhash *goal-stack-data*)
+    (clrhash *goal-sets*)
+    (clrhash *proof-analysis-cache*)
+    (clrhash *i-boxes-num-local*)
+    (clrhash *i-boxes-num-global*)
+    (clrhash *cad-pfs-cache*)
+    (clrhash *cad-rsp-cache*))
   (setq *vars-table* nil)
   (setq *current-tactic-case* nil)
   (setq *global-vt-bindings* nil)
@@ -1163,15 +1180,16 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; FDEPCAD: Full-dimensional extended partial CAD.
+;;; FDEP-CAD: Full-dimensional extended partial CAD.
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun fdepcad (&key case from to)
-  (GENERIC-TACTIC #'fdepcad-on-case
-		  'fdepcad
+(defun fdep-cad (&key case from to factor?)
+  (GENERIC-TACTIC #'fdep-cad-on-case
+		  'fdep-cad
 		  "Full-dimensional extended partial cylindrical algebraic decomposition"
-		  :case case :from from :to to))
+		  :case case :from from :to to :tactic-params
+		  (list factor?)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -1316,8 +1334,13 @@
   (interval-cp)
   (fp " Searching for zero-products.~%")
   (int-dom-zpb)
-  (fp " Performing full-dimensional c.a.d.~%")
-  (fdepcad)
+  (when (or search-model search-model*)
+    (fp " Searching for trivial models.~%")
+    (quick-sat))
+  (fp " Injecting inequalities into induced quotient ring.~%")
+  (rcr-ineqs)
+  (fp " Performing full-dimensional cylindrical algebraic decomposition.~%")
+  (fdep-cad)
   (when (or search-model search-model*)
     (fp " Searching for trivial models.~%")
     (quick-sat))
@@ -1435,7 +1458,7 @@
 	     (when (or case from to) 
 	       (fmt 3 "~% Thanks for the hint!  ~A is being applied only to cases in the range [~D..~D]." 
 		    fcn-str case-lb case-ub))
-	     (loop for i from case-lb to case-ub do
+	     (loop for i from case-lb to case-ub while (not *sat-case-found?*) do
 		   (setq *current-tactic-case* i) ; Used for naming spawned subgoals.
 		   (let ((c        (aref *gs* i 1))
 			 (c-status (aref *gs* i 2)))
@@ -1561,7 +1584,7 @@
 		     (case (not *sat-case-found?*)
 			   (nil (fmt 2 "~%   ~D: Satisfiable case has been found.  Goal is not refutable." fcn-symbol))
 			   (otherwise
-			    (fmt 2 "   ~15A: [~4d refuted, ~4d reduced] ~4d ~A (~7d sec).~%" 
+			    (fmt 2 "   ~17A: [~4d refuted, ~4d reduced] ~4d ~A (~7d sec).~%" 
 				 fcn-str num-refuted num-changed *gs-unknown-size* 
 				 (if (= *gs-unknown-size* 1) "case remains" "cases remain") 
 				 tactic-time)))
@@ -1899,10 +1922,6 @@ RAHD: Real Algebra in High Dimensions ~A
     -print-failure                   if a decision is not reached, print 
                                       a failure report (unrefuted cases)
     -regression                      run regression suite for testing build
-    -verify-and-extend f             verify a proof strategy (possibly with rulesets)
-                                      and build a new RAHD binary including it
-    -use-strategy s                  use a user-defined strategy for proving formula
-    -list-strategies                 list all built-in verified proof strategies
 
   where n is a natural, q is a rational presented as `a/b' or `a' for integers a,b,
         $ is either `on', `off' or `only' (def: `on'), 
@@ -1922,3 +1941,12 @@ RAHD: Real Algebra in High Dimensions ~A
 			      :gbrn-depth gbrn-depth))))
 	    (fmt 0 "~%")))))))
 
+
+;
+;"    -div-nz-denoms                   automatically conjoin constraints stating that
+;                                      all denominators in input formula are non-zero
+;    -verify-and-extend f             verify a proof strategy (possibly with rulesets)
+;                                      and build a new RAHD binary including it
+;    -use-strategy s                  use a user-defined strategy for proving formula
+;    -list-strategies                 list all built-in verified proof strategies"
+;

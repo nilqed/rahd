@@ -183,7 +183,12 @@
 
 #+sbcl
 (defun make-sbcl-binary (name)
-  (sb-ext:save-lisp-and-die name :toplevel #'rahd-cl-check :executable t))
+  (sb-ext:save-lisp-and-die 
+   name 
+   :toplevel #'rahd-cl-check 
+   :executable t
+   :purify t
+   :save-runtime-options t))
 
 (defun quit ()
   #+sbcl (sb-ext:quit))

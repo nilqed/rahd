@@ -481,9 +481,19 @@
 (defun ps-rational-sample-pts (ps &key epsilon)
   (if (or (not ps) (ps-numbers-only ps))
       '(0)
-    (let ((rd (rri-ps-mult ps :epsilon epsilon)))
-      (rri-rational-sample-pts rd))))
-
+    (multiple-value-bind
+	(rsp rsp-cached?)
+	(gethash ps *cad-rsp-cache*)
+      (cond (rsp-cached?
+	     (fmt 4 "~%   Rational sample points found in cache!~%")
+	     rsp)
+	    (t (let ((result 
+		      (let ((rd (rri-ps-mult ps :epsilon epsilon)))
+			(let ((sample-pts (rri-rational-sample-pts rd)))
+			  (if sample-pts sample-pts '(0))))))
+		 (setf (gethash ps *cad-rsp-cache*) result)
+		 result))))))
+		 
 (defun ps-numbers-only (ps)
   (every #'p-alg-number ps))
 
@@ -493,3 +503,4 @@
 	   (consp (car p))
 	   (equal (length (car p)) 1)
 	   (numberp (caar p)))))
+

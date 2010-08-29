@@ -149,20 +149,23 @@
 ;;; List is in prover notation.
 ;;;
 
-(defun sqr-free-dps (ps)
+(defun sqr-free-dps (ps &key factor?)
   (let ((sqr-free-base nil))
     (dolist (p ps)
-      (let ((p-result (sqr-free-dp p)))
+      (let ((p-result (sqr-free-dp p :factor? factor?)))
 	(setq sqr-free-base
 	      (union sqr-free-base 
 		     p-result
 		     :test 'equal))))
     sqr-free-base))
 
-(defun sqr-free-dp (p)
+(defun sqr-free-dp (p &key factor?)
   (let* ((mp (rahd-p-to-maxima (term-to-bin-ops p)))
 	 (sfm (maxima::$eval_string 
-	       (format nil "sqfr(~A)" mp)))
+	       (format 
+		nil 
+		(if factor? "factor(~A)" "sqfr(~A)") 
+		mp)))
 	 (sfr (maxima-p-to-rahd sfm)))
     (if (and (consp sfr) (member (car sfr) '(* EXPT)))
 	(extract-p-bases sfr)
