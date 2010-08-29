@@ -19,7 +19,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;; 
 ;;; This file: began on         03-July-2010,
-;;;            last updated on  24-August-2010.
+;;;            last updated on  28-August-2010.
 ;;;
 
 ;;;
@@ -234,14 +234,31 @@
 ;;;
 ;;; Included: LCs, discrim's, resultants.
 ;;;
+;;; Keyword factor? determines if we should pre-process with factorisation.
+;;;  This is done within sqr-free-dps.
+;;;
 
-(defun fd-cad-project (ps var-order)
+(defun fd-cad-project (ps var-order &key factor?)
+  (let ((hash-key (cons var-order ps)))
+    (multiple-value-bind 
+	(cached-pfs pfs-present?)
+	(gethash hash-key *cad-pfs-cache*)
+      (cond (pfs-present? 
+	     (fmt 4 "~%   Projection factor set found in PFS cache! ~%")
+	     cached-pfs)
+	    (t (let ((pfs (fd-cad-project* ps var-order :factor? factor?)))
+		 (setf (gethash hash-key *cad-pfs-cache*) pfs)
+		 pfs))))))
+
+(defun fd-cad-project* (ps var-order &key factor?)
   (let ((sqr-free-base 
 	 (clean-rcs 
 	  (mapcar #'(lambda (p)
 		      (poly-prover-rep-to-alg-rep 
 		       (poly-expand-expts p)))
-		  (sqr-free-dps (mapcar #'poly-alg-rep-to-prover-rep ps)))))
+		  (sqr-free-dps 
+		   (mapcar #'poly-alg-rep-to-prover-rep ps)
+		   :factor? factor?))))
 	(top-dim (length var-order)))
     (let ((cur-dim top-dim)
 	  (cur-var nil)
@@ -371,9 +388,9 @@
 ;;; We return an array of n-dimensional sample points.
 ;;;
 
-(defun fd-cad (ps var-order &key epsilon formula)
+(defun fd-cad (ps var-order &key epsilon formula factor?)
   (fmt 3 "~% [cad: Computing projection factor set (pfs)]")
-  (let ((projfs (fd-cad-project ps var-order))
+  (let ((projfs (fd-cad-project ps var-order :factor? factor?))
 	(lift-vars (reverse var-order))
 	(lower-vars) (latest-pts) (short-circuit?))
     (fmt 3 "~% [cad: Beginning full-dimensional lifting]")
@@ -443,8 +460,8 @@
       (setq lift-vars (cdr lift-vars)))
     (fmt 3 "~%  Final var-order: ~A." (mapcar #'(lambda (i) (nth i *vars-table*)) lower-vars))
     (fmt 3 "~%  Success!  Cell decomposition complete (~A sample pts).~%" (length latest-pts))
-    (fmt 4 "  Printing ~A sample points from full-dimensional cells:~%~%    ~A.~%~%"
-	 (length latest-pts) latest-pts)
+    (fmt 4 "  Printing ~A sample points from full-dimensional cells homeomorphic to (R^~A):~%~%    ~A.~%~%"
+	 (length latest-pts) (length lower-vars) latest-pts)
     latest-pts))
 
 ;;;
@@ -459,9 +476,9 @@
     (let ((cur-pt (car pt)))
       (setq c (subst cur-pt v c))
       (setq pt (cdr pt))))
-  (fmt 4 "  Evaluating: ~A....." `(and ,@c))
+  (fmt 4 "  Evaluating: ~A :: " `(and ,@c))
   (let ((result (eval `(and ,@c))))
-    (fmt 4 "....~A.~%" (if result "SAT" "UNSAT"))
+    (fmt 4 "~A.~%" (if result "sat" "unsat"))
     result))
 
 ;;;
@@ -471,7 +488,12 @@
 ;;; Case is given in prover notation.
 ;;;
 
-(defun fd-cad-sat? (c &key epsilon partial?)
+;;;
+;;; *** Must only allow *sat-model* to be adjusted if
+;;;  gather-strict-ineqs is the entire case!
+;;;
+
+(defun fd-cad-sat? (c &key epsilon partial? factor?)
   (let* ((ps* (mapcar #'(lambda (l)
 			  `(- ,(cadr l)
 			      ,(caddr l)))
@@ -481,7 +503,8 @@
 	 (ps (mapcar #'poly-prover-rep-to-alg-rep ps*))
 	 (spts (fd-cad ps (vs-proj-order ps*) 
 		       :epsilon epsilon
-		       :formula (when partial? c))))
+		       :formula (when partial? c)
+		       :factor? factor?)))
     (fmt 3 "~% Extracted polynomials: ~A.~%" ps*)
     (fmt 3 "~% Sample points computed.~%")
     (fmt 3 "~% Beginning evaluation of formula.~%")
@@ -494,25 +517,40 @@
 			    spt)
 		       spt))
 	  (setq spts (cdr spts))))
-      (if sat? (fmt 3 "~% Satisfiable!~%  Satisfying assignment: ~A.~%" sat?)
-	(fmt 3 "~% Unsatisfiable!~%"))
-      sat?)))
+      (let ((model))
+	(cond (sat?
+	       (let ((sat-pt sat?))
+		 (loop for i from 0 to (1- (length vs*)) do
+		       (setq model (cons (list (car vs*) (car sat-pt)) model))
+		       (setq vs* (cdr vs*))
+		       (setq sat-pt (cdr sat-pt))))
+	       (fmt 3 "~% Satisfiable!~%  Satisfying assignment: ~A.~%" model))
+	      (t (fmt 3 "~% Unsatisfiable!~%")))
+      (when sat? model)))))
 
 ;;;
-;;; FDEPCAD-ON-CASE: Apply FD-CAD-SAT to a conjunctive case.
+;;; FDEP-CAD-ON-CASE: Apply FD-CAD-SAT to a conjunctive case.
 ;;;    To do so, we first extract only the strict inequalities.
 ;;;   Note that unless c consists only of strict inequalities, then
 ;;;    we can't trust SAT answers, only UNSAT.
 ;;;
 
-(defun fdepcad-on-case (c)
-  (let* ((sc (gather-strict-ineqs c))
-	 (s? (fd-cad-sat? sc :partial? t)))
-    (cond (s? (if (= (length sc) (length c))
-		  `(:SAT (:SATISFYING-ASSIGNMENT-FOUND-IN-FULL-DIMENSIONAL-CELL))
-		c))
-	  (t `(:UNSAT (:NO-SATISFYING-ASSIGNMENT-FOUND-IN-FULL-DIMENSIONAL-CELLS))))))
-    
+(defun fdep-cad-on-case (c factor?)
+  (let ((sc (gather-strict-ineqs c)))
+    (if sc 
+	(let ((s? (fd-cad-sat? 
+		   sc 
+		   :partial? t
+		   :factor? factor?)))
+	  (cond (s? (if (= (length sc) (length c))
+			(let ((judgment `(:SAT (:MODEL ,s?))))
+			  (setq *sat-model* judgment)
+			  judgment)
+		      c))
+		(t `(:UNSAT 
+		     (:NO-SATISFYING-VECTOR-IN-FULL-DIMENSIONAL-CELLS)))))
+      c)))
+	  
 ;;;
 ;;; VS-PROJ-ORDER: Given a set of polynomials, compute a projection
 ;;;  order from the variables given.  Right now, we use no heuristics

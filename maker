@@ -126,7 +126,7 @@ fi
 #
 msg "inf" "Initiating RAHD compilation"
 echo -n "  Compiling... "
-($SBCL < Makefile.sbcl) &> $LOGFILE
+($SBCL --dynamic-space-size 1024 < Makefile.sbcl) &> $LOGFILE
 if [ $? != 0 ]; then
   msg "err" "compilation error. See $LOGFILE for details"
 else
