@@ -134,7 +134,7 @@
 					  ,(if (and (numberp rhs-divisor-poly)
 						    (= rhs-divisor-poly 1))
 					       (caddr e-gathered-lhs)
-					     `(/ ,(caddr e-gathered-lhs) ,(list rhs-divisor-poly))))))
+					     `(/ ,(caddr e-gathered-lhs) ,rhs-divisor-poly)))))
 	      
 	      ;;
 	      ;; Success!
@@ -144,7 +144,7 @@
 	      
 	      
 	      (fmt 7 "~%       Since the LHS of EQ_2 is a monomial linear in ~A,~%       modulo non-vanishing checks, we can divide through by ~%~%      P_1: ~A~%~%       to isolate ~A. ~%~%       We now do this and obtain the following final demodulator:~%~%      D: ~A.~%~%        >> SUCCESS! << ~%           We have solved EQ_0 for ~A. ***~%~%" var rhs-divisor-poly var final-demodulator var)
-	      `(t ,final-demodulator ,rhs-divisor-poly ))
+	      `(t ,final-demodulator ,(list rhs-divisor-poly)))
 	  
 	  ;;
 	  ;; Failure.  Let us now tell the user the sad story and return 

@@ -1,6 +1,6 @@
 #
 # Some RAHD v0.6 examples.
-#
+# 
 
  ./rahd-v0.6-lx32 -formula "(((NOT (<= (* a c) (* y x))))
                              ((= (* x x) c))
@@ -36,7 +36,7 @@
 
  ./rahd-v0.6-lx32 -formula "(((> (- x y) 2)) ((= y (* x 3))) 
                              ((< (+ 100 (* x z)) 10)))" -search-model -print-model
-
+			     
  
  ./rahd-v0.6-lx32 -formula "(((> (- x y) 2)) ((= y (* x 3))) ((> w z)) 
                              ((<= (* z z k) (* 3 w z))) 
