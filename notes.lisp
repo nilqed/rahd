@@ -3,6 +3,27 @@
 ;;;  g.o.passmore (2008-2010)
 ;;;
 
+;;;
+;;; Doesn't print out full model:
+;;;
+
+s001:..Code/rahd > ./rahd-v0.6-lx32 -formula "(((>= pK 0)) 
+     ((<= pK 1))
+     ((>= pL 0))
+     ((<= pL 1))
+    ((> (/ (+ (* 1 pK pK pK pK pK pK pL pL pL pL pL pL)
+       (* -6 pK pK pK pK pK pL pL pL pL pL)
+      (* 15 pK pK pK pK pL pL pL pL)
+      (* -18 pK pK pK pL pL pL)
+      (* 9 pK pK pL pL) -1) pL)
+        -8)) ((= x 1)) ((= y 2)))" -verbosity 0  -print-model 
+
+ sat
+ model: [PL=1,
+         X=1,
+         PK=0].
+
+
 
 ;;;
 ;;; Good CAD versus partial CAD example for my thesis:

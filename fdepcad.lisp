@@ -16,10 +16,12 @@
 ;;; Written by Grant Olney Passmore
 ;;; Ph.D. Student, University of Edinburgh
 ;;; Visiting Fellow, SRI International
+;;; Research Intern, Microsoft Research
+;;; Visiting Researcher, INRIA/IRISA
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;; 
 ;;; This file: began on         03-July-2010,
-;;;            last updated on  28-August-2010.
+;;;            last updated on  29-August-2010.
 ;;;
 
 ;;;

@@ -8,13 +8,59 @@
 ;;; Written by Grant Olney Passmore
 ;;; Ph.D. Student, University of Edinburgh
 ;;; Visiting Fellow, SRI International
+;;; Research Intern, Microsoft Research
+;;; Visiting Researcher, INRIA/IRISA
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;; 
 ;;; This file: began on         22-Nov-2008,
-;;;            last updated on  28-Feb-2009.
+;;;            last updated on  29-August-2010.
 ;;;
 
 (in-package RAHD)
+
+;;;
+;;; DEFINED-CDS: Definedness conditions for top-level formulas with division.
+;;;
+
+(defun defined-cds (f)
+  (let ((tms))
+    (dolist (c f)
+      (dolist (l c)
+	(setq tms (union `(,(cadr l) ,(caddr l)) tms :test 'equal))))
+    (defined-tms-cds tms)))
+
+(defun defined-tms-cds (tms)
+  (let ((cds))
+    (dolist (tm tms)
+      (setq cds (union (defined-tm-cds tm) cds :test 'equal)))
+    cds))
+
+(defun defined-tm-cds (tm)
+  (cond ((numberp tm) nil)
+	((varp tm) nil)
+	(t (let ((op (car tm))
+		 (x (cadr tm))
+		 (y (caddr tm)))
+	     (case op
+	       (/ (union (defined-tm-cds x)
+			 (union (defined-tm-cds y)
+				(nonzero-tm-cds y)
+				:test 'equal)))
+	       ((* - +) (union (defined-tm-cds x)
+			       (defined-tm-cds y)
+			       :test 'equal)))))))
+
+(defun nonzero-tm-cds (tm)
+  (cond ((numberp tm) (list `(not (= ,tm 0))))
+	((varp tm) (list `(not (= ,tm 0))))
+	(t (let ((op (car tm))
+		 (x (cadr tm))
+		 (y (caddr tm)))
+	     (case op
+	       ((/ *) (union (nonzero-tm-cds x)
+			     (nonzero-tm-cds y)
+			     :test 'equal))
+	       ((+ -) (list `(not (= ,tm 0)))))))))
 
 ;;;
 ;;; F-TO-DIV-FREE-CNF: 
@@ -35,8 +81,16 @@
   (let ((out-f f))
     (if (and (equal *current-goal-key* 0) 
 	     (div-formula?* out-f) (>= (processed-goal-dim out-f) 3))
-	(f-to-div-free-cnf (demod-nl-unit-clauses out-f))
-      (f-to-div-free-cnf out-f))))
+	(f-to-div-free-cnf 
+	 (let ((new-demod-f (demod-nl-unit-clauses out-f)))
+	   (if *div-nz-denoms* 
+	       (union (expand-formula (mapcar #'list (defined-cds new-demod-f)))
+		      new-demod-f)
+	     new-demod-f)))
+      (f-to-div-free-cnf 
+       (if *div-nz-denoms*
+	   (union (expand-formula (mapcar #'list (defined-cds f))) out-f)
+	 out-f)))))
 
 ;;;
 ;;; SUBSET-SUBSUMPTION:

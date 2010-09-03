@@ -7,10 +7,12 @@
 ;;; Written by Grant Olney Passmore
 ;;; Ph.D. Student, University of Edinburgh
 ;;; Visiting Fellow, SRI International
+;;; Research Intern, Microsoft Research
+;;; Visiting Researcher, INRIA/IRISA
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;; 
 ;;; This file: began on         29-July-2008,
-;;;            last updated on  28-August-2010.
+;;;            last updated on  29-August-2010.
 ;;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -423,6 +425,15 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defparameter *nz-terms* nil)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; DIV-NZ-DENOMS: Should we conjoin non-zero conditions derived from denominators of 
+;;;   all input formulae to the input formula?
+;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defparameter *div-nz-denoms* nil)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; 
@@ -1874,8 +1885,9 @@
 	  (let ((print-model? (cl-find-option '-PRINT-MODEL opts nil))
 		(search-model? (cl-find-option '-SEARCH-MODEL opts nil))
 		(search-model*? (cl-find-option '-SEARCH-MODEL! opts nil))
-		(regression? (cl-find-option '-REGRESSION opts nil)))
-	    (when (or (not formula-given?) 
+		(regression? (cl-find-option '-REGRESSION opts nil))
+		(div-nz-denoms? (cl-find-option '-DIV-NZ-DENOMS opts nil)))
+	    (when (or (not formula-given?)
 		      (or (not verbosity)
 			  (and (rationalp verbosity) (>= verbosity 1))))
 	      (progn
@@ -1904,19 +1916,22 @@ RAHD: Real Algebra in High Dimensions ~A
     -muchnik-qe $                    Muchnik full quantifier elimination
     -phase-i $                       phase i proof search
     -phase-ii $                      phase ii proof search
+    -div-nz-denoms                   automatically conjoin constraints stating
+                                      input formula denominators are non-zero
     -rri %                           method for real root isolation
     -rri-only                        only perform real root isolation
     -rri-epsilon q                   maximum width of open real root 
-                                      isolation intervals (def: 1/1024)
+                                      isolation intervals (def: 1)
     -gbrn-depth n                    depth of GB real nullstellensatz search
     -crb-quotient q                  quotient base for refining Cauchy root
                                       bounds (def: 1000)
     -smsp-base q                     sample-point selection base for
                                       counter-model search (def: 10)
-    -do-not-refine-crb               do not refine Cauchy root bounds before
+    -refine-crb                      refine Cauchy root bounds before
                                       performing real root isolation
-    -do-not-sat-disc                 do not perform discriminant saturation
-                                      during GB real Nullstellensatz search
+    -gb-sat-disc                     perform discriminant saturation during
+                                      GB-based real Nullstellensatz search
+    -cmf-exec #                      execute only a given list of cmfs
     -print-model                     print a counter-model, if found
     -print-tactics                   print a tactic replay of proof search
     -print-failure                   if a decision is not reached, print 
@@ -1926,12 +1941,14 @@ RAHD: Real Algebra in High Dimensions ~A
   where n is a natural, q is a rational presented as `a/b' or `a' for integers a,b,
         $ is either `on', `off' or `only' (def: `on'), 
         % is either `sturm' or `bernstein' (def: `sturm'),
-        f is a filename, and s is the name of a known verified proof strategy.~%"
+        # is a list of the form \"(cmf1 cmf2 ... cmfn)\" of RAHD cmfs.~%"
 
     (car opts)))))
 	    (cond (regression? (wrv (if (rationalp verbosity) verbosity 1) 
 				    (rahd-regression-suite)))
 		  (formula-given?
+		   (when div-nz-denoms?
+		     (setq *div-nz-denoms* t))
 		   (fmt 0 (check formula 
 			      :verbosity (when (rationalp verbosity)
 					   (min verbosity 10))
@@ -1943,10 +1960,9 @@ RAHD: Real Algebra in High Dimensions ~A
 
 
 ;
-;"    -div-nz-denoms                   automatically conjoin constraints stating that
-;                                      all denominators in input formula are non-zero
 ;    -verify-and-extend f             verify a proof strategy (possibly with rulesets)
 ;                                      and build a new RAHD binary including it
 ;    -use-strategy s                  use a user-defined strategy for proving formula
 ;    -list-strategies                 list all built-in verified proof strategies"
 ;
+;        f is a filename, and s is the name of a known verified proof strategy.~%
