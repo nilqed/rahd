@@ -1,0 +1,20 @@
+[Running RAHD from toplevel]
+
+To load the necessary code:
+  (load "rahd")
+  (in-package rahd)
+  (rahd-reboot)
+
+Once loaded, to attempt to prove a goal automatically:
+install GOAL-IN-CNF as top-level goal (0),
+  (g 'GOAL-IN-CNF)
+invoke the waterfall upon GOAL-IN-CNF,
+  (go!)
+
+
+To wipe your session and begin work on a new proof obligation without rebooting, 
+  eval (rahd-reset-state).
+
+To run regression tests:
+  (rahd-regression-suite)
+
