@@ -9,6 +9,7 @@
 ###            last updated on  April-8-2010 by G.O.Passmore.
 ###
 
+RAHD_VERSION="v0.6"
 LOGFILE=rahd.log
 SBCL=
 
@@ -51,7 +52,7 @@ function msg()
 function print_usage()
 {
   echo -e "
-RAHD Maker: Real Algebra in High Dimensions v0.6
+RAHD Maker: Real Algebra in High Dimensions $RAHD_VERSION
 Usage: `basename $0` [-c FILE] [-l FILE] [-n] [-h]
 Options:
   -c FILE \t Provide the location of the SBCL compiler and toplevel.
@@ -86,14 +87,14 @@ do
           msg "inf" "Compilation output into '$LOGFILE'";;
     n   ) msg "inf" "Fasl files will be preserved"
           keepfasl="yes";;
-    *   ) msg "err" "unrecognized option '$OPTARG'. Type './maker -h' to list available options";;
+    *   ) msg "err" "unrecognized option '$OPTARG'. Type '`basename $0` -h' to list available options";;
   esac
 done
 
 shift $(($OPTIND - 1))
 
 echo "
-RAHD Maker: Real Algebra in High Dimensions v0.6"
+RAHD Maker: Real Algebra in High Dimensions $RAHD_VERSION"
 
 #
 # Find the SBCL executable
