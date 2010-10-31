@@ -49,7 +49,7 @@
 (defthmd make-closed-interval-is-interval
   (implies (and (is-endpoint? lb) (is-endpoint? ub))
 	   (is-interval? (make-closed-interval lb ub)))
-  :rule-classes rewrite
+  :rule-classes :rewrite
   :hints (("Goal" :in-theory (enable make-interval-is-interval
 				     make-closed-interval))))
 
