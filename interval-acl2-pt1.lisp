@@ -3,7 +3,7 @@
 ;;; G.O.Passmore, University of Edinburgh
 ;;;
 ;;; Began on        1-Sept-2010.
-;;; Last updated    2-Sept-2010.
+;;; Last updated    5-Sept-2010.
 ;;;
 
 ;;;
@@ -11,6 +11,7 @@
 ;;; (dmr-start)
 ;;; (load "/Research/Programs/TPs/ACL2/acl2-sources/emacs/monitor.el")
 ;;; (accumulated-persistence t)
+;;; (set-gag-mode t)
 ;;;
 
 ;;;::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -55,10 +56,9 @@
 ;;;::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 (defthm neg-inf-small
-  (implies (is-endpoint? e0)
-	   (e-<= '-inf e0))
+  (e-<= '-inf e0)
   :rule-classes :rewrite
-  :hints (("Goal" :in-theory (enable is-endpoint? e-<= inf?))))
+  :hints (("Goal" :in-theory (enable e-<=))))
 
 (defthm neg-inf-irrational
   (implies (rationalp e0)
@@ -73,8 +73,7 @@
   :hints (("Goal" :in-theory (enable is-endpoint? e-< e-<= inf?))))
 
 (defthm pos-inf-big
-  (implies (is-endpoint? e0)
-	   (e-<= e0 '+inf))
+  (e-<= e0 '+inf)
   :rule-classes :rewrite
   :hints (("Goal" :in-theory (enable is-endpoint? e-<= inf?))))
 
@@ -87,19 +86,19 @@
 (defthmd pos-inf-irrational*
   (implies (rationalp e0)
 	   (not (e-<= '+inf e0)))
-  :rule-classes :forward-chaining
+  :rule-classes :rewrite
   :hints (("Goal" :in-theory (enable is-endpoint? e-<= inf? e-=))))
 
 (defthmd neg-inf-irrational**
   (implies (rationalp e0)
 	   (e-< '-inf e0))
-  :rule-classes :forward-chaining
+  :rule-classes :rewrite
   :hints (("Goal" :in-theory (enable e-< e-<=))))
 
 (defthmd pos-inf-irrational**
   (implies (rationalp e0)
 	   (e-< e0 '+inf))
-  :rule-classes :forward-chaining
+  :rule-classes :rewrite
   :hints (("Goal" :in-theory (enable e-< e-<=))))
 
 (defthm e-<=-total
@@ -111,22 +110,22 @@
 
 (defthmd e-<=-is-<=-rational
   (implies (and (rationalp e0) (rationalp e1))
-	   (iff (e-<= e0 e1)
-		(<= e0 e1)))
-  :rule-classes :forward-chaining
+	   (equal (e-<= e0 e1)
+                  (<= e0 e1)))
+  :rule-classes :rewrite
   :hints (("Goal" :in-theory (enable e-<=))))
 
 (defthmd e-<=-1-0
   (implies (and (rationalp e0)
 		(e-<= 1 e0))
 	   (not (e-<= e0 0)))
-  :rule-classes :forward-chaining
+  :rule-classes (:rewrite :forward-chaining)
   :hints (("Goal" :in-theory (enable e-<=))))
 
 (defthmd e-=-is-=-rational
   (implies (and (rationalp e0) (rationalp e1))
-	   (iff (e-= e0 e1)
-		(= e0 e1)))
+	   (equal (e-= e0 e1)
+                  (= e0 e1)))
   :rule-classes :rewrite
   :hints (("Goal" 
 	   :in-theory 
@@ -153,7 +152,7 @@
 (defthm e-<=-anti-symm-l
   (implies (and (is-endpoint? e0) (is-endpoint? e1))
 	   (implies (e-<= e0 e1)
-		    (equal (e-<= e1 e0) (e-= e0 e1))))
+		    (equal (e-<= e1 e0) (equal e0 e1))))
   :rule-classes :rewrite
   :hints (("Goal" 
 	   :in-theory 
@@ -162,7 +161,7 @@
 (defthm e-<=-anti-symm-r
   (implies (and (is-endpoint? e0) (is-endpoint? e1))
 	   (implies (e-<= e0 e1)
-		    (equal (e->= e0 e1) (e-= e0 e1))))
+		    (equal (e->= e0 e1) (equal e0 e1))))
   :rule-classes :rewrite
   :hints (("Goal" 
 	   :in-theory 
@@ -179,9 +178,8 @@
 	   (enable e-< inf? e->= e-<= e-<=-anti-symm-l e-<=-anti-symm-r is-endpoint? e-<=-is-<=-rational))))
 
 (defthmd e-elim->=
-  (implies (and (is-endpoint? e0) (is-endpoint? e1))
-	   (equal (e->= e0 e1)
-		  (e-<= e1 e0)))
+  (equal (e->= e0 e1)
+         (e-<= e1 e0))
   :rule-classes :rewrite
   :hints (("Goal" 
 	   :in-theory 
@@ -191,7 +189,7 @@
   (implies (and (is-endpoint? e0) (is-endpoint? e1)
 		(not (e-<= e0 e1)))
 	   (e-<= e1 e0))
-  :rule-classes :forward-chaining
+  :rule-classes :rewrite
   :hints (("Goal" 
 	   :in-theory 
 	   (enable e-< inf? e->= e-<= is-endpoint? e-<=-is-<=-rational))))
@@ -199,7 +197,8 @@
 (defthmd e-elim-not->=
   (implies (and (is-endpoint? e0) (is-endpoint? e1))
 	   (equal (not (e->= e0 e1))
-		  (e-< e0 e1)))
+		  (and (e-<= e0 e1)
+                       (not (= e0 e1)))))
   :rule-classes :rewrite
   :hints (("Goal" 
 	   :in-theory 
@@ -217,13 +216,13 @@
 (defthmd e-elim-not-<=-rational*
   (implies (and (rationalp e0) (rationalp e1) (not (e-<= e0 e1)))
 	   (<= e1 e0))
-  :rule-classes :forward-chaining
+  :rule-classes :rewrite
   :hints (("Goal" 
 	   :in-theory 
 	   (enable e-< inf? e->= e-<= is-endpoint? e-<=-is-<=-rational))))
 
 (defthmd e-<-implies-<=
-  (implies (and (is-endpoint? e0) (is-endpoint? e1) (e-< e0 e1))
+  (implies (e-< e0 e1)
 	   (e-<= e0 e1))
   :rule-classes :rewrite
   :hints (("Goal" :in-theory (enable e-< e-<=))))
@@ -264,7 +263,19 @@
 	   (is-endpoint? e))
   :rule-classes (:rewrite :type-prescription)
   :hints (("Goal" :in-theory (enable is-endpoint?))))
+
+(defthmd e-<=-transitive
+  (implies (and (e-<= x y) (e-<= y z))
+	   (e-<= x z))
+  :rule-classes (:rewrite)
+  :hints (("Goal" :in-theory (enable e-<=))))
   
+(defthmd e-<=-not-op
+  (implies (and (is-endpoint? e0) (is-endpoint? e1)
+		(not (e-<= e0 e1)))
+	   (e-<= e1 e0))
+  :rule-classes (:rewrite)
+  :hints (("Goal" :in-theory (enable e-<= is-endpoint? neg-inf-small pos-inf-big inf?))))
 
 (deftheory e-<=-theory
   '(neg-inf-small pos-inf-big neg-inf-irrational pos-inf-irrational
@@ -302,3 +313,35 @@
 		  is-endpoint-+inf
 		  rational-is-endpoint
 		  not-inf-rational*))
+
+
+(deftheory e-<=-theory-4
+  '(neg-inf-small pos-inf-big neg-inf-irrational pos-inf-irrational
+		  neg-inf-irrational* pos-inf-irrational*
+		  e-<=-is-<=-rational e-=-is-=-rational e-=-is-equal 
+		  e-<=-anti-symm-l e-<=-anti-symm-r e-< e-> e-<=-1-0
+		  e-elim-< e-elim-> e-elim->= neg-inf-irrational** pos-inf-irrational**
+		  e-elim-not->=-rational e-elim-not->= e-<-implies-<=
+		  e-elim-not-<=-rational* e-=-reflects-= e-elim-not-<=
+		  not-inf-rational
+		  is-endpoint--inf
+		  is-endpoint-+inf
+		  rational-is-endpoint
+		  not-inf-rational*
+		  e-<=-transitive
+		  e-<=-not-op))
+
+(deftheory e-<=-theory-4-without-transitivity
+  '(neg-inf-small pos-inf-big neg-inf-irrational pos-inf-irrational
+		  neg-inf-irrational* pos-inf-irrational*
+		  e-<=-is-<=-rational e-=-is-=-rational e-=-is-equal 
+		  e-<=-anti-symm-l e-<=-anti-symm-r e-< e-> e-<=-1-0
+		  e-elim-< e-elim-> e-elim->= neg-inf-irrational** pos-inf-irrational**
+		  e-elim-not->=-rational e-elim-not->= e-<-implies-<=
+		  e-elim-not-<=-rational* e-=-reflects-= e-elim-not-<=
+		  not-inf-rational
+		  is-endpoint--inf
+		  is-endpoint-+inf
+		  rational-is-endpoint
+		  not-inf-rational*
+		  e-<=-not-op))

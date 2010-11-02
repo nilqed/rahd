@@ -57,11 +57,6 @@
 		(and (e-<= lb x) (e-<= x ub)))
 	       (t nil)))))
 
-;;;
-;;; Include a good ACL2 arithmetic book.
-;;;
-
-(include-book "arithmetic-3/top" :dir :system)
 
 ;;;::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ;;;
