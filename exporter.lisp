@@ -126,7 +126,7 @@
                    (make-coq-clause+ (caddr ec))))))
 
 ;;;
-;;; MAKE-COQ-CONJ: take a clause and translate it into a quantified Coq formula.
+;;; MAKE-COQ-CLAUSE: take a clause and translate it into a quantified Coq formula.
 ;;;
 ;;; Ex: ((= x 1) (> x 1) (< x 1)) --> exists x, (x=1) /\ (x>1) /\ (x<1)
 ;;;

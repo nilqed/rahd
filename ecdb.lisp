@@ -36,7 +36,7 @@
 (defparameter *ecdb-version* "v0.1")
 
 ;;;
-;;; ECDB-REBOOT: Compile and relaod all files in the system
+;;; ECDB-REBOOT: Compile and reload all files in the system
 ;;;
 
 (defun ecdb-reboot (&key hands-off-state)
@@ -223,5 +223,31 @@
   (push-table (make-table 'f2 `(,*case1* ,*case2*)))
   (select-in 'f1 (where :case-id '1.2.4 :cert 'cert1)))
 
-; Hints on how to demonize SBCL instance:
+;;; Connection testing.
+;;; Launch with: 
+#+()
+(load "rahd.lisp")
+#+()
+(in-package rahd)
+#+()
+(rahd-reboot)
+#+()
+(load "ecdb.lisp")
+#+()
+(in-package ecdb)
+#+()
+(ecdb-reboot)
+;;; Then run the main loop:
+#+()
+(serve)
+;;; Finally, in a separate window, launch the sample client:
+;;;  python ecdbclient.py
+;;; Tell the ecdb that it should process coq formulas:
+#+()
+(setq *ecdb-dialect* 'coq)
+;;; And input a RAHD formula
+#+()
+'((= x 1) (> x 1) (< x 1))
+
+; Hints on how to daemonize SBCL instance:
 ; http://stackoverflow.com/questions/2458805/nohup-sbcl-ubuntu-couldnt-read-from-standard-input

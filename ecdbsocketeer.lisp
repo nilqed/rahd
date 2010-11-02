@@ -32,7 +32,7 @@
 ;;;     *ECDB-SOCKET* socket, 
 ;;;     *IN-BUFFER* input buffer,
 ;;;     *OUT-BUFFER* output buffer,
-;;;     *ECDB-DIALECT* lanaguage of the output buffer.
+;;;     *ECDB-DIALECT* language of the output buffer.
 ;;;
 
 (defparameter *ecdb-socket* nil)
@@ -57,40 +57,41 @@
 ;;; to deal with incoming connections.
 ;;;
 
-(defun init-and-wait (&key (host *default-host*) (port *default-port*))
+(defun init-and-wait (host port)
   (let ((master-socket
-          (socket-listen host port
-                         :reuse-address t ; ATM, this is buggy and won't work as documented
-                         :element-type 'character
-                         )))
-    (wait-for-input master-socket)
-    (setq *ecdb-socket* (socket-accept master-socket))))
+         (usocket:socket-listen host port
+                                :reuse-address t
+                                :element-type 'character
+                                )))
+       (usocket:wait-for-input master-socket 
+                               :ready-only t)
+       (setq *ecdb-socket* (usocket:socket-accept master-socket))))
 
 ;;;
-;;; COLLECT-INPUT: Read a stream from a socket, and put it in a buffer.
+;;; COLLECT-INPUT: Read a set of characters from a stream, and push it in a
+;;; buffer.
 ;;;
-;;; The :with keyword initializes varaibles that are local to the loop, :while
+;;; The :with keyword initializes variables that are local to the loop, :while
 ;;; provides a termination check, and :doing is used to provide an implicit
 ;;; progn.
 ;;;
 
-(defun collect-input (socket buffer)
+(defun collect-input (cstream buffer)
   (loop
-    :with stream = (socket-stream socket)
-    :with char
-    :while (listen stream)
-    :doing
-    (setq char (read-char stream))
-    (vector-push-extend char buffer)))
+   :with char
+   :while (listen cstream)
+   :doing
+   (setq char (read-char cstream))
+   (vector-push-extend char buffer)))
 
 ;;;
 ;;; SEND-OUTPUT: Given a socket and a buffer, send the contents of the second
 ;;; to the first.
 ;;;
 
-(defun send-output (socket buffer)
-  (format (socket-stream socket) "~a~%" buffer)
-  (force-output (socket-stream socket)))
+(defun send-output (cstream buffer)
+  (format cstream "~a~%" buffer)
+  (finish-output cstream))
 
 ;;;
 ;;; RESET-BUFFER: fast way to forget about the content of a buffer.
@@ -106,37 +107,54 @@
 
 (defun compute-query (inb outb)
   (let ((res (eval (read-from-string (format nil "~a" inb)))))
-    (cond ((eq *ecdb-dialect* 'coq)
-           (setq res (make-coq-clause res)))
-          (t t))
+;    (cond ((eq *ecdb-dialect* 'coq)
+;           (setq res (make-coq-clause res)))
+;          (t t))
     (append-string-to-buffer (format nil "~a" res) outb)))
 
 ;;;
-;;; PROCESS-SINGLE-INPUT: Collect input from socket, process it, and clear the
-;;; buffer.
+;;; PROCESS-SINGLE-INPUT: Collect input from a character stream, process it,
+;;; send answer back in a socket, and clear the buffer.
 ;;;
 
-(defun process-single-input (&optional (socket *ecdb-socket*) 
-                                       (inb *in-buffer*) (outb *out-buffer*))
-  (collect-input socket inb)
-  (format t "[ECDB] Incoming message: \"~a\".~%" inb)
+(defun process-single-input (cstream #|sock|# &optional (inb *in-buffer*) (outb *out-buffer*))
+  (collect-input cstream inb)
+  (format t "[ECDB] Processing incoming message: \"~a\"...~%" inb)
   (compute-query inb outb)
-  (send-output socket (format nil "~a~%" outb))
+  (format t "[ECDB] Sending result: \"~a\".~%" outb)
+  (send-output cstream outb)
   (reset-buffer inb)
   (reset-buffer outb))
 
 ;;;
-;;; RUN! is the main function of the ECDB implementation. It polls the socket
+;;; SERVE is the main function of the ECDB implementation. It polls the socket
 ;;; stream until it returns :eof, in which case it will exit cleanly.
 ;;;
 
-(defun run! ()
-    (init-and-wait)
-    (loop
-      :with stream = (socket-stream *ecdb-socket*)
-      :while (not (eq (peek-char t stream nil :eof) :eof))
-      :doing (process-single-input))
-    (socket-close *ecdb-socket*))
+(defun serve (&optional (host *default-host*) (port *default-port*))
+  (handler-case 
+   (progn
+    ; set the main passive socket
+    (setq *ecdb-socket* (usocket:socket-listen host port 
+                                               :reuse-address t
+                                               :element-type 'character))
+    (usocket:wait-for-input *ecdb-socket* :ready-only t)
+    ; once input has been detected, create an active (live) socket
+    ; here is where we'll loop if we need multiple threads
+    (let* ((sock      (usocket:socket-accept *ecdb-socket*))
+           (cstream   (usocket:socket-stream sock)))
+          (unwind-protect 
+           (loop
+            :while (peek-char t cstream nil nil) ;peek-char returns nil upon encountering :eof
+            :doing (process-single-input cstream))
+           ; cleanup before you go
+           (progn (close cstream)
+                  (usocket:socket-close sock)
+                  (usocket:socket-close *ecdb-socket*)))))
+   ;catch exceptions
+   (address-in-use-error ()
+                         (format t "[ECDB] The address ~a:~a is busy." host port)
+                         nil)))
 
 ;;;
 ;;; Examples
@@ -145,5 +163,6 @@
 ;;; To run this and other code snippets, remove the #() line in front
 
 ;#+ ()
+
 
 
