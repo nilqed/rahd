@@ -7,6 +7,12 @@ syntax: glob
 rahd-v0.6-lx32
 rahd.log
 
+# Vim swap files.
+*.swp
+
+# comment out to track maxima changes.
+maxima*
+
 # switch to regexp syntax.
 syntax: regexp
 #^\.pc/

@@ -7,14 +7,14 @@
 ;;;     Initializing and waiting for incoming connections.
 ;;;     Collecting and processing input.
 ;;;     Sending output.
-;;;     The RUN! function that ties everything together.
+;;;     The SERVE function that ties everything together.
 ;;;
 ;;; Written by Florent Kirchner
 ;;; Postdoctoral Researcher, INRIA Rennes - Bretagne Atlantique, France
 ;;; Contact: florent.kirchner@lix.polytechnique.fr, www.lix.polytechnique.fr/~fkirchner
 ;;; 
 ;;; This file: began on         march-29-2010,
-;;;            last updated on  april-6-2010.
+;;;            last updated on  november-2-2010.
 ;;;
 
 (in-package ECDB)
@@ -107,10 +107,10 @@
 
 (defun compute-query (inb outb)
   (let ((res (eval (read-from-string (format nil "~a" inb)))))
-;    (cond ((eq *ecdb-dialect* 'coq)
-;           (setq res (make-coq-clause res)))
-;          (t t))
-    (append-string-to-buffer (format nil "~a" res) outb)))
+       ;    (cond ((eq *ecdb-dialect* 'coq)
+       ;           (setq res (make-coq-clause res)))
+       ;          (t t))
+       (append-string-to-buffer (format nil "~a" res) outb)))
 
 ;;;
 ;;; PROCESS-SINGLE-INPUT: Collect input from a character stream, process it,

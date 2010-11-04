@@ -17,7 +17,7 @@
 ;;; Contact: florent.kirchner@lix.polytechnique.fr, www.lix.polytechnique.fr/~fkirchner
 ;;; 
 ;;; This file: began on         march-2-2010,
-;;;            last updated on  april-8-2010.
+;;;            last updated on  november-2-2010.
 ;;;
 
 ;;;
@@ -36,12 +36,20 @@
 (defparameter *ecdb-version* "v0.1")
 
 ;;;
+;;; ECDB debug flag.
+;;;     Allows the foreign tools to send Lisp commands.
+;;;
+
+(defconstant +ecdb-debug+ t) ; TODO: Set to nil before release.
+
+;;;
 ;;; ECDB-REBOOT: Compile and reload all files in the system
 ;;;
 
 (defun ecdb-reboot (&key hands-off-state)
   (rahd::compile-file-and-load
     "exporter"
+    "ecdbinterpreter"
     "ecdbsocketeer"
     "ecdb")
   (if (not hands-off-state) (drop-db))
@@ -213,15 +221,15 @@
 ;;;
 
 (defun test-db ()
-  (defparameter *case1* 
-    (make-clause-row '1.2.4 1 '(A B C) 'CMF1 'CERT1 'UK))
-  (defparameter *case2* 
-    (make-clause-row '1.2.4 '2 '(D) 'CMF2 'CERT2 'SAT))
-  (init-table 'f1)
-  (push-clause-row *case1* 'f1)
-  (push-clause-row *case2* 'f1)
-  (push-table (make-table 'f2 `(,*case1* ,*case2*)))
-  (select-in 'f1 (where :case-id '1.2.4 :cert 'cert1)))
+  (let ((case1 
+         (make-clause-row '1.2.4 1 '(A B C) 'CMF1 'CERT1 'UK))
+        (case2 
+         (make-clause-row '1.2.4 '2 '(D) 'CMF2 'CERT2 'SAT)))
+       (init-table 'f1)
+       (push-clause-row case1 'f1)
+       (push-clause-row case2 'f1)
+       (push-table (make-table 'f2 `(,case1 ,case2)))
+       (select-in 'f1 (where :case-id '1.2.4 :cert 'cert1))))
 
 ;;; Connection testing.
 ;;; Launch with: 
