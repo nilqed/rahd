@@ -23,7 +23,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/.
 ;;; 
 ;;; This file: began on         1-November-2010,
-;;;            last updated on  4-November-2010.
+;;;            last updated on  5-November-2010.
 ;;;
 
 ;;;
@@ -93,6 +93,22 @@
         (cons s "")))))
 
 ;;;
+;;; Print a RAHD list of conjunctions in order, giving numbers
+;;;  to each conjunct.
+;;;
+
+(defun show-f-infix (f)
+  (cond ((null f) (fmt 0 "No formula asserted.~%~%"))
+        (t (fmt 0 "Current formula:~%~%")
+           (let ((count 0))
+             (dolist (i f)
+               (fmt 0 " H~A. ~A.~%"
+                    count
+                    (f-infix-str i))
+               (setq count (1+ count))))
+           (fmt 0 "~%"))))
+
+;;;
 ;;; Simple read-eval-print loop for RAHD interaction.
 ;;;
 
@@ -108,11 +124,11 @@
      #'(lambda (c)
          (let ((restart (find-restart 'continue-with-new-cmd)))
            (when restart
-             (fmt 0 "Lexer error: ~A.~%Have you declared all variables?~
-  (See HELP VARS).~%~%" c)
+             (fmt 0 "Lexer error: ~A.~%Have you declared all variables?
+  (Try 'help vars')~%~%" c)
              (invoke-restart restart))))))
    (let ((exit?) (vars-lst) (asserted-atoms-lst) 
-         (prover-opts) (verbosity 1))
+         (prover-opts '("print-infix")) (verbosity 0))
      (while (not exit?)
        (let ((s (cmd-pair (prompt-and-read "RAHD!> "))))
          (let ((cmd (car s)) (arg (cdr s)))
@@ -128,12 +144,12 @@
             ((equal cmd "assert")
              (with-simple-restart (continue-with-new-cmd
                                    "Continue and enter a new RAHD command.")
-                                  (let ((prover-atom 
-                                         (p-formula-str arg :vars-lst vars-lst)))
+                                  (let ((prover-formula
+                                         (atom-lst (p-formula-str arg :vars-lst vars-lst))))
                                     (setq asserted-atoms-lst
-                                          (cons prover-atom asserted-atoms-lst))
-                                    (fmt 0 "Atom asserted: ~A.~%~%"
-                                         prover-atom))))
+                                          (append prover-formula asserted-atoms-lst))
+                                    (fmt 0 "Formula asserted: ~A.~%~%"
+                                         prover-formula))))
             ((equal cmd "options")
              (fmt 0 "Prover options: ~A.~%~%" prover-opts))
             ((equal cmd "set?")
@@ -147,7 +163,7 @@
              (setq prover-opts
                    (remove-if #'(lambda (x) (equal x arg))
                               prover-opts))
-             (fmt 0 "Prover option ~A unset.~%~%"))
+             (fmt 0 "Prover option ~A unset.~%~%" arg))
             ((equal cmd "verbosity")
              (if (equal arg "")
                  (fmt 0 "Verbosity level is ~A.~%~%" verbosity)
@@ -158,7 +174,7 @@
             ((equal cmd "check")
              (if (not asserted-atoms-lst)
                  (fmt 0 "Prover error: No atoms asserted.~%~%")
-               (let ((result (check (mapcar #'list asserted-atoms-lst)
+               (let ((result (check (mapcar #'list (reverse asserted-atoms-lst))
                                     :from-repl t
                                     :print-model 
                                     (member "print-model" prover-opts :test 'equal)
@@ -170,12 +186,38 @@
                                     ))
                  (fmt 0 " ~A~%~%" result))))
             ((equal cmd "show")
-             (fmt 0 "Current formula: ~A.~%~%" asserted-atoms-lst))
+             (if (member "print-infix" prover-opts :test 'equal)
+                 (show-f-infix (reverse asserted-atoms-lst))
+               (fmt 0 "Current formula: ~A.~%~%" 
+                    asserted-atoms-lst)))
             ((equal cmd "reset")
              (setq asserted-atoms-lst nil)
              (fmt 0 "Current formula reset.~%~%"))
             ((equal cmd "lisp")
              (fmt 0 "Value: ~A.~%~%" (eval (read-from-string arg))))
+            ((equal cmd "help")
+             (cond ((equal arg "")
+                    (fmt 0 "Help with RAHD shell.  Try 'help <keyword>' ~
+  where keywords are:~%
+   assert check help lisp options quit reset set show
+   unset vars verbosity. ~%~%"))
+                   ((equal arg "assert")
+                    (fmt 0 "Usage: assert <formula>~%
+ Asserts a formula as an assumption in the current context.~%
+ Note that an asserted formula must be either a single literal 
+  or a conjunction of literals.
+ Also, all variables in the formula must be declared.
+
+ Example:
+  assert x^2 + (x - z)^2 > 0 /\\ z >= 5
+
+ * See vars for more on variable declaration.
+ * See check for checking the satisfiability of a context.
+ * See show for viewing the current context.
+ * See reset for clearing the current context.~%~%"))
+                   ((equal arg "help")
+                    (fmt 0 "Usage: help <keyword>~%
+ Invoke 'help' with no arguments for possible keywords.~%~%"))))
             ((equal cmd ""))
             (t (fmt 0 "Input error: Command '~A' not understood.~%~%" cmd)
                ))))))
@@ -215,17 +257,34 @@
               (continue-with-new-cmd
                "Continue and enter a new RAHD formula.")
               (let ((prover-formula 
-                     (let ((raw-f 
-                            (p-formula-str f-attempt 
-                                           :vars-lst
-                                           vars-lst)))
-                       (mapcar #'list (elim-ands raw-f)))))
+                     (reverse (let ((raw-f 
+                                     (p-formula-str f-attempt 
+                                                    :vars-lst
+                                                    vars-lst)))
+                                (mapcar #'list (elim-ands raw-f))))))
                 (fmt 2 "Formula: ~A.~%~%" prover-formula)
                 (format *standard-output* 
                         "~A~%" (check prover-formula 
                                       :from-repl t
-                                      :verbosity 0)))))))))))
+                                      :verbosity 0
+                                      :skip-cad t
+                                      :skip-factor-sign t)))))))))))
 
+;;;
+;;; F-INFIX-STR: Given a RAHD formula in prover notation, build
+;;;  an infix string of it which can be read back by our parser.
+;;;
+
+(defun f-infix-str (p)
+  (cond ((null p) "")
+        ((not (consp p)) (format nil "~A" p))
+        (t (let ((op (car p))
+                 (x (cadr p))
+                 (y (caddr p)))
+             (format nil "~A ~A ~A"
+                     (f-infix-str x)
+                     (f-infix-str op)
+                     (f-infix-str y))))))
 
 ;;;
 ;;; ELIM-ANDS: Eliminate explicit ANDs from a purely conjunctive 
@@ -244,6 +303,17 @@
              ((>= > = < <=)
               (list f)))))
         (t (list f))))
+
+;;;
+;;; ATOM-LST: Given an S-expression formula which is either a single
+;;;  literal or a conjunction of literals, separate it out into a
+;;;  list of literals.
+;;;
+
+(defun atom-lst (f)
+  (if (eq (car f) 'AND)
+      (elim-ands f)
+    (list f)))
 
 ;;;
 ;;; Simple QEPCAD-B-like interface to RAHD.
@@ -496,17 +566,18 @@
 (eval-when (:compile-toplevel :load-toplevel :execute)
 
   (defun i2p (a b c)
-    "Infix to prefix"
+    "Infix to prefix for /\\, \\/, ==>, ... ."
     (list 
      (case b
        (/\\ 'and)
        (\\/ 'or)
        (==> 'implies)
        (^ 'expt)
-       (/= 'neq)
-       (!= 'neq)
        (otherwise b))
           a c))
+
+  (defun i2p-neq (a b c)
+    `(not (= ,a ,c)))
 
   (defun i2p-expt (a b c)
     (declare (ignore b))
@@ -523,11 +594,11 @@
       (- (list '- 0 b))
       (~ (list 'not b)))))
 
-(yacc:define-parser q-parser
+(yacc:define-parser qf-parser
   (:start-symbol qf-formula)
   (:terminals 
    (rational int var + - * = ==> |/\\| |\\/| |~| 
-             |(| |)| > >= = /= <= < / ^ |[| |]|))
+             |(| |)| > >= = /= != <= < / ^ |[| |]|))
   (:precedence 
    ((:left ~) (:left |/\\|) (:left |\\/|) (:left ^) 
     (:left = /= > >= < <=)
@@ -544,8 +615,8 @@
 
   (atom
    (poly = poly #'i2p)
-   (poly /= poly #'i2p)
-   (poly != poly #'i2p)
+   (poly /= poly #'i2p-neq)
+   (poly != poly #'i2p-neq)
    (poly > poly #'i2p)
    (poly >= poly #'i2p)
    (poly < poly #'i2p)
@@ -563,6 +634,49 @@
 )
 
 ;;;
+;;; Parser only for conjunctive formulae.
+;;;
+
+
+(yacc:define-parser qf-conj-parser
+  (:start-symbol qf-formula)
+  (:terminals 
+   (rational int var + - * = ==> |/\\| |\\/| |~| 
+             |(| |)| > >= = /= != <= < / ^ |[| |]|))
+  (:precedence 
+   ((:left ~) (:left |/\\|) (:left |\\/|) (:left ^) 
+    (:left = /= > >= < <=)
+    (:left * /) (:left + -) (:left ==>)))
+
+  (qf-formula
+   atom
+   (~ atom #'neg)
+   (qf-formula |/\\| qf-formula #'i2p)
+   (|[| qf-formula |]| #'k-2-3)
+   (|(| qf-formula |)| #'k-2-3))
+
+  (atom
+   (poly = poly #'i2p)
+   (poly /= poly #'i2p-neq)
+   (poly != poly #'i2p-neq)
+   (poly > poly #'i2p)
+   (poly >= poly #'i2p)
+   (poly < poly #'i2p)
+   (poly <= poly #'i2p))
+
+  (poly
+   var                                  ; implicit action #'identity
+   int
+   rational
+   (poly + poly #'i2p)
+   (poly - poly #'i2p)
+   (poly * poly #'i2p)
+   (poly ^ int #'i2p-expt)
+   (|(| poly |)| #'k-2-3))
+)
+
+
+;;;
 ;;; P-FORMULA-STR: Given a RAHD formula string, parse it into
 ;;;  an S-expression!
 ;;;
@@ -573,5 +687,13 @@
                (vars-lst vars-lst))))
     (let ((stls (str-to-lex-syms s live-vars-lst)))
       (yacc:parse-with-lexer (lst-lexer stls) 
-                             q-parser))))
+                             qf-conj-parser))))
 
+
+;;;
+;;; Conjunctive string + vars-str to RAHD CNF.
+;;;
+
+(defun p-conj-f (f vs)
+  (mapcar #'list
+          (elim-ands (p-formula-str f :vars-str vs))))
