@@ -10,6 +10,17 @@
                              ((<= 0 x))
                              ((<= 0 y)))"
 
+reset
+vars a c y x b
+assert ~(a*c <= y*x)
+assert x^2 = c
+assert y^2 = a^2 * c + b
+assert 0 <= b
+assert 0 <= c
+assert 0 <= x
+assert 0 <= y
+check
+
 
  ./rahd-v0.6-lx32 -formula "(((NOT (>= (- (* 2 (+ (* X Z) (+ (* X Y) (* Y Z))))
                                           (+ (* X X) (+ (* Y Y) (* Z Z))))
@@ -192,3 +203,7 @@
                             ((> (/ x (* z y w)) 10)) 
                             ((>= x 5000)) 
                             ((> z (* x w w 20))))" -verbosity 4 -print-model
+
+vars x y z w
+assert (x - y)^2 * x * y > 0
+assert 

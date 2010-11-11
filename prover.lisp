@@ -1296,7 +1296,8 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun waterfall (&key union-case search-model search-model* gbrn-depth)
+(defun waterfall (&key union-case search-model search-model* gbrn-depth
+                       skip-cad skip-factor-sign)
   (when search-model
     (fp " Searching for trivial models.~%")
     (quick-sat))
@@ -1338,8 +1339,9 @@
   (stable-simp)
   (fp " Contracting intervals.~%")
   (interval-cp)
-  (fp " Computing multivariate factorisations and deducing signs.~%")
-  (factor-sign)
+  (when (not skip-factor-sign)
+    (fp " Computing multivariate factorisations and deducing signs.~%")
+    (factor-sign))
   (simp-zrhs)
   (when (ruleset-enabled? 'inequality-squeeze)
     (fp " Applying verified ruleset `inequality-squeeze.'~%")
@@ -1359,8 +1361,9 @@
     (quick-sat))
   (fp " Injecting inequalities into induced quotient ring.~%")
   (rcr-ineqs)
-  (fp " Performing full-dimensional cylindrical algebraic decomposition.~%")
-  (fdep-cad)
+  (when (not skip-cad)
+    (fp " Performing full-dimensional cylindrical algebraic decomposition.~%")
+    (fdep-cad))
   (when (or search-model search-model*)
     (fp " Searching for trivial models.~%")
     (quick-sat))
@@ -1380,7 +1383,7 @@
 
 (defun go! (&key tactic-replay do-not-reset-tactic-replay do-not-rebuild-gs
 		 do-not-reset-cpc verbosity union-case search-model search-model*
-		 vars-table gbrn-depth)
+		 vars-table gbrn-depth skip-cad skip-factor-sign)
   (if (not *G*) (fmt 0 "~%~% *** No goal installed.  See :DOC G. ~%~%")
     (let ((*rahd-verbosity* (if verbosity verbosity *rahd-verbosity*))
 	  (start-time (get-internal-real-time)))
@@ -1406,7 +1409,8 @@
 	     (if tactic-replay
 		 (mapcar #'(lambda (tactic) (eval `(,tactic))) tactic-replay)
 	       (waterfall :union-case union-case :search-model search-model
-			  :search-model* search-model* :gbrn-depth gbrn-depth))))
+			  :search-model* search-model* :gbrn-depth gbrn-depth
+                          :skip-cad skip-cad :skip-factor-sign skip-factor-sign))))
       
       (let ((goal-proved-by-waterfall? (not (extract-non-refuted-cases))))
 
@@ -1834,7 +1838,7 @@
 ;;;
 
 (defun check (f &key verbosity print-model search-model search-model*
-		gbrn-depth from-repl)
+		gbrn-depth from-repl skip-cad skip-factor-sign)
   (cond 
    ((top-level-syntax-check f)
     (let ((*rahd-verbosity* 
@@ -1843,7 +1847,9 @@
       (g f)
       (let ((result (go! :search-model search-model
 			 :search-model* search-model*
-			 :gbrn-depth gbrn-depth)))
+			 :gbrn-depth gbrn-depth
+                         :skip-cad skip-cad
+                         :skip-factor-sign skip-factor-sign)))
 	(fmt 1 "~%[Decision]")
 	(fmt 0 "~%")
 	(cond (result (if from-repl "unsat" " unsat~%"))
