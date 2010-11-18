@@ -5,9 +5,18 @@
 ;;; ** Top level system compiler/loader **
 ;;;
 ;;; Written by Grant Olney Passmore
-;;; Ph.D. Student, University of Edinburgh
-;;; Visiting Fellow, SRI International
-;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
+;;; Postdoc, Cambridge-Edinburgh EPSRC grant
+;;;   ``Automatic Proof Procedures for Polynomials and Special Functions.''
+;;;
+;;; The following institutions have provided support for RAHD development
+;;;  through funding the following positions for me (Passmore):
+;;;    - Ph.D. Student, University of Edinburgh,
+;;;    - Visiting Fellow, SRI International,
+;;;    - Research Intern, Microsoft Research,
+;;;    - Visiting Researcher, INRIA/IRISA.
+;;;
+;;; These positions have been crucial to RAHD progress and we thank them 
+;;;  very much for their support.
 ;;; 
 ;;; This file: began on         22-Sept-2008,
 ;;;            last updated on  27-June-2010.
@@ -119,7 +128,8 @@
    "rulesets"
    "rahd"
    "regression"
-   "prfanal")
+   "prfanal"
+   "frontend")
   (when (not skip-maxima)
     (compile-file-and-load
      "maxima-package"

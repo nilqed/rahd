@@ -238,7 +238,7 @@
 #+()
 (in-package rahd)
 #+()
-(rahd-reboot)
+(rahd-reboot :skip-maxima t)
 #+()
 (load "ecdb.lisp")
 #+()
