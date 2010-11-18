@@ -2,15 +2,24 @@
 ;;; RAHD: Real Algebra in High Dimensions v0.6
 ;;; A proof procedure for the existential theory of real closed fields.
 ;;;
-;;; ** Core prover interface routines **
+;;; Core prover interface routines.
 ;;;
 ;;; Written by Grant Olney Passmore
-;;; Ph.D. Student, University of Edinburgh
-;;; Visiting Fellow, SRI International
-;;; Research Intern, Microsoft Research
-;;; Visiting Researcher, INRIA/IRISA
+;;; Postdoc, Cambridge-Edinburgh EPSRC grant
+;;;   ``Automatic Proof Procedures for Polynomials and Special Functions.''
+;;;
+;;; The following institutions have provided support for RAHD development
+;;;  through funding the following positions for me (Passmore):
+;;;    - Ph.D. Student, University of Edinburgh,
+;;;    - Visiting Fellow, SRI International,
+;;;    - Research Intern, Microsoft Research,
+;;;    - Visiting Researcher, INRIA/IRISA.
+;;;
+;;; These positions have been crucial to RAHD progress and we thank them 
+;;;  very much for their support.
+;;;
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
-;;; 
+;;;
 ;;; This file: began on         29-July-2008,
 ;;;            last updated on  29-August-2010.
 ;;;
@@ -1287,7 +1296,8 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun waterfall (&key union-case search-model search-model* gbrn-depth)
+(defun waterfall (&key union-case search-model search-model* gbrn-depth
+                       skip-cad skip-factor-sign)
   (when search-model
     (fp " Searching for trivial models.~%")
     (quick-sat))
@@ -1329,8 +1339,9 @@
   (stable-simp)
   (fp " Contracting intervals.~%")
   (interval-cp)
-  (fp " Computing multivariate factorisations and deducing signs.~%")
-  (factor-sign)
+  (when (not skip-factor-sign)
+    (fp " Computing multivariate factorisations and deducing signs.~%")
+    (factor-sign))
   (simp-zrhs)
   (when (ruleset-enabled? 'inequality-squeeze)
     (fp " Applying verified ruleset `inequality-squeeze.'~%")
@@ -1350,8 +1361,9 @@
     (quick-sat))
   (fp " Injecting inequalities into induced quotient ring.~%")
   (rcr-ineqs)
-  (fp " Performing full-dimensional cylindrical algebraic decomposition.~%")
-  (fdep-cad)
+  (when (not skip-cad)
+    (fp " Performing full-dimensional cylindrical algebraic decomposition.~%")
+    (fdep-cad))
   (when (or search-model search-model*)
     (fp " Searching for trivial models.~%")
     (quick-sat))
@@ -1371,7 +1383,7 @@
 
 (defun go! (&key tactic-replay do-not-reset-tactic-replay do-not-rebuild-gs
 		 do-not-reset-cpc verbosity union-case search-model search-model*
-		 vars-table gbrn-depth)
+		 vars-table gbrn-depth skip-cad skip-factor-sign)
   (if (not *G*) (fmt 0 "~%~% *** No goal installed.  See :DOC G. ~%~%")
     (let ((*rahd-verbosity* (if verbosity verbosity *rahd-verbosity*))
 	  (start-time (get-internal-real-time)))
@@ -1397,7 +1409,8 @@
 	     (if tactic-replay
 		 (mapcar #'(lambda (tactic) (eval `(,tactic))) tactic-replay)
 	       (waterfall :union-case union-case :search-model search-model
-			  :search-model* search-model* :gbrn-depth gbrn-depth))))
+			  :search-model* search-model* :gbrn-depth gbrn-depth
+                          :skip-cad skip-cad :skip-factor-sign skip-factor-sign))))
       
       (let ((goal-proved-by-waterfall? (not (extract-non-refuted-cases))))
 
@@ -1825,7 +1838,7 @@
 ;;;
 
 (defun check (f &key verbosity print-model search-model search-model*
-		gbrn-depth)
+		gbrn-depth from-repl skip-cad skip-factor-sign)
   (cond 
    ((top-level-syntax-check f)
     (let ((*rahd-verbosity* 
@@ -1834,18 +1847,21 @@
       (g f)
       (let ((result (go! :search-model search-model
 			 :search-model* search-model*
-			 :gbrn-depth gbrn-depth)))
+			 :gbrn-depth gbrn-depth
+                         :skip-cad skip-cad
+                         :skip-factor-sign skip-factor-sign)))
 	(fmt 1 "~%[Decision]")
 	(fmt 0 "~%")
-	(cond (result " unsat~%")
+	(cond (result (if from-repl "unsat" " unsat~%"))
 	      (*sat-case-found?* 
-	       (format nil " sat~A~%"
+	       (format nil (if from-repl "sat.~A"
+                             " sat~A~%")
 		       (if (and print-model *sat-model*)
 			   (format nil "~%~A~%" 
 				   (format-model *sat-model*))
 			   "")))
-	      (t " unknown~%")))))
-   (t "~%formula syntax error~%")))
+	      (t (if from-repl "unknown." " unknown~%"))))))
+   (t (if from-repl "formula syntax error." "~%formula syntax error~%"))))
 
 ;;;
 ;;; CL-FIND-OPTION: Given a flag string, return an MV of
@@ -1886,10 +1902,13 @@
 		(search-model? (cl-find-option '-SEARCH-MODEL opts nil))
 		(search-model*? (cl-find-option '-SEARCH-MODEL! opts nil))
 		(regression? (cl-find-option '-REGRESSION opts nil))
-		(div-nz-denoms? (cl-find-option '-DIV-NZ-DENOMS opts nil)))
-	    (when (or (not formula-given?)
-		      (or (not verbosity)
-			  (and (rationalp verbosity) (>= verbosity 1))))
+		(div-nz-denoms? (cl-find-option '-DIV-NZ-DENOMS opts nil))
+                (interactive? (cl-find-option '-I opts nil))
+                (ip-evaluator? (cl-find-option '-IP opts nil)))
+	    (when (and (not ip-evaluator?) 
+                       (or (not formula-given?) 
+                           (or (not verbosity)
+                               (and (rationalp verbosity) (>= verbosity 1)))))
 	      (progn
 		(fmt 0 "
 RAHD: Real Algebra in High Dimensions ~A
@@ -1899,7 +1918,8 @@ RAHD: Real Algebra in High Dimensions ~A
   v.weispfenning and many others.  This version of RAHD is using Maxima 
   multivariate factorisation & SARAG subresultant PRS + Bernstein bases.~%~%" 
 		     *rahd-version*)
-		(when (not formula-given?) 
+		(when (and (not formula-given?) (not interactive?)
+                           (not ip-evaluator?))
 		  (fmt 0 
 " Error: No formula given.
 
@@ -1937,6 +1957,8 @@ RAHD: Real Algebra in High Dimensions ~A
     -print-failure                   if a decision is not reached, print 
                                       a failure report (unrefuted cases)
     -regression                      run regression suite for testing build
+    -i                               (human-oriented) interactive shell
+    -ip                              (machine-oriented) formula evaluator
 
   where n is a natural, q is a rational presented as `a/b' or `a' for integers a,b,
         $ is either `on', `off' or `only' (def: `on'), 
@@ -1946,6 +1968,8 @@ RAHD: Real Algebra in High Dimensions ~A
     (car opts)))))
 	    (cond (regression? (wrv (if (rationalp verbosity) verbosity 1) 
 				    (rahd-regression-suite)))
+                  (interactive? (r-repl))
+                  (ip-evaluator? (p-repl))
 		  (formula-given?
 		   (when div-nz-denoms?
 		     (setq *div-nz-denoms* t))
