@@ -1,0 +1,460 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html401/loose.dtd">
+<html>
+<!-- Created on diciembre, 13 2009 by texi2html 1.76 -->
+<!--
+Written by: Lionel Cons <Lionel.Cons@cern.ch> (original author)
+            Karl Berry  <karl@freefriends.org>
+            Olaf Bachmann <obachman@mathematik.uni-kl.de>
+            and many others.
+Maintained by: Many creative people <dev@texi2html.cvshome.org>
+Send bugs and suggestions to <users@texi2html.cvshome.org>
+
+-->
+<head>
+<title>Manual de Maxima: 57. lapack</title>
+
+<meta name="description" content="Manual de Maxima: 57. lapack">
+<meta name="keywords" content="Manual de Maxima: 57. lapack">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="texi2html 1.76">
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+pre.display {font-family: serif}
+pre.format {font-family: serif}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+pre.smalldisplay {font-family: serif; font-size: smaller}
+pre.smallexample {font-size: smaller}
+pre.smallformat {font-family: serif; font-size: smaller}
+pre.smalllisp {font-size: smaller}
+span.sansserif {font-family:sans-serif; font-weight:normal;}
+ul.toc {list-style: none}
+body
+{
+    color: black;
+    background: white; 
+    margin-left: 8%;
+    margin-right: 13%;
+}
+
+h1
+{
+    margin-left: +8%;
+    font-size: 150%;
+    font-family: sans-serif
+}
+
+h2
+{
+    font-size: 125%;
+    font-family: sans-serif
+}
+
+h3
+{
+    font-size: 100%;
+    font-family: sans-serif
+}
+
+h2,h3,h4,h5,h6 { margin-left: +4%; }
+
+div.textbox
+{
+    border: solid;
+    border-width: thin;
+    /* width: 100%; */
+    padding-top: 1em;
+    padding-bottom: 1em;
+    padding-left: 2em;
+    padding-right: 2em
+}
+
+div.titlebox
+{
+    border: none;
+    padding-top: 1em;
+    padding-bottom: 1em;
+    padding-left: 2em;
+    padding-right: 2em;
+    background: rgb(200,255,255);
+    font-family: sans-serif
+}
+
+div.synopsisbox
+{
+    border: none;
+    padding-top: 1em;
+    padding-bottom: 1em;
+    padding-left: 2em;
+    padding-right: 2em;
+     background: rgb(255,220,255);
+    /*background: rgb(200,255,255); */
+    /* font-family: fixed */
+}
+
+pre.example
+{
+    border: 1px solid gray;
+    padding-top: 1em;
+    padding-bottom: 1em;
+    padding-left: 1em;
+    padding-right: 1em;
+    /* background: rgb(247,242,180); */ /* kind of sandy */
+    /* background: rgb(200,255,255); */ /* sky blue */
+    background-color: #F1F5F9; /* light blue-gray */
+    /* font-family: "Lucida Console", monospace */
+}
+
+div.spacerbox
+{
+    border: none;
+    padding-top: 2em;
+    padding-bottom: 2em
+}
+
+div.image
+{
+    margin: 0;
+    padding: 1em;
+    text-align: center;
+}
+
+div.categorybox
+{
+    border: 1px solid gray;
+    padding-top: 0px;
+    padding-bottom: 0px;
+    padding-left: 1em;
+    padding-right: 1em;
+    background: rgb(247,242,220);
+}
+
+
+-->
+</style>
+
+<link rel="icon" href="http://maxima.sourceforge.net/favicon.ico"/>
+</head>
+
+<body lang="es" bgcolor="#FFFFFF" text="#000000" link="#0000FF" vlink="#800080" alink="#FF0000">
+
+<a name="lapack"></a>
+<a name="SEC232"></a>
+<table cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="maxima_56.html#SEC231" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC233" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="maxima_56.html#SEC229" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="maxima.html#SEC_Top" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="maxima_58.html#SEC235" title="Next chapter"> &gt;&gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="maxima.html#SEC_Top" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left">[<a href="maxima_toc.html#SEC_Contents" title="Table of contents">Contents</a>]</td>
+<td valign="middle" align="left">[<a href="maxima_78.html#SEC311" title="Index">Index</a>]</td>
+<td valign="middle" align="left">[<a href="maxima_abt.html#SEC_About" title="About (help)"> ? </a>]</td>
+</tr></table>
+<h1 class="chapter"> 57. lapack </h1>
+
+<table class="menu" border="0" cellspacing="0">
+<tr><td align="left" valign="top"><a href="#SEC233">57.1 Introducci&oacute;n a lapack</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">
+</td></tr>
+<tr><td align="left" valign="top"><a href="#SEC234">57.2 Funciones y variables para lapack</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">
+</td></tr>
+</table>
+
+<hr size="6">
+<a name="Introducci_00f3n-a-lapack"></a>
+<a name="SEC233"></a>
+<table cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#SEC232" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC234" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC232" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC232" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="maxima_58.html#SEC235" title="Next chapter"> &gt;&gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="maxima.html#SEC_Top" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left">[<a href="maxima_toc.html#SEC_Contents" title="Table of contents">Contents</a>]</td>
+<td valign="middle" align="left">[<a href="maxima_78.html#SEC311" title="Index">Index</a>]</td>
+<td valign="middle" align="left">[<a href="maxima_abt.html#SEC_About" title="About (help)"> ? </a>]</td>
+</tr></table>
+<h2 class="section"> 57.1 Introducci&oacute;n a lapack </h2>
+
+<p><code>lapack</code> es una traducci&oacute;n autom&aacute;tica a Common Lisp (con el programa <code>f2c</code>)  
+de la librer&iacute;a LAPACK escrita en Fortran.
+</p>
+
+<hr size="6">
+<a name="Funciones-y-variables-para-lapack"></a>
+<a name="SEC234"></a>
+<table cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#SEC233" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="maxima_58.html#SEC235" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC232" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC232" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="maxima_58.html#SEC235" title="Next chapter"> &gt;&gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="maxima.html#SEC_Top" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left">[<a href="maxima_toc.html#SEC_Contents" title="Table of contents">Contents</a>]</td>
+<td valign="middle" align="left">[<a href="maxima_78.html#SEC311" title="Index">Index</a>]</td>
+<td valign="middle" align="left">[<a href="maxima_abt.html#SEC_About" title="About (help)"> ? </a>]</td>
+</tr></table>
+<h2 class="section"> 57.2 Funciones y variables para lapack </h2>
+
+<dl>
+<dt><u>Funci&oacute;n:</u> <b>dgeev</b><i> (<var>A</var>)</i>
+<a name="IDX2231"></a>
+</dt>
+<dt><u>Funci&oacute;n:</u> <b>dgeev</b><i> (<var>A</var>, <var>right_p</var>, <var>left_p</var>)</i>
+<a name="IDX2232"></a>
+</dt>
+<dd><p>Calcula los autovalores y, opcionalmente, tambi&eacute;n los autovectores de la matriz <var>A</var>.
+Todos los elementos de <var>A</var> deben ser enteros o n&uacute;meros decimales en coma flotante.
+Adem&aacute;s, <var>A</var> debe ser cuadrada (igual n&uacute;mero de filas que de columnas) y puede
+ser o no sim&eacute;trica.
+</p>
+<p><code>dgeev(<var>A</var>)</code> calcula s&oacute;lo los autovalores de <var>A</var>. 
+<code>dgeev(<var>A</var>, <var>right_p</var>, <var>left_p</var>)</code> calcula los autovalores de <var>A</var>
+y los autovectores por la derecha cuando <em><var>right_p</var> = <code>true</code></em>, y
+los autovectores por la izquierda cuando <em><var>left_p</var> = <code>true</code></em>.
+</p>
+<p>La funci&oacute;n devuelve una lista de tres elementos.
+El primer elemento es una lista con los autovalores.
+El segundo elemento es <code>false</code> o la matriz de autovectores por la derecha.
+El tercer elemento es <code>false</code> o la matriz de autovectores por la izquierda.
+</p>
+<p>El autovector por la derecha <em>v(j)</em> (la <em>j</em>-&eacute;sima columna de la matriz de
+autovectores por la derecha) satisface
+</p>
+<p><em>A . v(j) = lambda(j) . v(j)</em>
+</p>
+<p>donde <em>lambda(j)</em> es su autovalor asociado.
+</p>
+<p>El autovector por la izquierda <em>u(j)</em> (la <em>j</em>-&eacute;sima columna de la matriz de
+autovectores por la izquierda) satisface
+</p>
+<p><em>u(j)**H . A = lambda(j) . u(j)**H</em>
+</p>
+<p>donde <em>u(j)**H</em> denota la transpuesta conjugada de <em>u(j)</em>.
+</p>
+<p>La funci&oacute;n de Maxima <code>ctranspose</code> calcula la transpuesta conjugada.
+</p>
+<p>Los autovectores calculados est&aacute;n normalizados para que su norma
+eucl&iacute;dea valga 1 y su componente mayor tenga su parte
+imaginaria igual a cero.
+</p>
+<p>Ejemplo:
+</p>
+<pre class="example">(%i1) load (lapack)$
+(%i2) fpprintprec : 6;
+(%o2)                           6
+(%i3) M : matrix ([9.5, 1.75], [3.25, 10.45]);
+                         [ 9.5   1.75  ]
+(%o3)                    [             ]
+                         [ 3.25  10.45 ]
+(%i4) dgeev (M);
+(%o4)          [[7.54331, 12.4067], false, false]
+(%i5) [L, v, u] : dgeev (M, true, true);
+                           [ - .666642  - .515792 ]
+(%o5) [[7.54331, 12.4067], [                      ], 
+                           [  .745378   - .856714 ]
+                                        [ - .856714  - .745378 ]
+                                        [                      ]]
+                                        [  .515792   - .666642 ]
+(%i6) D : apply (diag_matrix, L);
+                      [ 7.54331     0    ]
+(%o6)                 [                  ]
+                      [    0     12.4067 ]
+(%i7) M . v - v . D;
+                [      0.0       - 8.88178E-16 ]
+(%o7)           [                              ]
+                [ - 8.88178E-16       0.0      ]
+(%i8) transpose (u) . M - D . transpose (u);
+                     [ 0.0  - 4.44089E-16 ]
+(%o8)                [                    ]
+                     [ 0.0       0.0      ]
+</pre>
+
+
+</dd></dl>
+
+<dl>
+<dt><u>Funci&oacute;n:</u> <b>dgesvd</b><i> (<var>A</var>)</i>
+<a name="IDX2233"></a>
+</dt>
+<dt><u>Funci&oacute;n:</u> <b>dgesvd</b><i> (<var>A</var>, <var>left_p</var>, <var>right_p</var>)</i>
+<a name="IDX2234"></a>
+</dt>
+<dd><p>Calcula la descomposici&oacute;n singular (SVD, en ingl&eacute;s) de la matriz <var>A</var>,
+que contiene los valores singulares y, opcionalmente, los vectores singulares por
+la derecha o por la izquierda. Todos los elementos de <var>A</var> deben ser enteros o 
+n&uacute;meros decimales en coma flotante. La matriz <var>A</var> puede ser cuadrada o no 
+(igual n&uacute;mero de filas que de columnas).
+</p>
+<p>Sea <em>m</em> el n&uacute;mero de filas y <em>n</em> el de columnas de <var>A</var>.
+La descomposici&oacute;n singular de <var>A</var> consiste en calcular tres matrices: 
+<var>U</var>, <var>Sigma</var> y <var>V^T</var>, tales que
+</p>
+<p><em><var>A</var> = <var>U</var> . <var>Sigma</var> . <var>V</var>^T</em>
+</p>
+<p>donde <var>U</var> es una matriz unitaria <em>m</em>-por-<em>m</em>,
+<var>Sigma</var> es una matriz diagonal <em>m</em>-por-<em>n</em> y
+<var>V^T</var> es una matriz unitaria <em>n</em>-por-<em>n</em>.
+</p>
+<p>Sea <em>sigma[i]</em> un elemento diagonal de <em>Sigma</em>, esto es,
+<em><var>Sigma</var>[i, i] = <var>sigma</var>[i]</em>. Los elementos <em>sigma[i]</em>
+se llaman valores singulares de <var>A</var>, los cuales son reales y no negativos,
+siendo devueltos por la funci&oacute;n <code>dgesvd</code> en orden descendente. 
+</p>
+<p>Las primeras <em>min(m, n)</em> columnas de <var>U</var> y <var>V</var> son los vectores
+singulares izquierdo y derecho de <var>A</var>. N&oacute;tese que <code>dgesvd</code>
+devuelve la transpuesta de <var>V</var>, no la propia matriz <var>V</var>.
+</p>
+<p><code>dgesvd(<var>A</var>)</code> calcula &uacute;nicamente los valores singulares de <var>A</var>.
+<code>dgesvd(<var>A</var>, <var>left_p</var>, <var>right_p</var>)</code> calcula los valores singulares
+de <var>A</var> y los vectores sigulares por la izquierda cuando <em><var>left_p</var> = <code>true</code></em>,
+y los vectores sigulares por la derecha cuando <em><var>right_p</var> = <code>true</code></em>.
+</p>
+<p>La funci&oacute;n devuelve una lista de tres elementos.
+El primer elemento es una lista con los valores singulares.
+El segundo elemento es <code>false</code> o la matriz de vectores singulares por la izquierda.
+El tercer elemento es <code>false</code> o la matriz de vectores singulares por la derecha.
+</p>
+<p>Ejemplo:
+</p>
+<pre class="example">(%i1) load (lapack)$
+(%i2) fpprintprec : 6;
+(%o2)                           6
+(%i3) M: matrix([1, 2, 3], [3.5, 0.5, 8], [-1, 2, -3], [4, 9, 7]);
+                        [  1    2    3  ]
+                        [               ]
+                        [ 3.5  0.5   8  ]
+(%o3)                   [               ]
+                        [ - 1   2   - 3 ]
+                        [               ]
+                        [  4    9    7  ]
+(%i4) dgesvd (M);
+(%o4)      [[14.4744, 6.38637, .452547], false, false]
+(%i5) [sigma, U, VT] : dgesvd (M, true, true);
+(%o5) [[14.4744, 6.38637, .452547], 
+[ - .256731  .00816168   .959029    - .119523 ]
+[                                             ]
+[ - .526456   .672116   - .206236   - .478091 ]
+[                                             ], 
+[  .107997   - .532278  - .0708315  - 0.83666 ]
+[                                             ]
+[ - .803287  - .514659  - .180867    .239046  ]
+[ - .374486  - .538209  - .755044 ]
+[                                 ]
+[  .130623   - .836799   0.5317   ]]
+[                                 ]
+[ - .917986   .100488    .383672  ]
+(%i6) m : length (U);
+(%o6)                           4
+(%i7) n : length (VT);
+(%o7)                           3
+(%i8) Sigma:
+        genmatrix(lambda ([i, j], if i=j then sigma[i] else 0),
+                  m, n);
+                  [ 14.4744     0        0    ]
+                  [                           ]
+                  [    0     6.38637     0    ]
+(%o8)             [                           ]
+                  [    0        0     .452547 ]
+                  [                           ]
+                  [    0        0        0    ]
+(%i9) U . Sigma . VT - M;
+          [  1.11022E-15        0.0       1.77636E-15 ]
+          [                                           ]
+          [  1.33227E-15    1.66533E-15       0.0     ]
+(%o9)     [                                           ]
+          [ - 4.44089E-16  - 8.88178E-16  4.44089E-16 ]
+          [                                           ]
+          [  8.88178E-16    1.77636E-15   8.88178E-16 ]
+(%i10) transpose (U) . U;
+       [     1.0      5.55112E-17    2.498E-16     2.77556E-17  ]
+       [                                                        ]
+       [ 5.55112E-17      1.0       5.55112E-17    4.16334E-17  ]
+(%o10) [                                                        ]
+       [  2.498E-16   5.55112E-17       1.0       - 2.08167E-16 ]
+       [                                                        ]
+       [ 2.77556E-17  4.16334E-17  - 2.08167E-16       1.0      ]
+(%i11) VT . transpose (VT);
+          [      1.0           0.0      - 5.55112E-17 ]
+          [                                           ]
+(%o11)    [      0.0           1.0       5.55112E-17  ]
+          [                                           ]
+          [ - 5.55112E-17  5.55112E-17       1.0      ]
+</pre>
+
+</dd></dl>
+
+<dl>
+<dt><u>Funci&oacute;n:</u> <b>dlange</b><i> (<var>norm</var>, <var>A</var>)</i>
+<a name="IDX2235"></a>
+</dt>
+<dt><u>Funci&oacute;n:</u> <b>zlange</b><i> (<var>norm</var>, <var>A</var>)</i>
+<a name="IDX2236"></a>
+</dt>
+<dd><p>Calcula una norma o seudonorma de la matriz <var>A</var>.
+</p>
+<dl compact="compact">
+<dt> <code>max</code></dt>
+<dd><p>Calcula <em>max(abs(A(i, j)))</em>, siendo <em>i</em> y <em>j</em> n&uacute;meros de filas
+y columnas, respectivamente, de <var>A</var>.
+N&oacute;tese que esta funci&oacute;n no es una norma matricial.
+</p></dd>
+<dt> <code>one_norm</code></dt>
+<dd><p>Calcula la norma <em>L[1]</em> de <var>A</var>,
+esto es, el m&aacute;ximo de la suma de los valores absolutos de los elementos de cada columna.
+</p></dd>
+<dt> <code>inf_norm</code></dt>
+<dd><p>Calcula la norma <em>L[inf]</em> de <var>A</var>,
+esto es, el m&aacute;ximo de la suma de los valores absolutos de los elementos de cada fila.
+</p></dd>
+<dt> <code>frobenius</code></dt>
+<dd><p>Calcula la norma de Frobenius de <var>A</var>,
+esto es, la ra&iacute;z cuadrada de la suma de los cuadrados de los elementos de
+la matriz.
+</p></dd>
+</dl>
+
+
+</dd></dl>
+
+<hr size="6">
+<table cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#SEC232" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="maxima_58.html#SEC235" title="Next chapter"> &gt;&gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="maxima.html#SEC_Top" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left">[<a href="maxima_toc.html#SEC_Contents" title="Table of contents">Contents</a>]</td>
+<td valign="middle" align="left">[<a href="maxima_78.html#SEC311" title="Index">Index</a>]</td>
+<td valign="middle" align="left">[<a href="maxima_abt.html#SEC_About" title="About (help)"> ? </a>]</td>
+</tr></table>
+<p>
+ <font size="-1">
+  This document was generated by <em>Robert Dodier</em> on <em>diciembre, 13 2009</em> using <a href="http://texi2html.cvshome.org/"><em>texi2html 1.76</em></a>.
+ </font>
+ <br>
+
+</p>
+</body>
+</html>

@@ -1,0 +1,209 @@
+#
+# Some RAHD v0.6 examples.
+# 
+
+ ./rahd-v0.6-lx32 -formula "(((NOT (<= (* a c) (* y x))))
+                             ((= (* x x) c))
+                             ((= (* y y) (+ (* (* a a) c) b)))
+                             ((<= 0 b))
+                             ((<= 0 c))
+                             ((<= 0 x))
+                             ((<= 0 y)))"
+
+reset
+vars a c y x b
+assert ~(a*c <= y*x)
+assert x^2 = c
+assert y^2 = a^2 * c + b
+assert 0 <= b
+assert 0 <= c
+assert 0 <= x
+assert 0 <= y
+check
+
+
+ ./rahd-v0.6-lx32 -formula "(((NOT (>= (- (* 2 (+ (* X Z) (+ (* X Y) (* Y Z))))
+                                          (+ (* X X) (+ (* Y Y) (* Z Z))))
+                                     0)))
+                             ((<= X 125841/50000))
+                             ((<= Y 125841/50000))
+                             ((<= Z 125841/50000))
+                             ((<= 2 X))
+                             ((<= 2 Y))
+                             ((<= 2 Z)))"
+
+
+ ./rahd-v0.6-lx32 -formula "(((NOT (> (+ (* A D) (+ (* C B) (* B D))) 0)))
+                             ((>= B 0))
+                             ((>= C 0))
+                             ((>= D 1))
+                             ((>= E 0))
+                             ((>= F 1))
+                             ((>= (+ (* A A) (- (* A B) (* B B))) 1))
+                             ((>= (+ (* 2 A) B) 1))
+                             ((<= (+ (* C C) (+ (- (* C D) (* D D)) 1))
+                                   0)))"
+ 
+
+ ./rahd-v0.6-lx32 -formula "(((> (- x y) 2)) ((= y (* x 3))) 
+                             ((< (+ 100 (* x z)) 10)))" -search-model -print-model
+			     
+ 
+ ./rahd-v0.6-lx32 -formula "(((> (- x y) 2)) ((= y (* x 3))) ((> w z)) 
+                             ((<= (* z z k) (* 3 w z))) 
+                             ((< (+ 100 (* x z)) 10)))" -search-model -print-model
+
+    
+ ./rahd-v0.6-lx32 -formula "(((> (* x y) (/ (+ x z) y))) 
+                             ((= x 0) (= x 1)) 
+                             ((= (+ 1 (* 3 (* k k))) z))
+                             ((>= (+ y z) 10))
+                             ((> y z) (= y (* x x)))
+                             ((> (* w w) (+ 2 w)))
+                             ((> (+ w z) (* 2 k)))
+                             ((>= (+ (- 0 (* k a)) (* w v)) (+ 100 (* b b))))
+                             ((> a 0))
+                             ((< a 1))
+                             ((> (* 3 b) 15)))" -search-model! -print-model
+
+
+ ./rahd-v0.6-lx32 -formula "(((> f 0)) 
+		             ((<= f 100))
+                             ((>= v 0))
+                             ((<= v 100))
+                             ((> (* 100 f)
+                                 (* 100 (+ f v)))))"
+
+
+ ./rahd-v0.6-lx32 -formula "(((>= A 0))
+                             ((< 3 (* 2 X)))
+                             ((< (+ (* 3 X) (* 7 A)) 4)))"
+
+
+
+ ./rahd-v0.6-lx32 -formula "(((> (+ (* x x) y) 10)) 
+                             ((= (* y y 12) (+ x 99997))) 
+                             ((> y 0)) 
+                             ((< z 0)) 
+                             ((> (- x y) (* 50 z))))" -search-model -print-model -verbosity 10
+
+
+./rahd-v0.6-lx32 -formula "(((> (+ (* x x) y) 10)) 
+                             ((= (* y y 12) (+ x 99997000000))) 
+                             ((> y 111111111111110))
+                             ((< z 100000000000000))
+                             ((> (- x y) (* 500000 z))) 
+                             ((<= (* x x y) (+ (* y (+ 17 x) x (- k 9)) 1))) 
+                             ((<= k 1000)) 
+                             ((> (* (+ w (* k l)) z) 12)))" -search-model! -print-model -verbosity 10
+
+
+./rahd-v0.6-lx32 -formula "(((>= x 12))  
+		 	    ((> x y)) 
+			    ((= (- x y) 1/2)) 
+			    ((> x w)) 
+			    ((> x z)) 
+			    ((> x k)) 
+			    ((> x k1)) 
+			    ((> k1 k2)) 
+			    ((> k2 k3)) 
+			    ((> k4 (* k5 k5))))" -print-model -search-model!
+
+
+./rahd-v0.6-lx32 -formula "(((> x 15) (= x 11)) 
+		 	    ((> (* x y) 17)) 
+			    ((> (* y z) 130)) 
+			    ((< z 3)) 
+			    ((>= (* z x y) 50)))" -search-model -print-model
+
+
+./rahd-v0.6-lx32 -formula "(((> (* (- x y) (- x y) x y) 0)) 
+		    	    ((>= (- (* z x) y) 50)) 
+			    ((>= (+ x (* 3 z w)) 12)) 
+			    ((> (* k k) (- 11 (* z w)))))" -print-model
+
+
+./rahd-v0.6-lx32 -formula "(((> (- (* a b) 
+		                   (- 1 (* (- 1 c) (- 1 d)))) 0))
+                            ((> (- (* a b) (- 1 (* (- 1 c) (- 1 d))))  
+                                (- a (- 1 (* (- 1 c) (- 1 e) )) )) )
+                            ((> (- (* a b)  (- 1 (* (- 1 c)  (- 1 d)))) 
+                                (- (* b e) d)))
+                            ((>= a 0))
+			    ((>= b 0))
+ 			    ((>= c 0))
+ 			    ((>= d 0))
+ 			    ((>= e 0))
+ 			    ((<= a 1))
+ 			    ((<= b 1))
+ 			    ((<= c 1))
+ 			    ((<= d 1))
+ 			    ((<= e 1)))" -search-model -print-model
+
+
+./rahd-v0.6-lx32 -formula  "(((>= pK 0)) 
+			     ((<= pK 1)) 
+			     ((>= pL 0)) 
+			     ((<= pL 1)) 
+			     ((> (- (/ (+ (* 1 pK pK pK pK pK pK pL pL pL pL pL pL) 
+		 			  (* -6 pK pK pK pK pK pL pL pL pL pL)
+		 			  (* 15 pK pK pK pK pL pL pL pL) 
+					  (* -18 pK pK pK pL pL pL) 
+					  (* 9 pK pK pL pL) -1) 1) 
+				    4722366482869645/4722366482869645213696) 
+				 0)))" -verbosity 2
+
+
+./rahd-v0.6-lx32 -formula "(((>= pK 0)) 
+	 		    ((<= pK 1)) 
+	 		    ((>= pL 0)) 
+	 		    ((<= pL 1)) 
+			    ((>= (/ (+ (* 1 pK pK pK pK pK pK pL pL pL pL pL pL) 
+			 	       (* -6 pK pK pK pK pK pL pL pL pL pL) 
+				       (* 15 pK pK pK pK pL pL pL pL) 
+				       (* -18 pK pK pK pL pL pL) 
+				       (* 9 pK pK pL pL) -1) 1)  
+			         0)))" -verbosity 2 -print-model
+
+
+./rahd-v0.6-lx32 -formula "(((>= pK 0)) 
+                            ((= pK (/ pL 1/2)))
+                            ((> pL 0))
+                            ((< pL 1))
+                            ((< (/ (+ (* 1 pK pK pK pK pK pK pL pL pL pL pL pL)
+                                      (* -6 pK pK pK pK pK pL pL pL pL pL)
+                                      (* 15 pK pK pK pK pL pL pL pL)
+                                      (* -18 pK pK pK pL pL pL)
+                                      (* 9 pK pK pL pL) -1) 1)
+                                    0)) 
+                            ((<= (/ x y) 12)) 
+                            ((> (- x pL) 1000)))" -verbosity 2 -print-model -search-model!
+
+
+./rahd-v0.6-lx32 -formula "(((>= pK 0)) 
+	 		    ((<= pK 1)) 
+	 		    ((>= pL 0)) 
+	 		    ((<= pL 1)) 
+			    ((> (/ (+ (* 1 pK pK pK pK pK pK pL pL pL pL pL pL) 
+			 	      (* -6 pK pK pK pK pK pL pL pL pL pL) 
+				      (* 15 pK pK pK pK pL pL pL pL) 
+				      (* -18 pK pK pK pL pL pL) 
+				      (* 9 pK pK pL pL) -1) 1)  
+			        0)))" -verbosity 2
+
+
+./rahd-v0.6-lx32 -formula "(((> (* (- x y) (- x y) x y) 0)) 
+                            ((> (/ x (* z y w)) 10)) 
+                            ((>= x 5000)) 
+                            ((> z (* x w w 20))))" -verbosity 4 -print-model
+
+
+./rahd-v0.6-lx32 -formula "(((> (* (- x y) (- x y) x y) 0))
+                            ((<= (/ (* k l l) (* (- x y) (- y z))) 24))
+                            ((> (/ x (* z y w)) 10)) 
+                            ((>= x 5000)) 
+                            ((> z (* x w w 20))))" -verbosity 4 -print-model
+
+vars x y z w
+assert (x - y)^2 * x * y > 0
+assert 

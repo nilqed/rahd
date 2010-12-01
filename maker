@@ -1,0 +1,146 @@
+#!/bin/bash
+
+###
+### A configuration and compilation script for RAHD.
+###  This installation script written by Florent Kirchner
+###   for RAHD v0.6 written by Grant Olney Passmore.
+### 
+### This file: began on         April-1-2010 by F.Kirchner,
+###            last updated on  April-8-2010 by G.O.Passmore.
+###
+
+LOGFILE=rahd.log
+SBCL=
+
+# Differentiated error numbers make for easier bug hunting. Hopefully we won't
+# have to use them.
+E_MAKERERROR=83
+E_SCRIPTERROR=84
+
+#
+# The msg recursive function takes care of the pretty-printing.
+# It uses "fmt" to stick to 75 characters columns.
+#
+function msg() 
+{
+  if [ $# -eq 2 ]; then
+    if [ $1 = "err" ]; then
+      echo ""
+      echo "! maker error: $2." | fmt >&2
+      exit $E_MAKERERROR
+    elif [ $1 = "inf" ]; then
+      echo "* $2." | fmt
+      return 0
+    fi
+  elif [ $# -eq 3 ]; then
+    if [ $1 = "ser" ]; then
+      echo ""
+      echo "! script error ($2): $3. Please file a bug." | fmt >&2
+      exit $E_SCRIPTERROR
+    fi
+    msg "ser" "msg" "unexpected message type"
+  else
+    msg "ser" "msg" "incorrect number of message arguments"
+  fi
+}
+
+
+#
+# Macro function to print a usage message.
+#
+function print_usage()
+{
+  echo -e "
+RAHD Maker: Real Algebra in High Dimensions v0.6
+Usage: `basename $0` [-c FILE] [-l FILE] [-n] [-h]
+Options:
+  -c FILE \t Provide the location of the SBCL compiler and toplevel.
+  -l FILE \t Specify where to store the compilation output.
+  -n  \t\t Don't remove fasl files before or after the compilation step.
+  -h  \t\t Print this message and exit."
+}
+
+
+#
+# The option parsing function. Uses getopts, a bash built-in function.
+#
+while getopts ":c:l:nh" opt
+do
+  case $opt in 
+    h   ) print_usage
+          exit 0;;
+    c   ) sbcldir=`(cd \`dirname $OPTARG\` && pwd) 2>/dev/null`
+          if [ $? != 0 ]; then
+            msg "err" "SBCL binary path $OPTARG seems incorrect. Can't access the containing directory"
+          fi
+          localsbcl=$sbcldir/`basename $OPTARG 2>/dev/null`
+          if [ ! -e $localsbcl ] || [ ! -x $localsbcl ]; then
+            msg "err" "SBCL binary at $OPTARG was not found, or does not have executable permission"
+          fi
+          msg "inf" "SBCL binary set to '$localsbcl'";;
+    l   ) logdir=`(cd \`dirname $OPTARG\` && pwd) 2>/dev/null`
+          if [ $? != 0 ] || [ ! -w $logdir ]; then
+            msg "err" "the log file path $OPTARG seems incorrect, or has incompatible permissions"
+          fi
+          LOGFILE=$logdir/`basename $OPTARG 2>/dev/null`
+          msg "inf" "Compilation output into '$LOGFILE'";;
+    n   ) msg "inf" "Fasl files will be preserved"
+          keepfasl="yes";;
+    *   ) msg "err" "unrecognized option '$OPTARG'. Type './maker -h' to list available options";;
+  esac
+done
+
+shift $(($OPTIND - 1))
+
+echo "
+RAHD Maker: Real Algebra in High Dimensions v0.6"
+
+#
+# Find the SBCL executable
+#
+if [ -f ~/.env_paths ]; then
+  msg "inf" "Sourcing local path definitions"
+  source ~/.env_paths
+fi
+
+if [ -n "$localsbcl" ]; then
+  SBCL=$localsbcl
+else
+  SBCL=`which sbcl`
+  if [ $? != 0 ]; then
+    msg "err" "SBCL binary not found. Check your installation and path"
+  fi
+fi
+msg "inf" "SBCL binary set to $SBCL"
+
+#
+# Clear potential remaining binary files
+#
+if [ "$keepfasl" != "yes" ]; then
+  msg "inf" "Removing stray fasl files"
+  rm -f *.fasl
+fi
+
+#
+# Run the compiler
+#
+msg "inf" "Initiating RAHD compilation"
+echo -n "  Compiling... "
+($SBCL --dynamic-space-size 1024 < Makefile.sbcl) &> $LOGFILE
+if [ $? != 0 ]; then
+  msg "err" "compilation error. See $LOGFILE for details"
+else
+  echo "done."
+  msg "inf" "Compilation succeeded. See $LOGFILE for details"
+fi
+
+#
+# Clean binary files
+#
+if [ "$keepfasl" != "yes" ]; then
+  msg "inf" "Cleaning generated fasl files"
+  rm -f *.fasl
+fi
+
+echo "Good to go."
+exit 0
