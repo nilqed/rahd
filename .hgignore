@@ -1,0 +1,12 @@
+syntax: glob
+
+# Binaries
+*.fasl
+rahd-v*
+
+# Build log
+rahd.log
+
+# Autosaved and sawp files
+*~
+*.swp
