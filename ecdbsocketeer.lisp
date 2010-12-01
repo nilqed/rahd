@@ -106,11 +106,18 @@
 ;;;
 
 (defun compute-query (inb outb)
+  (let* ((com (import-foreign (format nil "~a" inb)))
+         (res (eval-foreign com)))
+       (append-string-to-buffer (format nil "~a" res) outb)))
+
+#|
+(defun compute-query (inb outb)
   (let ((res (eval (read-from-string (format nil "~a" inb)))))
        ;    (cond ((eq *ecdb-dialect* 'coq)
        ;           (setq res (make-coq-clause res)))
        ;          (t t))
        (append-string-to-buffer (format nil "~a" res) outb)))
+|#
 
 ;;;
 ;;; PROCESS-SINGLE-INPUT: Collect input from a character stream, process it,
@@ -118,13 +125,16 @@
 ;;;
 
 (defun process-single-input (cstream #|sock|# &optional (inb *in-buffer*) (outb *out-buffer*))
-  (collect-input cstream inb)
-  (format t "[ECDB] Processing incoming message: \"~a\"...~%" inb)
-  (compute-query inb outb)
-  (format t "[ECDB] Sending result: \"~a\".~%" outb)
-  (send-output cstream outb)
-  (reset-buffer inb)
-  (reset-buffer outb))
+  (unwind-protect
+   (progn
+    (collect-input cstream inb)
+    (format t "[ECDB] Processing incoming message: \"~a\"...~%" inb)
+    (compute-query inb outb)
+    (format t "[ECDB] Sending result: \"~a\".~%" outb)
+    (send-output cstream outb))
+   (progn
+    (reset-buffer inb)
+    (reset-buffer outb))))
 
 ;;;
 ;;; SERVE is the main function of the ECDB implementation. It polls the socket
