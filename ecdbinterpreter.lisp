@@ -34,7 +34,7 @@
 ;;; Three kinds of commands can be received from outside tools:
 ;;;     FOREIGN-RAHD-COM, to issue RAHD commands;
 ;;;     FOREIGN-ECDB-COM, to issue ECDB commands;
-;;;     FOREIGN-SEXP, to issue general Lisp commands. TODO: Only allow in DEBUG mode.
+;;;     FOREIGN-SEXP, to issue general Lisp commands.
 ;;;
  
 ;;; We start with the abstract superclass.
@@ -58,9 +58,9 @@
 
 ;;; ECDB-COM-KIND: An ECDB command kind, which can be either 
 ;;;     - an instruction for querying the db (ECDB-QUERY)
-;;;     - or an instruction to provide a case cerificate (ECDB-CERTIFICATE)
+;;;     - or an instruction to access a case certificate (ECDB-CERT-READ and ECDB-CERT-WRITE)
 (deftype ecdb-com-kind ()
-  '(member ecdb-query ecdb-certificate))
+  '(member ecdb-query ecdb-cert-read ecdb-cert-write))
 
 ;;; An ECDB command pairs a kind with a command body (an s-expression).
 (defclass foreign-ecdb-com (foreign-com)
@@ -69,7 +69,7 @@
              :initform (error 'malformed-com :com-msg "Must supply an ECDB command kind: ECDB-QUERY, or ECDB-CERTIFICATE.")
              :accessor kind)))
 
-;;; An SEXP commandonly has a body.
+;;; An SEXP command only has a body.
 (defclass foreign-sexp-com (foreign-com)
   ((com-body :type list
              :initarg :command
@@ -89,7 +89,9 @@
 ;;; *-foreign-com object. 
 ;;; com is a string argument of the form:
 ;;;     rahd-com :kind 'rahd-gs :body '((= x 1) (> x 1) (< x 1))
-;;; TODO: write a proper parser.
+;;;
+;;; TODO: This is hacky. At least for the body part, write a proper
+;;; parser, using the one in rahd:frontend for the RAHD part.
 ;;;
 
 (defun import-foreign (com)
@@ -118,6 +120,29 @@
                  (format t "       ~a" com)
                  ())))
 
+;;;
+;;; EVAL_FOREIGN: Does the evaluation of the parsed foreign-command.
+;;;
+
+(defun eval-foreign (com-object)
+  (case (type-of com-object) 
+        (foreign-rahd-com
+         (case (kind com-object)
+               (rahd-gs (rahd::g `(,(body com-object))))
+               (rahd-go (rahd::go!))))
+        (foreign-ecdb-com
+         (case (kind com-object)
+               (ecdb-query (eval (body com-object)))
+               (ecdb-cert-read (eval (body com-object)))
+               (ecdb-cert-write (eval (body com-object)))))
+        (foreign-sexp-com
+         (eval (body com-object)))))
+
+; (setq ex2 (import-foreign "rahd-com :kind 'rahd-gs :body '((= x 1) (> x 1) (< x 1))"))
+; (setq ex3 (import-foreign "rahd-com :kind 'rahd-go"))
+; !!! The function RAHD::FACTOR-SIGN-CASE is undefined.
+
 ; [HS] CLASS-OF: Returns the class of which the object is a direct instance. 
 ; [HS]          Check object class membership with TYPE-OF.
+
 
