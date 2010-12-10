@@ -10,7 +10,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;; 
 ;;; This file: began on         08-Nov-2009,
-;;;            last updated on  16-Nov-2009.
+;;;            last updated on  10-Dec-2010.
 ;;;
 
 ;;;
@@ -44,6 +44,8 @@
 ;;; Given a term and a hash-table of interval bindings for
 ;;;  its variables, return an interval that contains the
 ;;;  value of the term.
+;;;
+;;; Recognises simple squares.
 ;;;
 
 (defun iht-bound-term (tm iht)
