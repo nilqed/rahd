@@ -255,7 +255,7 @@
 ;;;
 ;;; GS-VT-BINDINGS: A list of variable bindings that the current GS context has already
 ;;;  used to perform substitutions of smaller terms for variables; these substitutions
-;;;  are valid for all members of the current *GS*..
+;;;  are valid for all members of the current *GS*.
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -809,9 +809,24 @@
     (if *current-tactic-case*
 	(setf (aref *gs* *current-tactic-case* 3)
 	      (union (aref *gs* *current-tactic-case* 3)
-		     (list (list v s))))	
+		     (list (list v s))
+                     :test 'equal))
 	(setq *gs-vt-bindings*
-	      (union *global-vt-bindings* (list (list v s)))))))
+	      (union *global-vt-bindings* (list (list v s))
+                     :test 'equal)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; GET-ACTIVE-VT-BINDINGS: Gather all known bindings used to eliminate
+;;; variables in the current context.
+;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun get-active-vt-bindings ()
+  (let ((out (union *gs-vt-bindings* *global-vt-bindings* :test 'equal)))
+    (when *current-tactic-case* 
+      (setq out (union out (aref *gs* *current-tactic-case* 3))))
+    out))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -1529,7 +1544,8 @@
 
 					(when (not *sat-model*)
 					  (let* ((var-bindings (aref *gs* i 3))
-						 (candidate-model `(:SAT (:MODEL ,var-bindings))))
+						 (candidate-model 
+                                                  `(:SAT (:MODEL ,var-bindings))))
 					    ;;
 					    ;; Now, let's check we really have a model.
 					    ;;
@@ -1628,10 +1644,11 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun pug (&key bound case)
-  (if (> *gs-unknown-size* 0)
+  (if (and (> *gs-unknown-size* 0) (not *sat-case-found?*))
       (progn 
-	(fmt 0 "~% Printing ~A of the remaining ~A cases for goal ~A.~%" 
-	     (if (not bound) "all" (format nil "the first ~R" bound)) *gs-unknown-size* *current-goal-key*)
+        (if case (fmt 0 "~% Printing case ~A for goal ~A.~%" case *current-goal-key*)
+          (fmt 0 "~% Printing ~A of the open ~A cases for goal ~A.~%" 
+               (if (not bound) "all" (format nil "the first ~R" bound)) *gs-unknown-size* *current-goal-key*))
 	(fmt 0 "~% -------     -------------------------------------------------------------------")
 	(fmt 0 "~% case-id     case")
 	(fmt 0 "~% -------     -------------------------------------------------------------------~%")
@@ -1852,7 +1869,7 @@
                          :skip-factor-sign skip-factor-sign)))
 	(fmt 1 "~%[Decision]")
 	(fmt 0 "~%")
-	(cond (result (if from-repl "unsat" " unsat~%"))
+	(cond (result (if from-repl "unsat." " unsat~%"))
 	      (*sat-case-found?* 
 	       (format nil (if from-repl "sat.~A"
                              " sat~A~%")

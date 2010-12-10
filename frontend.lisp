@@ -23,7 +23,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/.
 ;;; 
 ;;; This file: began on         1-November-2010,
-;;;            last updated on  5-November-2010.
+;;;            last updated on  6-December-2010.
 ;;;
 
 ;;;
@@ -109,6 +109,72 @@
            (fmt 0 "~%"))))
 
 ;;;
+;;; Match CMF string to function.
+;;;
+
+(defparameter *cmf-str-fcn-table*
+  `(("simp-arith" ,#'simp-arith)
+    ("contra-eqs" ,#'contra-eqs)
+    ("demod-num" ,#'demod-num)
+    ("simp-gls" ,#'simp-gls)
+    ("simp-tvs" ,#'simp-tvs)
+    ("fert-tsos" ,#'fert-tsos)
+    ("univ-sturm-ineqs" ,#'univ-sturm-ineqs)
+    ("open-ex-inf-cad" ,#'open-ex-inf-cad)
+    ("gen-ex-cad" ,#'gen-ex-cad)
+    ("canon-tms" ,#'canon-tms)
+    ("simp-zrhs" ,#'simp-zrhs)
+    ("triv-ideals" ,#'triv-ideals)
+    ("rcr-ineqs" ,#'rcr-ineqs)
+    ("open-frag-ex-inf-cad" ,#'open-frag-ex-inf-cad)
+    ("simp-real-null" ,#'simp-real-null)
+    ("rcr-svars" ,#'rcr-svars)
+    ("int-dom-zpb" ,#'int-dom-zpb)
+    ("int-dom-zpb-gen" ,#'int-dom-zpb-gen)
+    ("demod-lin" ,#'demod-lin)
+    ("interval-split" ,#'interval-split)
+    ("interval-cp" ,#'interval-cp)
+    ("satur-lin" ,#'satur-lin)
+    ("full-gbrni" ,#'full-gbrni)
+    ("bounded-gbrni" ,#'bounded-gbrni)
+    ("quick-sat" ,#'quick-sat)
+    ("factor-sign" ,#'factor-sign)
+    ("apply-ruleset" ,#'apply-ruleset)
+    ("fdep-cad" ,#'fdep-cad)
+    ("stable-simp" ,#'stable-simp)))
+    
+(defun cmf-from-str (str)
+  (cadr (assoc str *cmf-str-fcn-table* :test 'equal)))
+
+;;;
+;;; Give a prompt string indicating the current status
+;;;  of the proof context.
+;;;
+
+(defun prompt-str ()
+  (cond (*sat-model* "RAHD!m> ")
+        (*sat-case-found?* "RAHD!s> ")
+        ((or (and *gs* (= *gs-unknown-size* 0)) *goal-refuted?*) "RAHD!u> ")
+        (t "RAHD!> ")))
+
+;;;
+;;; Process a defrule command.
+;;;  Argument of command is passed as a string.
+;;; 
+;;; Defrule is of the form:
+;;;   defrule rule-name hypotheses(::qf-conj) conclusion(::literal).
+;;;
+
+(defun process-defrule (arg vars-lst)
+  (let* ((eon (position #\Space arg))
+         (rulename (intern (string-upcase (subseq arg 0 eon))))
+         (rst-rule (subseq arg (1+ eon) (length arg)))
+         (rule-data (p-defrule-f rst-rule vars-lst))
+         (conc (nth 1 rule-data))
+         (hyps (nth 3 rule-data)))
+    (defrule rulename :conclusion conc :hypotheses hyps)))
+
+;;;
 ;;; Simple read-eval-print loop for RAHD interaction.
 ;;;
 
@@ -128,9 +194,13 @@
   (Try 'help vars')~%~%" c)
              (invoke-restart restart))))))
    (let ((exit?) (vars-lst) (asserted-atoms-lst) 
-         (prover-opts '("print-infix")) (verbosity 0))
+         (prover-opts '("print-infix")) (verbosity 0)
+         (watched-case))
      (while (not exit?)
-       (let ((s (cmd-pair (prompt-and-read "RAHD!> "))))
+       (let ((s (progn
+                  (when (and watched-case *gs*)
+                    (pug :case watched-case))
+                  (cmd-pair (prompt-and-read (prompt-str))))))
          (let ((cmd (car s)) (arg (cdr s)))
            (cond
             ((or (equal cmd "quit")
@@ -190,9 +260,43 @@
                  (show-f-infix (reverse asserted-atoms-lst))
                (fmt 0 "Current formula: ~A.~%~%" 
                     asserted-atoms-lst)))
+            ((or (equal cmd "build-goalset")
+                 (equal cmd "build-gs"))
+             (r)
+             (g (mapcar #'list (reverse asserted-atoms-lst)))
+             (b)
+             (fmt 0 "Goalset built with ~A open cases.~%~%"
+                  *gs-size*))
+            ((equal cmd "open-cases")
+             (pug))
+            ((equal cmd "goal")
+             (fmt "You are at goal ~A.~%~%" *current-goal-key*))
+            ((equal cmd "watch")
+             (let ((num (when (not (equal arg ""))
+                          (car (p-int arg)))))
+               (when (integerp num)
+                 (setq watched-case num)
+                 (fmt 0 "Watching case ~A.~%~%" watched-case))))
+            ((equal cmd "apply")
+             (wrv verbosity (funcall (cmf-from-str arg)))
+             (fmt 0 "Done.~%~%"))
+            ((equal cmd "status")
+             (if (not *g*)
+                 (fmt 0 "No goalset built.~% Try 'help build-goalset' and 'help check'.~%~%")
+             (c)))
+            ((equal cmd "show-rules")
+             (show-rules))
+            ((equal cmd "show-rulesets")
+             (show-rulesets))
             ((equal cmd "reset")
+             (r)
              (setq asserted-atoms-lst nil)
-             (fmt 0 "Current formula reset.~%~%"))
+             (fmt 0 "Current context reset.~%~%"))
+            ((equal cmd "defrule")
+             (with-simple-restart (continue-with-new-cmd
+                                   "Continue and enter a new RAHD command.")
+                                  (process-defrule arg vars-lst)
+                                  (fmt 0 "~%~%")))
             ((equal cmd "lisp")
              (fmt 0 "Value: ~A.~%~%" (eval (read-from-string arg))))
             ((equal cmd "help")
@@ -271,7 +375,7 @@
                                       :skip-factor-sign t)))))))))))
 
 ;;;
-;;; F-INFIX-STR: Given a RAHD formula in prover notation, build
+;;; CASE-INFIX-STR: Given a RAHD case in prover notation, build
 ;;;  an infix string of it which can be read back by our parser.
 ;;;
 
@@ -577,6 +681,7 @@
           a c))
 
   (defun i2p-neq (a b c)
+    (declare (ignore b))
     `(not (= ,a ,c)))
 
   (defun i2p-expt (a b c)
@@ -677,6 +782,102 @@
 
 
 ;;;
+;;; Parser only for literals.
+;;;
+
+(yacc:define-parser lit-parser
+  (:start-symbol literal)
+  (:terminals 
+   (rational int var + - * = ==> |/\\| |\\/| |~| |(| |)| > >= = /= != <= < / ^
+   |[| |]|))
+  (:precedence 
+   ((:left ~) (:left |/\\|) (:left |\\/|) (:left ^) 
+    (:left = /= > >= < <=)
+    (:left * /) (:left + -) (:left ==>)))
+
+  (literal
+   atom
+   (~ atom #'neg)
+   (|[| literal |]| #'k-2-3)
+   (|(| literal |)| #'k-2-3))
+
+  (atom
+   (poly = poly #'i2p)
+   (poly /= poly #'i2p-neq)
+   (poly != poly #'i2p-neq)
+   (poly > poly #'i2p)
+   (poly >= poly #'i2p)
+   (poly < poly #'i2p)
+   (poly <= poly #'i2p))
+
+  (poly
+   var                                  ; implicit action #'identity
+   int
+   rational
+   (poly + poly #'i2p)
+   (poly - poly #'i2p)
+   (poly * poly #'i2p)
+   (poly ^ int #'i2p-expt)
+   (|(| poly |)| #'k-2-3))
+)
+
+
+;;;
+;;; Parser for rule definitions.  These take the form
+;;;   Hypotheses   ==>   Conclusion
+;;;    :: qf-conj          :: literal
+;;;
+
+(yacc:define-parser defrule-parser
+  (:start-symbol rule-tri)
+  (:terminals 
+   (rational int var + - * = ==> |/\\| |~| |(| |)| > >= = /= != <= < / ^
+   |[| |]|))
+  (:precedence
+   ((:nonassoc ==>)
+    (:left ~) (:left |/\\|) (:left ^)
+    (:left = /= > >= < <=)
+    (:left * /) (:left + -)))
+
+  (rule-tri
+   (qf-conj arrow-conc #'list))
+
+  (arrow-conc
+   (==> literal #'list))
+
+  (literal
+   atom
+   (~ atom #'neg)
+   (|(| literal |)| #'k-2-3)
+   (|[| literal |]| #'k-2-3))
+
+  (qf-conj
+   literal
+   (qf-conj |/\\| qf-conj #'i2p)
+   (|[| qf-conj |]| #'k-2-3))
+   
+  (atom
+   (poly = poly #'i2p)
+   (poly /= poly #'i2p-neq)
+   (poly != poly #'i2p-neq)
+   (poly > poly #'i2p)
+   (poly >= poly #'i2p)
+   (poly < poly #'i2p)
+   (poly <= poly #'i2p))
+
+  (poly
+   var                                  ; implicit action #'identity
+   int
+   rational
+   (poly + poly #'i2p)
+   (poly - poly #'i2p)
+   (poly * poly #'i2p)
+   (poly ^ int #'i2p-expt)
+   (|(| poly |)| #'k-2-3))
+)
+
+
+;;;
 ;;; P-FORMULA-STR: Given a RAHD formula string, parse it into
 ;;;  an S-expression!
 ;;;
@@ -689,6 +890,31 @@
       (yacc:parse-with-lexer (lst-lexer stls) 
                              qf-conj-parser))))
 
+;;;
+;;; P-LITERAL-STR: Given a RAHD literal string, parse it into
+;;;  an S-expression!
+;;;
+
+(defun p-literal-str (s &key vars-str vars-lst)
+  (let ((live-vars-lst
+         (cond (vars-str (p-vars-lst vars-str))
+               (vars-lst vars-lst))))
+    (let ((stls (str-to-lex-syms s live-vars-lst)))
+      (yacc:parse-with-lexer (lst-lexer stls) 
+                             lit-parser))))
+
+;;;
+;;; P-DEFRULE-STR: Given a RAHD defrule tri string, parse it into
+;;;  an S-expression!
+;;;
+
+(defun p-defrule-str (s &key vars-str vars-lst)
+  (let ((live-vars-lst
+         (cond (vars-str (p-vars-lst vars-str))
+               (vars-lst vars-lst))))
+    (let ((stls (str-to-lex-syms s live-vars-lst)))
+      (yacc:parse-with-lexer (lst-lexer stls) 
+                             defrule-parser))))
 
 ;;;
 ;;; Conjunctive string + vars-str to RAHD CNF.
@@ -697,3 +923,21 @@
 (defun p-conj-f (f vs)
   (mapcar #'list
           (elim-ands (p-formula-str f :vars-str vs))))
+
+;;;
+;;; Literal string + vars-str to RAHD CNF.
+;;;
+
+(defun p-lit-f (f vs)
+  (p-literal-str f :vars-str vs))
+
+;;;
+;;; Defrule string + vars-str to S-expr.
+;;;
+
+(defun p-defrule-f (f vs)
+  (let* ((raw-dr (p-defrule-str f :vars-lst vs))
+         (hyps (elim-ands (car raw-dr)))
+         (conc (cdadr raw-dr)))
+    `(:conclusion ,conc
+      :hypotheses ,hyps)))

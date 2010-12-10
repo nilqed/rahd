@@ -2,15 +2,13 @@
 ;;; RAHD: Real Algebra in High Dimensions v0.6
 ;;; A proof procedure for the existential theory of real closed fields.
 ;;;
-;;; Full-dimensional extended partial cylindrical algebraic decomposition.
+;;; Full-dimensional abstract partial cylindrical algebraic decomposition.
 ;;;
 ;;; (Explained in my PhD dissertation).
 ;;;
-;;;  Note: We support two projection operators -- 
-;;;    (i) standard projection (e.g., Basu-Pollack-Roy),
-;;;   (ii) Brown-McCallum projection (which is valid for f.d. lifting).
+;;;  Note: We support one projection operator -- 
+;;;   (-) Brown-McCallum projection (which is valid for f.d. lifting).
 ;;;
-;;;  Certainly we expect (ii) to be almost always better in the f.d. case!
 ;;;
 ;;;
 ;;; Written by Grant Olney Passmore
@@ -21,7 +19,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;; 
 ;;; This file: began on         03-July-2010,
-;;;            last updated on  29-August-2010.
+;;;            last updated on  06-December-2010.
 ;;;
 
 ;;;
@@ -545,7 +543,11 @@
 		   :partial? t
 		   :factor? factor?)))
 	  (cond (s? (if (= (length sc) (length c))
-			(let ((judgment `(:SAT (:MODEL ,s?))))
+			(let ((judgment 
+                               `(:SAT (:MODEL 
+                                       ,(union (get-active-vt-bindings)
+                                               s?
+                                               :test 'equal)))))
 			  (setq *sat-model* judgment)
 			  judgment)
 		      c))

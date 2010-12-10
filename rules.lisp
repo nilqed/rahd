@@ -90,13 +90,13 @@
 ;;;  *RULES-TABLE*.
 ;;;
 
-(defmacro defrule (name &key conclusion hypotheses)
+(defun defrule (name &key conclusion hypotheses)
   (setf (gethash name *rules-table*) 
 	(make-rule
 	 :name name
 	 :conclusion conclusion
 	 :hypotheses hypotheses))
-  `(quote ,name))
+   (fmt 0 "Rule ~A defined.~%" name))
 
 ;;;
 ;;; DEFRULESET: A macro for defining rulesets.
@@ -107,7 +107,7 @@
 ;;;   mark it as verified a priori when building RAHD).
 ;;;
 
-(defmacro defruleset (name &key hvlevel verified? active? rules)
+(defun defruleset (name &key hvlevel verified? active? rules)
   (setf (gethash name *rule-sets-table*)
 	(make-ruleset
 	 :name name
@@ -115,7 +115,7 @@
 	 :hvlevel hvlevel
 	 :verified? verified?
 	 :active? active?))
-  `(quote ,name))
+  (fmt 0 "Ruleset ~A defined.~%" name))
   
 ;;;
 ;;; ACTIVATE-RULE-IN-RULESET: Mark a rule as active in a given
