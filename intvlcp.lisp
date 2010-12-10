@@ -59,7 +59,11 @@
 	       (case op
 		     (+ (i-+-num i-t0 i-t1))
 		     (- (i---num i-t0 i-t1))
- 		     (* (i-*-num i-t0 i-t1))))))))
+ 		     (* (if (equal t0 t1)
+                            (i-intersect-num
+                             (make-interval '[ 0 '+inf '[)
+                             (i-*-num i-t0 i-t1))
+                          (i-*-num i-t0 i-t1)))))))))
 
 ;;;
 ;;; I-TO-STATUS: Given an interval, return :UNSAT if it is
@@ -398,7 +402,7 @@
   (let ((internal-iht (or iht (make-hash-table :test 'equal)))
 	(prev-iht nil)
 	(icp-output nil)
-	(max-cs (or max-contractions 1000))
+	(max-cs (or max-contractions 10))
 	(count 0))
     (loop while (and (< count max-cs) 
 		     (not (iht-equal? internal-iht prev-iht))) 
@@ -413,7 +417,8 @@
 	   (setq icp-output status)
 	   (setq internal-iht tightened-iht)
 	   (setq count (1+ count)))
-	  (fmt 10 "[icp] contraction count: ~A~%" count))
+	  (fmt 10 "[icp] contraction count: ~A --> limit: ~A.~%" 
+               count max-contractions))
     icp-output))
 
 ;;;
