@@ -2,26 +2,6 @@
 # Some RAHD v0.6 examples.
 # 
 
- ./rahd-v0.6-lx32 -formula "(((NOT (<= (* a c) (* y x))))
-                             ((= (* x x) c))
-                             ((= (* y y) (+ (* (* a a) c) b)))
-                             ((<= 0 b))
-                             ((<= 0 c))
-                             ((<= 0 x))
-                             ((<= 0 y)))"
-
-reset
-vars a c y x b
-assert ~(a*c <= y*x)
-assert x^2 = c
-assert y^2 = a^2 * c + b
-assert 0 <= b
-assert 0 <= c
-assert 0 <= x
-assert 0 <= y
-check
-
-
  ./rahd-v0.6-lx32 -formula "(((NOT (>= (- (* 2 (+ (* X Z) (+ (* X Y) (* Y Z))))
                                           (+ (* X X) (+ (* Y Y) (* Z Z))))
                                      0)))
@@ -44,6 +24,14 @@ check
                              ((<= (+ (* C C) (+ (- (* C D) (* D D)) 1))
                                    0)))"
  
+ vars a b c d e f
+ assert a*d + c*b + b*d <= 0
+ assert b >= 0 /\ c >= 0 /\ d >= 0
+ assert e >= 0 /\ f >= 1
+ assert a^2 + a*b - b^2 >= 1
+ assert 2*a + b >= 1
+ assert c^2 + c*d - d^2 + 1 <= 0
+
 
  ./rahd-v0.6-lx32 -formula "(((> (- x y) 2)) ((= y (* x 3))) 
                              ((< (+ 100 (* x z)) 10)))" -search-model -print-model
@@ -108,6 +96,12 @@ check
 			    ((> k1 k2)) 
 			    ((> k2 k3)) 
 			    ((> k4 (* k5 k5))))" -print-model -search-model!
+
+vars x y z w k1 k2 k3 k4 k5 k6
+assert x >= 12 /\ x > y /\ (x-y) = 1/2 + w 
+assert x > z /\ x^2 + w^3 < (x-y) + k2
+assert x > k1 /\ k4 = k5^2 /\ k3 > k2 + 2*k4
+assert k6 <= k4^2 + x*y + 3*k2
 
 
 ./rahd-v0.6-lx32 -formula "(((> x 15) (= x 11)) 
