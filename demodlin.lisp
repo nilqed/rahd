@@ -121,7 +121,15 @@
     ;; be terminating, so we can just use SUBST-EQS with (TERM -> T) upon the c.
 
     (if derived-demods 
-	(let ((demod-out (subst-eqs c derived-demods #'(lambda (x) (declare (ignore x)) t))))
+	(let ((demod-out 
+               (subst-eqs 
+                c 
+                derived-demods 
+                #'(lambda (x) (declare
+                               (ignore x)) t))))
+          (dolist (cur-eq derived-demods)
+            (add-vt-binding (cadr cur-eq) (caddr cur-eq)))
+          
 	  (fmt 5 "~% >> Applying derived demodulators (listed above) to case.  ~%     Case before demodulation: ~A. ~%     Case after demodulation: ~A.~%"
 	       c demod-out)
 	  demod-out)
