@@ -118,6 +118,11 @@
 ;;;           (ii) if q>0 and k is odd, we simply add the positive rewrite to the case.
 ;;;
 
+(defun fsvoqr (c &key expt-scalar)
+  (if expt-scalar
+      (fertilize-scalar-vars-over-quotient-ring c expt-scalar)
+    (fertilize-scalar-vars-over-quotient-ring c)))
+
 (defun fertilize-scalar-vars-over-quotient-ring (c &optional (expt-scalar 1))
   (let ((eqs (gather-eqs c)))
     (if (not eqs) c 

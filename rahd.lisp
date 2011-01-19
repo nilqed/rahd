@@ -7,6 +7,8 @@
 ;;; Written by Grant Olney Passmore
 ;;; Postdoc, Cambridge-Edinburgh EPSRC grant
 ;;;   ``Automatic Proof Procedures for Polynomials and Special Functions.''
+;;; Postdoctoral Associate, Clare Hall, University of Cambridge
+;;; Research Associate, LFCS, University of Edinburgh
 ;;;
 ;;; The following institutions have provided support for RAHD development
 ;;;  through funding the following positions for me (Passmore):
@@ -84,7 +86,11 @@
 (defun compile-file-and-load (&rest fnames)
   (mapcar #'(lambda (fname) 
 	      (let ((fname-full (format nil "~D.lisp" fname)))
-		(compile-file fname-full #+allegro :load-after-compile #+ccl :load #+ccl t #+ccl :verbose #+ccl t)
+		(compile-file fname-full 
+                              #+allegro :load-after-compile
+                              #+ccl :load 
+                              #+ccl t 
+                              #+ccl :verbose #+ccl t)
 		#+sbcl (load fname)
 		(format t "~%[RAHD-REBOOT]: ~D compiled and loaded successfully." fname-full)))
 	      fnames))
@@ -129,6 +135,7 @@
    "rahd"
    "regression"
    "prfanal"
+   "help"
    "frontend")
   (when (not skip-maxima)
     (compile-file-and-load

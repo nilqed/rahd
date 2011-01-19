@@ -5,8 +5,21 @@
 ;;; Some tools for analysing RAHD proofs and gathering statistics from them.
 ;;;
 ;;; Written by Grant Olney Passmore
-;;; Ph.D. Student, University of Edinburgh
-;;; Visiting Fellow, SRI International
+;;; Postdoc, Cambridge-Edinburgh EPSRC grant
+;;;   ``Automatic Proof Procedures for Polynomials and Special Functions.''
+;;; Postdoctoral Associate, Clare Hall, University of Cambridge
+;;; Research Associate, LFCS, University of Edinburgh
+;;;
+;;; The following institutions have provided support for RAHD development
+;;;  through funding the following positions for me (Passmore):
+;;;    - Ph.D. Student, University of Edinburgh,
+;;;    - Visiting Fellow, SRI International,
+;;;    - Research Intern, Microsoft Research,
+;;;    - Visiting Researcher, INRIA/IRISA.
+;;;
+;;; These positions have been crucial to RAHD progress and we thank the host 
+;;;  institutions and groups very much for their support and encouragement.
+;;;
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;; 
 ;;; This file: began on         28-Feb-2009
@@ -121,8 +134,6 @@
   (multiple-value-bind (v e?) (gethash k h)
     (when e? v)))
       
-
-
 ;;;
 ;;; PROCESSED-GOAL-DIM:
 ;;; Given a *processed* RAHD goal formula (in CNF), return its dimension.

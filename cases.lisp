@@ -416,6 +416,10 @@
 	   '(:SAT :CASE-REDUCED-TO-EMPTY-CONJUNCTION))
 	  (t (reverse result)))))
 
+(defun simplify-ground-lits+rtv (c)
+  (remove-truth-vals*
+   (simplify-ground-lits c)))
+
 ;;;
 ;;; A little term simplifier.  We do these main things:
 ;;;

@@ -1,4 +1,7 @@
 ;;;
+;;; RAHD: Real Algebra in High Dimensions v0.6
+;;; A proof procedure for the existential theory of real closed fields.
+;;;
 ;;; Univariate Sturm Theory and Cauchy Bound based Real Root Isolation
 ;;;
 ;;;   including: partial derivatives for polynomials in Q[\vec{x}],
@@ -12,19 +15,21 @@
 ;;;              univariate exhaustive real root isolation w.r.t. pairwise disjount
 ;;;                sequence of root bounding rational intervals
 ;;;
-;;;    for
-;;; 
-;;;     RAHD: Real Algebra in High Dimensions
-;;;   
-;;;   v0.6,
-;;;
-;;; A proof procedure for the existential theory of real closed fields.
 ;;; Written by Grant Olney Passmore
-;;; Ph.D. Student, University of Edinburgh
-;;; Visiting Fellow, SRI International
-;;; Research Intern, Microsoft Research
-;;; Visiting Researcher, INRIA/IRISA
-;;; Contact: (g.passmore@ed.ac.uk . http://homepages.inf.ed.ac.uk/s0793114/)
+;;; Postdoc, Cambridge-Edinburgh EPSRC grant
+;;;   ``Automatic Proof Procedures for Polynomials and Special Functions.''
+;;; Postdoctoral Associate, Clare Hall, University of Cambridge
+;;; Research Associate, LFCS, University of Edinburgh
+;;;
+;;; The following institutions have provided support for RAHD development
+;;;  through funding the following positions for me (Passmore):
+;;;    - Ph.D. Student, University of Edinburgh,
+;;;    - Visiting Fellow, SRI International,
+;;;    - Research Intern, Microsoft Research,
+;;;    - Visiting Researcher, INRIA/IRISA.
+;;;
+;;; These positions have been crucial to RAHD progress and we thank them 
+;;;  very much for their support.
 ;;;
 ;;;
 ;;; This file: began on         16-July-2008,

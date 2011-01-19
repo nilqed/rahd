@@ -1,4 +1,7 @@
 ;;;
+;;; RAHD: Real Algebra in High Dimensions v0.6
+;;; A proof procedure for the existential theory of real closed fields.
+;;;
 ;;; Multivariate Commutative Polynomial Algebra and Ideal Membership Routines 
 ;;;   with polynomials taken over Q[\vec{x}] and algebraic varieties taken over the complexes.
 ;;;
@@ -29,21 +32,28 @@
 ;;;                 Reductions in Polynomial Ideal Theory,'' in Recent Trends in Multidimensional 
 ;;;                 System Theory, edited by N.K. Bose. Chapter 6, pp.184-232. D. Reidel 
 ;;;                 Publishing Company, 1986.),
-;;;           
-;;;   for
 ;;;
-;;;     RAHD: Real Algebra in High Dimensions
-;;;   
-;;;   v0.6,
-;;;
-;;; A proof procedure for the existential theory of real closed fields.
 ;;; Written by Grant Olney Passmore
-;;; Ph.D. Student, University of Edinburgh
-;;; Visiting Fellow, SRI International
-;;; Contact: (g.passmore@ed.ac.uk . http://homepages.inf.ed.ac.uk/s0793114/)
+;;; Postdoc, Cambridge-Edinburgh EPSRC grant
+;;;   ``Automatic Proof Procedures for Polynomials and Special Functions.''
+;;; Postdoctoral Associate, Clare Hall, University of Cambridge
+;;; Research Associate, LFCS, University of Edinburgh
+;;;
+;;; The following institutions have provided support for RAHD development
+;;;  through funding the following positions for me (Passmore):
+;;;    - Ph.D. Student, University of Edinburgh,
+;;;    - Visiting Fellow, SRI International,
+;;;    - Research Intern, Microsoft Research,
+;;;    - Visiting Researcher, INRIA/IRISA.
+;;;
+;;; These positions have been crucial to RAHD progress and we thank the host 
+;;;  institutions and groups very much for their support and encouragement.
+;;;
+;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
+;;;
 ;;;
 ;;; This file: began on         16-June-2008,
-;;;            last updated on  11-Nov-2009.
+;;;            last updated on  13-January-2011.
 ;;;
 
 (in-package RAHD)
@@ -404,6 +414,28 @@
   (mdeg (poly-lt p)))
 
 ;;;
+;;; POLY-SUM-MDEG: Given a polynomial in canonical form, return the sum of the
+;;;  multivariate total degrees of all of its monomials.
+;;;
+
+(defun poly-sum-mdeg (p)
+  (let ((out 0))
+    (dolist (m p)
+      (setq out (+ (mdeg m) out)))
+    out))
+
+;;;
+;;; PS-SUM-MDEG: Given a list of polynomials in canonical form, return the sum
+;;;  of the sums of the multivariate total degrees of all monomials.
+;;;
+
+(defun ps-sum-mdeg (ps)
+  (let ((out 0))
+    (dolist (p ps)
+      (setq out (+ (poly-sum-mdeg p) out)))
+    out))
+
+;;;
 ;;; POLY-UNIV-/: Univariate polynomial division.
 ;;; Given two polynomials f, g in Q[x], we return a pair (q . r) s.t.
 ;;; f = gq + r.
@@ -435,7 +467,6 @@
 			       (and (= (caar q1) first-var)
 				    (<= (length q1) 1)))))
 	   p)))
-
 
 ;;; 
 ;;; POLY-UNIV-COMPATP: Are f and g compatible univariate polynomials?
@@ -712,7 +743,7 @@
 	(t (let ((f_i (nth i F)) (f_j (nth j F)))
 	     (if (ignore-s-poly f_i f_j)
 		 (progn
-		   (fmt 7 "~% Superfluous critical pair (S-poly) ignored in GBasis construction! ~%")
+		   (fmt 7 "~% Superfluous S-polynomial ignored in GBasis construction! ~%")
 		   (s-pairs* F
 			     (if (= j ub) (1+ i) i)
 			     (if (= j ub) (+ i 2) (1+ j)) ub))
@@ -817,6 +848,8 @@
 ;;; POLY-MULT (p q): Given polynomials p, q in canonical form, return
 ;;;  their product, p*q, in canonical form.
 ;;;
+;;; *** Should update this to do repeated squaring whenever possible.
+;;;
 
 (defun poly-mult (p q)
   (let ((running-prod nil))
@@ -838,7 +871,24 @@
 		      (setq scalar (+ scalar (mcoeff m))) t)) 
     scalar))
 
+;;;
+;;; POLY-BW: Given a polynomial, return the total bit-width of all of its
+;;;  coefficients.
+;;;
 
+(defun poly-bw (p)
+  (let ((bw 0))
+    (dolist (m p)
+      (setq bw (+ bw (m-bw m))))
+    bw))
+
+;;;
+;;; M-BW: Given a monomial, return bit-width of its coefficient.
+;;;
+
+(defun m-bw (m)
+  (let ((c (abs (car m))))
+    (log c 2)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Some examples:

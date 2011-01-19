@@ -2,7 +2,6 @@
 ;;; RAHD: Real Algebra in High Dimensions v0.6
 ;;; A proof procedure for the existential theory of real closed fields.
 ;;;
-;;;
 ;;; Conversion of multivariate polynomials between two representations:
 ;;;  (a) The (mo<)-ordered monomial based representation used for polynomial algebra
 ;;;      as developed and utilised in polyalg.lisp, sturm.lisp, etc., and
@@ -10,13 +9,21 @@
 ;;;      simplifier, and case-splitter,
 ;;;  (c) Expansion of extended EXPT polynomial to multiplicative form.
 ;;;
-;;;
 ;;; Written by Grant Olney Passmore
-;;; Ph.D. Student, University of Edinburgh
-;;; Visiting Fellow, SRI International
-;;; Contact: (g.passmore@ed.ac.uk . http://homepages.inf.ed.ac.uk/s0793114/)
+;;; Postdoc, Cambridge-Edinburgh EPSRC grant
+;;;   ``Automatic Proof Procedures for Polynomials and Special Functions.''
+;;; Postdoctoral Associate, Clare Hall, University of Cambridge
+;;; Research Associate, LFCS, University of Edinburgh
 ;;;
-;;; >> Requires: polyalg.lisp
+;;; The following institutions have provided support for RAHD development
+;;;  through funding the following positions for me (Passmore):
+;;;    - Ph.D. Student, University of Edinburgh,
+;;;    - Visiting Fellow, SRI International,
+;;;    - Research Intern, Microsoft Research,
+;;;    - Visiting Researcher, INRIA/IRISA.
+;;;
+;;; These positions have been crucial to RAHD progress and we thank them 
+;;;  very much for their support.
 ;;;
 ;;; This file: began on         30-July-2008,
 ;;;            last updated on  21-August-2010.

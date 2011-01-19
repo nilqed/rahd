@@ -4,11 +4,13 @@
 ;;;
 ;;; Front end interface routines for communicating problems to RAHD in a
 ;;;  nice computer-algebra-like format and interacting with the prover
-;;;  via a safe (not raw Lisp!) REPL.
+;;;  via a safe (not raw Lisp!) REPL/toplevel.
 ;;;
 ;;; Written by Grant Olney Passmore
 ;;; Postdoc, Cambridge-Edinburgh EPSRC grant
 ;;;   ``Automatic Proof Procedures for Polynomials and Special Functions.''
+;;; Postdoctoral Associate, Clare Hall, University of Cambridge
+;;; Research Associate, LFCS, University of Edinburgh
 ;;;
 ;;; The following institutions have provided support for RAHD development
 ;;;  through funding the following positions for me (Passmore):
@@ -23,7 +25,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/.
 ;;; 
 ;;; This file: began on         01-November-2010,
-;;;            last updated on  10-December-2010.
+;;;            last updated on  12-December-2010.
 ;;;
 
 ;;;
@@ -107,44 +109,6 @@
                     (f-infix-str i))
                (setq count (1+ count))))
            (fmt 0 "~%"))))
-
-;;;
-;;; Match CMF string to function.
-;;;
-
-(defparameter *cmf-str-fcn-table*
-  `(("simp-arith" ,#'simp-arith)
-    ("contra-eqs" ,#'contra-eqs)
-    ("demod-num" ,#'demod-num)
-    ("simp-gls" ,#'simp-gls)
-    ("simp-tvs" ,#'simp-tvs)
-    ("fert-tsos" ,#'fert-tsos)
-    ("univ-sturm-ineqs" ,#'univ-sturm-ineqs)
-    ("open-ex-inf-cad" ,#'open-ex-inf-cad)
-    ("gen-ex-cad" ,#'gen-ex-cad)
-    ("canon-tms" ,#'canon-tms)
-    ("simp-zrhs" ,#'simp-zrhs)
-    ("triv-ideals" ,#'triv-ideals)
-    ("rcr-ineqs" ,#'rcr-ineqs)
-    ("open-frag-ex-inf-cad" ,#'open-frag-ex-inf-cad)
-    ("simp-real-null" ,#'simp-real-null)
-    ("rcr-svars" ,#'rcr-svars)
-    ("int-dom-zpb" ,#'int-dom-zpb)
-    ("int-dom-zpb-gen" ,#'int-dom-zpb-gen)
-    ("demod-lin" ,#'demod-lin)
-    ("interval-split" ,#'interval-split)
-    ("interval-cp" ,#'interval-cp)
-    ("satur-lin" ,#'satur-lin)
-    ("full-gbrni" ,#'full-gbrni)
-    ("bounded-gbrni" ,#'bounded-gbrni)
-    ("quick-sat" ,#'quick-sat)
-    ("factor-sign" ,#'factor-sign)
-    ("apply-ruleset" ,#'apply-ruleset)
-    ("fdep-cad" ,#'fdep-cad)
-    ("stable-simp" ,#'stable-simp)))
-    
-(defun cmf-from-str (str)
-  (cadr (assoc str *cmf-str-fcn-table* :test 'equal)))
 
 ;;;
 ;;; Give a prompt string indicating the current status
@@ -267,10 +231,15 @@
              (b)
              (fmt 0 "Goalset built with ~A open cases.~%~%"
                   *gs-size*))
-            ((equal cmd "open-cases")
+            ((equal cmd "opens")
              (pug))
+            ((equal cmd "proj-order")
+             (cond (asserted-atoms-lst
+                    (fmt 0 "Optimal projection order (Brown-McCallum projection): ~A.~%~%"
+                         (wrv verbosity (vs-proj-order-greedy-on-case asserted-atoms-lst))))
+                   (t (fmt 0 "No atoms asserted, so no projection order to compute.~%~%"))))
             ((equal cmd "goal")
-             (fmt "You are at goal ~A.~%~%" *current-goal-key*))
+             (fmt 0 "You are at goal ~A.~%~%" *current-goal-key*))
             ((equal cmd "watch")
              (let ((num (when (not (equal arg ""))
                           (car (p-int arg)))))
@@ -278,50 +247,34 @@
                  (setq watched-case num)
                  (fmt 0 "Watching case ~A.~%~%" watched-case))))
             ((equal cmd "apply")
-             (wrv verbosity (funcall (cmf-from-str arg)))
-             (fmt 0 "Done.~%~%"))
+             (let ((cmf-fcn (cmf-from-str arg)))
+               (cond (cmf-fcn (wrv verbosity (funcall cmf-fcn))
+                              (fmt 0 "Done.~%~%"))
+                     (t (fmt 0 "Unknown CMF.~%~%")))))
             ((equal cmd "status")
              (if (not *g*)
                  (fmt 0 "No goalset built.~% Try 'help build-goalset' and 'help check'.~%~%")
              (c)))
-            ((equal cmd "show-rules")
+            ((equal cmd "rules")
              (show-rules))
-            ((equal cmd "show-rulesets")
+            ((equal cmd "rulesets")
              (show-rulesets))
             ((equal cmd "reset")
              (r)
              (setq asserted-atoms-lst nil)
+             (setq watched-case nil)
              (fmt 0 "Current context reset.~%~%"))
+            ((equal cmd "cmfs")
+             (fmt 0 "Available CMFs:~%~%~A.~%~%" (avail-cmfs)))
             ((equal cmd "defrule")
              (with-simple-restart (continue-with-new-cmd
                                    "Continue and enter a new RAHD command.")
                                   (process-defrule arg vars-lst)
-                                  (fmt 0 "~%~%")))
+                                  (fmt 0 "~%")))
             ((equal cmd "lisp")
              (fmt 0 "Value: ~A.~%~%" (eval (read-from-string arg))))
             ((equal cmd "help")
-             (cond ((equal arg "")
-                    (fmt 0 "Help with RAHD shell.  Try 'help <keyword>' ~
-  where keywords are:~%
-   assert check help lisp options quit reset set show
-   unset vars verbosity. ~%~%"))
-                   ((equal arg "assert")
-                    (fmt 0 "Usage: assert <formula>~%
- Asserts a formula as an assumption in the current context.~%
- Note that an asserted formula must be either a single literal 
-  or a conjunction of literals.
- Also, all variables in the formula must be declared.
-
- Example:
-  assert x^2 + (x - z)^2 > 0 /\\ z >= 5
-
- * See vars for more on variable declaration.
- * See check for checking the satisfiability of a context.
- * See show for viewing the current context.
- * See reset for clearing the current context.~%~%"))
-                   ((equal arg "help")
-                    (fmt 0 "Usage: help <keyword>~%
- Invoke 'help' with no arguments for possible keywords.~%~%"))))
+             (toplevel-help arg))
             ((equal cmd ""))
             (t (fmt 0 "Input error: Command '~A' not understood.~%~%" cmd)
                ))))))
@@ -421,6 +374,8 @@
 
 ;;;
 ;;; Simple QEPCAD-B-like interface to RAHD.
+;;; This is so that tools using QEPCAD-B can experiment with RAHD
+;;;  simply by replacing the QEPCAD-B binary with a RAHD binary.
 ;;; *Incomplete.
 ;;;
 
@@ -470,6 +425,7 @@
             (setq exit? nil)))))
 
 ;;;
+;;; *** Begin parsing machinery ***
 ;;; Parse an infix RAHD input formula string into an S-expression.
 ;;;
 ;;; Note that variables are case-insensitive.
@@ -488,19 +444,27 @@
 ;;; Given a list of var-strs and a string S, return a pair
 ;;;  (var-str . rst-s) if S begins with var-str.
 ;;;
+;;; Need to update this to look for longer vars first.
+;;; Otherwise looking for x1 before x11 would make x1 match
+;;;  x11, resulting in a stray 1.
+;;; *Done (now we use sorted-vars-lst).
 
 (defun p-var (s vars-lst)
-  (if (equal s "") '(nil . "")
-    (let ((var-found? nil) (v-str) (s-rst))
-      (loop for c in vars-lst until var-found? do
-        (let ((v-match? (p-match-prefix c s)))
-          (when v-match?
-            (setq var-found? t)
-            (setq v-str c)
-            (setq s-rst v-match?))))
-      (if var-found?
-          (cons (string-upcase v-str) s-rst)
-        (cons nil s)))))
+  (let* ((vars-lst-copy (copy-list vars-lst))
+         (sorted-vars-lst 
+          (sort vars-lst-copy
+                #'(lambda (x y) (>= (length x) (length y))))))
+    (if (equal s "") '(nil . "")
+      (let ((var-found? nil) (v-str) (s-rst))
+        (loop for c in sorted-vars-lst until var-found? do
+              (let ((v-match? (p-match-prefix c s)))
+                (when v-match?
+                  (setq var-found? t)
+                  (setq v-str c)
+                  (setq s-rst v-match?))))
+        (if var-found?
+            (cons (string-upcase v-str) s-rst)
+          (cons nil s))))))
 
 ;;;
 ;;; Given two strings S and PREFIX, check to see if PREFIX is indeed a prefix
@@ -741,7 +705,6 @@
 ;;;
 ;;; Parser only for conjunctive formulae.
 ;;;
-
 
 (yacc:define-parser qf-conj-parser
   (:start-symbol qf-formula)
