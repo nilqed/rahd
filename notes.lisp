@@ -3,6 +3,37 @@
 ;;;  g.o.passmore (2008-2010)
 ;;;
 
+
+;;; Thoughts on strategy language.
+;;;
+;;; > stage0 =s= { intervalcp; gbpsatz; fdepcad }
+;;; > stage1 =s= { ... ... }
+;;; > waterfall =s= { stage0; explode-ineqs then stage1 }
+;;; > check with waterfall
+;;;
+;;; also want || for threading.
+;;; idea: 
+;;;       x || y means do both x and y and kill one if the
+;;;               other finishes, return the result of the
+;;;               first one that finished and ignore rest. 
+;;;
+;;; > cost-intervalcp =c= { num-vars^2 + num-literals }
+;;; > assign-cost cost-intervalcp to intervalcp
+;;;
+;;; > my-simp-ordinal =o= <num-vars, num-literals, total-degree>
+;;; > my-cmf-pool =p= { intervalcp, gbpsatz, fdepcad }
+;;; > check with my-cmf-pool via best-first guided-by my-simp-ordinal
+;;;
+
+;;;
+;;; s0 =s= {   { simp-zrhs ; stable-simp ; interval-cp ; gb-psatz } 
+;;;         || { qepcad } 
+;;;         || { redlog } 
+;;;         || { sos } 
+;;;        }
+;;;
+
+
 ;;;
 ;;; Doesn't print out full model:
 ;;;
@@ -22,8 +53,6 @@ s001:..Code/rahd > ./rahd-v0.6-lx32 -formula "(((>= pK 0))
  model: [PL=1,
          X=1,
          PK=0].
-
-
 
 ;;;
 ;;; Good CAD versus partial CAD example for my thesis:

@@ -257,3 +257,16 @@
 			     ,(cdr icp-result)))
 		   c)))))
 	(t c)))
+
+;;;
+;;; BGBRNULL-CASE-WRAPPER: Wrapper for the above.
+;;;
+
+(defun bgbrnull-case-wrapper (c &key gb-bound icp-period union-case summand-level)
+  (bounded-gb-real-null-on-case
+   c
+   gb-bound
+   icp-period
+   union-case
+   summand-level))
+   

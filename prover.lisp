@@ -7,6 +7,8 @@
 ;;; Written by Grant Olney Passmore
 ;;; Postdoc, Cambridge-Edinburgh EPSRC grant
 ;;;   ``Automatic Proof Procedures for Polynomials and Special Functions.''
+;;; Postdoctoral Associate, Clare Hall, University of Cambridge
+;;; Research Associate, LFCS, University of Edinburgh
 ;;;
 ;;; The following institutions have provided support for RAHD development
 ;;;  through funding the following positions for me (Passmore):
@@ -15,13 +17,13 @@
 ;;;    - Research Intern, Microsoft Research,
 ;;;    - Visiting Researcher, INRIA/IRISA.
 ;;;
-;;; These positions have been crucial to RAHD progress and we thank them 
-;;;  very much for their support.
+;;; These positions have been crucial to RAHD progress and we thank the host 
+;;;  institutions and groups very much for their support and encouragement.
 ;;;
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;;
 ;;; This file: began on         29-July-2008,
-;;;            last updated on  29-August-2010.
+;;;            last updated on  14-December-2010.
 ;;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -383,20 +385,11 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; CURRENT-TACTIC-CASE: The current case in the current goal's goal-set being examined in 
-;;; the GENERIC-TACTIC loop.
+;;; the MAP-CMF loop.
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defparameter *current-tactic-case* nil)
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; AVAILABLE-TACTICS: A list of RAHD tactics that are currently available in the active
-;;;  session.
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defparameter *available-tactics* nil)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -787,7 +780,8 @@
     (g f :goal-key new-subgoal-key :overwrite-ok t)
     ;(build-gs) ;;; For now, we let PROC handle build-gs for us.
     (funcall proc)
-    (let ((subgoal-refuted? (= *gs-unknown-size* 0)))
+    (let ((subgoal-refuted? (and (= *gs-unknown-size* 0)
+                                 (not *sat-case-found?*))))
       (when parent-goal-key (swap-to-goal parent-goal-key))
       (setq *vars-table* vars-table)
       (if subgoal-refuted? t nil))))
@@ -841,10 +835,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun contra-eqs (&key case from to)
-  (GENERIC-TACTIC #'simply-incons* 
-		  'CONTRA-EQS 
-		  "simple equality reasoning"
-		  :case case :from from :to to))
+  (MAP-CMF #'simply-incons* 
+           'CONTRA-EQS 
+           "simple equality reasoning"
+           :case case :from from :to to))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -853,10 +847,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun demod-num (&key case from to)
-  (GENERIC-TACTIC #'demodulate-numerically
-		  'DEMOD-NUM
-		  "numerical demodulation"
-		  :case case :from from :to to))
+  (MAP-CMF #'demodulate-numerically
+           'DEMOD-NUM
+           "numerical demodulation"
+           :case case :from from :to to))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -865,10 +859,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun simp-gls (&key case from to)
-  (GENERIC-TACTIC #'simplify-ground-lits
-		  'SIMP-GLS
-		  "ground literal simplification"
-		  :case case :from from :to to))
+  (MAP-CMF #'simplify-ground-lits
+           'SIMP-GLS
+           "ground literal simplification"
+           :case case :from from :to to))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -877,10 +871,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun simp-tvs (&key case from to)
-  (GENERIC-TACTIC #'remove-truth-vals*
-		  'SIMP-TVS
-		  "truth value simplification"
-		  :case case :from from :to to))
+  (MAP-CMF #'remove-truth-vals*
+           'SIMP-TVS
+           "truth value simplification"
+           :case case :from from :to to))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -889,10 +883,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun simp-arith (&key case from to)
-  (GENERIC-TACTIC #'arith-simplify-case
-		  'SIMP-ARITH
-		  "arithmetic simplification"
-		  :case case :from from :to to))
+  (MAP-CMF #'arith-simplify-case
+           'SIMP-ARITH
+           "arithmetic simplification"
+           :case case :from from :to to))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -903,10 +897,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun fert-tsos (&key case from to)
-  (GENERIC-TACTIC #'fertilize-trivial-squares
-		  'FERT-TSOS
-		  "inequality fertilization for trivial sums of squares"
-		  :case case :from from :to to))
+  (MAP-CMF #'fertilize-trivial-squares
+           'FERT-TSOS
+           "inequality fertilization for trivial sums of squares"
+           :case case :from from :to to))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -917,10 +911,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun univ-sturm-ineqs (&key case from to)
-  (GENERIC-TACTIC #'open-interval-univ-ineq
-		  'UNIV-STURM-INEQS
-		  "Sturm sequence analysis"
-		  :case case :from from :to to))
+  (MAP-CMF #'open-interval-univ-ineq
+           'UNIV-STURM-INEQS
+           "Sturm sequence analysis"
+           :case case :from from :to to))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -929,10 +923,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun open-ex-inf-cad (&key case from to)
-  (GENERIC-TACTIC #'open-cad
-		  'OPEN-EX-INF-CAD
-		  "CAD with open relaxation via QEPCAD-B"
-		  :case case :from from :to to))
+  (MAP-CMF #'open-cad
+           'OPEN-EX-INF-CAD
+           "CAD with open relaxation via QEPCAD-B"
+           :case case :from from :to to))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -941,10 +935,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun gen-ex-cad (&key case from to)
-  (GENERIC-TACTIC #'gen-cad
-		  'GEN-EX-CAD
-		  "generic CAD via QEPCAD-B"
-		  :case case :from from :to to))
+  (MAP-CMF #'gen-cad
+           'GEN-EX-CAD
+           "generic CAD via QEPCAD-B"
+           :case case :from from :to to))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -954,10 +948,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun canon-tms (&key case from to)
-  (GENERIC-TACTIC #'canonize-terms
-		  'CANON-TMS
-		  "polynomial canonicalization, arithmetic, and simplification"
-		  :case case :from from :to to))
+  (MAP-CMF #'canonize-terms
+           'CANON-TMS
+           "polynomial canonicalization, arithmetic, and simplification"
+           :case case :from from :to to))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -966,10 +960,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun simp-zrhs (&key case from to)
-  (GENERIC-TACTIC #'zero-rhs
-		  'SIMP-ZRHS
-		  "RHS zeroing with polynomial canonicalization"
-		  :case case :from from :to to))
+  (MAP-CMF #'zero-rhs
+           'SIMP-ZRHS
+           "RHS zeroing with polynomial canonicalization"
+           :case case :from from :to to))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -978,10 +972,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun triv-ideals (&key case from to)
-  (GENERIC-TACTIC #'trivial-ideal
-		  'TRIV-IDEALS
-		  "ideal triviality via reduced Groebner bases"
-		  :case case :from from :to to))
+  (MAP-CMF #'trivial-ideal
+           'TRIV-IDEALS
+           "ideal triviality via reduced Groebner bases"
+           :case case :from from :to to))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -992,16 +986,16 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun residue-class-ring-ineqs (&key case from to)
-  (GENERIC-TACTIC #'ineqs-over-quotient-ring
-		  'RESIDUE-CLASS-RING-INEQS
-		  "residue class ring inequality term reduction"
-		  :case case :from from :to to))
+  (MAP-CMF #'ineqs-over-quotient-ring
+           'RESIDUE-CLASS-RING-INEQS
+           "residue class ring inequality term reduction"
+           :case case :from from :to to))
 
 (defun rcr-ineqs (&key case from to)
-  (GENERIC-TACTIC #'ineqs-over-quotient-ring
-		  'RCR-INEQS
-		  "residue class ring inequality term reduction"
-		  :case case :from from :to to))
+  (MAP-CMF #'ineqs-over-quotient-ring
+           'RCR-INEQS
+           "residue class ring inequality term reduction"
+           :case case :from from :to to))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -1014,10 +1008,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun open-frag-ex-inf-cad (&key case from to)
-  (GENERIC-TACTIC #'open-frag-cad
-		  'OPEN-FRAG-EX-INF-CAD
-		  "open CAD"
-		  :case case :from from :to to))
+  (MAP-CMF #'open-frag-cad
+           'OPEN-FRAG-EX-INF-CAD
+           "open CAD"
+           :case case :from from :to to))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -1027,10 +1021,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun simp-real-null (&key case from to)
-  (GENERIC-TACTIC #'simp-real-nullstellensatz
-		  'SIMP-REAL-NULL
-		  "simple real nullstellensatz refutation"
-		  :case case :from from :to to))
+  (MAP-CMF #'simp-real-nullstellensatz
+           'SIMP-REAL-NULL
+           "simple real nullstellensatz refutation"
+           :case case :from from :to to))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -1047,7 +1041,7 @@
 ;;;  exact real arithmetic to set v = (expt q 1/k) if k is odd, and to (+/-)(expt q 1/k) 
 ;;;  if k is even.  If k is even, we then recursively split on these two cases, placing them
 ;;;  on the goal-stack and invoking a new waterfall upon the subgoal (and its two cases) 
-;;;  induced by the disjunction (GENERIC-TACTIC takes care of this by recognizing the :DISJ
+;;;  induced by the disjunction (MAP-CMF takes care of this by recognizing the :DISJ
 ;;;  disjunctive waterfall signifier).
 ;;;
 ;;;  If k is odd, then we just reduce the current case to the positive exact exponent
@@ -1059,10 +1053,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun rcr-svars (&key case from to)
-  (GENERIC-TACTIC #'fertilize-scalar-vars-over-quotient-ring
-		  'RCR-SVARS
-		  "residue class ring power sequence to scalar reduction"
-		  :case case :from from :to to))
+  (MAP-CMF #'fertilize-scalar-vars-over-quotient-ring
+           'RCR-SVARS
+           "residue class ring power sequence to scalar reduction"
+           :case case :from from :to to))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -1073,10 +1067,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun int-dom-zpb (&key case from to)
-  (GENERIC-TACTIC #'integral-domain-zpb
-		  'INT-DOM-ZPB
-		  "integral domain zero product branching"
-		  :case case :from from :to to))
+  (MAP-CMF #'integral-domain-zpb
+           'INT-DOM-ZPB
+           "integral domain zero product branching"
+           :case case :from from :to to))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -1086,11 +1080,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun int-dom-zpb-gen (&key case from to)
-  (GENERIC-TACTIC #'integral-domain-zpb-gen
-		  'INT-DOM-ZPB-GEN
-		  "integral domain zero product branching"
-		  :case case :from from :to to))
-
+  (MAP-CMF #'integral-domain-zpb-gen
+           'INT-DOM-ZPB-GEN
+           "integral domain zero product branching"
+           :case case :from from :to to))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -1099,10 +1092,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun demod-lin (&key case from to)
-  (GENERIC-TACTIC #'derive-partial-demod-lins
-		  'DEMOD-LIN
-		  "partial linear demodulation"
-		  :case case :from from :to to))
+  (MAP-CMF #'derive-partial-demod-lins
+           'DEMOD-LIN
+           "partial linear demodulation"
+           :case case :from from :to to))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -1111,10 +1104,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun interval-split (&key case from to tm pt)
-  (GENERIC-TACTIC #'split-term-for-case
-		  'INTERVAL-SPLIT
-		  "variable interval splitting"
-		  :case case :from from :to to :tactic-params (list tm pt)))
+  (MAP-CMF #'split-term-for-case
+           'INTERVAL-SPLIT
+           "variable interval splitting"
+           :case case :from from :to to :tactic-params (list tm pt)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -1123,10 +1116,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun interval-cp (&key case from to)
-  (GENERIC-TACTIC #'icp-on-case
-		  'INTERVAL-CP
-		  "interval constraint propagation"
-		  :case case :from from :to to))
+  (MAP-CMF #'icp-on-case
+           'INTERVAL-CP
+           "interval constraint propagation"
+           :case case :from from :to to))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -1135,17 +1128,16 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun saturate-orient-lin (&key case from to)
-  (GENERIC-TACTIC #'saturate-case-with-linear-orientations
-		  'SATURATE-ORIENT-LIN
-		  "saturation by all linear orientations"
-		  :case case :from from :to to))
+  (MAP-CMF #'saturate-case-with-linear-orientations
+           'SATURATE-ORIENT-LIN
+           "saturation by all linear orientations"
+           :case case :from from :to to))
 
 (defun satur-lin (&key case from to)
-  (GENERIC-TACTIC #'saturate-case-with-linear-orientations
-		  'SATUR-LIN
-		  "saturation by all linear orientations"
-		  :case case :from from :to to))
-
+  (MAP-CMF #'saturate-case-with-linear-orientations
+           'SATUR-LIN
+           "saturation by all linear orientations"
+           :case case :from from :to to))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -1155,10 +1147,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun full-gbrni (&key case from to)
-  (GENERIC-TACTIC #'full-gb-real-null-on-case
-		  'FULL-GBRNI
-		  "Real Nullstellensatz witness search (full GB + ICP)"
-		  :case case :from from :to to))
+  (MAP-CMF #'full-gb-real-null-on-case
+           'FULL-GBRNI
+           "Real Nullstellensatz witness search (full GB + ICP)"
+           :case case :from from :to to))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -1168,11 +1160,11 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun bounded-gbrni (&key case from to gb-bound icp-period union-case summand-level)
-  (GENERIC-TACTIC #'bounded-gb-real-null-on-case
-		  'bounded-gbrni
-		  "Real Nullstellensatz witness search (bounded GB + ICP)"
-		  :case case :from from :to to :tactic-params 
-		  (list gb-bound icp-period union-case summand-level)))
+  (MAP-CMF #'bounded-gb-real-null-on-case
+           'bounded-gbrni
+           "Real Nullstellensatz witness search (bounded GB + ICP)"
+           :case case :from from :to to :tactic-params 
+           (list gb-bound icp-period union-case summand-level)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -1182,10 +1174,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun quick-sat (&key case from to)
-  (GENERIC-TACTIC #'qsi-on-case
-		  'quick-sat
-		  "Counter-example search using interval constraints"
-		  :case case :from from :to to))
+  (MAP-CMF #'qsi-on-case
+           'quick-sat
+           "Counter-example search using interval constraints"
+           :case case :from from :to to))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -1195,10 +1187,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun factor-sign (&key case from to)
-  (GENERIC-TACTIC #'factor-sign-case
-		  'factor-sign
-		  "Sign determination by multivariate factorisation"
-		  :case case :from from :to to))
+  (MAP-CMF #'factor-sign-case
+           'factor-sign
+           "Sign determination by multivariate factorisation"
+           :case case :from from :to to))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -1207,11 +1199,11 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun apply-ruleset (rs-name &key case from to)
-  (GENERIC-TACTIC #'apply-ruleset-to-case
-		  'apply-ruleset
-		  "Apply a verified ruleset for forward-chaining"
-		  :case case :from from :to to :tactic-params 
-		  (list rs-name)))
+  (MAP-CMF #'apply-ruleset-to-case
+           'apply-ruleset
+           "Apply a verified ruleset for forward-chaining"
+           :case case :from from :to to :tactic-params 
+           (list rs-name)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -1220,11 +1212,11 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun fdep-cad (&key case from to factor?)
-  (GENERIC-TACTIC #'fdep-cad-on-case
-		  'fdep-cad
-		  "Full-dimensional extended partial cylindrical algebraic decomposition"
-		  :case case :from from :to to :tactic-params
-		  (list factor?)))
+  (MAP-CMF #'fdep-cad-on-case
+           'fdep-cad
+           "Full-dimensional extended partial cylindrical algebraic decomposition"
+           :case case :from from :to to :tactic-params
+           (list factor?)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -1469,9 +1461,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; GENERIC-TACTIC: A generic higher-order tactic functional
-;;; that can be used to quickly create a new tactic from a 
-;;; case manipulation function.
+;;; MAP-CMF: Map a CMF across the open cases of a goal.
 ;;;
 ;;; fcn-case-manip : a case manipulation function
 ;;; fcn-symbol     : a pretty printable name for fcn-case-manip, used both
@@ -1480,7 +1470,7 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun GENERIC-TACTIC (fcn-case-manip fcn-symbol fcn-desc &key case from to tactic-params)
+(defun MAP-CMF (fcn-case-manip fcn-symbol fcn-desc &key case from to tactic-params)
   (declare (ignorable fcn-desc))
   (setq *last-tactic-progress-lst* nil)
   (cond ((= *gs-unknown-size* 0) (progn (setq *last-tactic-made-progress* nil) t))
@@ -1756,27 +1746,30 @@
 (defun current-stats (&key show-goal)
   (when show-goal
     (fmt 0 "~% Goal: ~A,~%" *g*))
-  (when *current-goal-key*
-    (if (equal *current-goal-key* 0)
-	(if *gs*
-	    (fmt 0 "~% Goalkey: ~A,~% Unknown cases: ~A of ~A.~%~%"
-		 *current-goal-key*
-		 *gs-unknown-size*
-		 *gs-size*)
-	    (fmt 0 "~% Goalkey: ~A.~% Goal-Set not built (use (b)).~%~%" 
-		 *current-goal-key*))
-      (multiple-value-bind 
-	  (parent-data p-exists?)
-	  (gethash (car *current-goal-key*) *goal-stack-data*)
-	(declare (ignore p-exists?))
-	(fmt 0 "~% Goalkey: ~A,~% Unknown cases: ~A of ~A,~% Parent: ~A,~% Parent unknown cases: ~A of ~A.~%~%"
-	     *current-goal-key*
-	     *gs-unknown-size*
-	     *gs-size*
-	     (car *current-goal-key*)
-	     (aref parent-data 2)
-	     (aref parent-data 1))))
-  (cond ((and (not *sat-case-found?*) *gs* (or (= *gs-unknown-size* 0) *goal-refuted?*))
+  (when *current-goal-key* 
+    (when (or (equal *current-goal-key* 0)
+              (consp *current-goal-key*))
+      (if (equal *current-goal-key* 0)
+          (cond (*gs*
+                 (fmt 0 "~% Goalkey: ~A,~% Unknown cases: ~A of ~A.~%~%"
+                      *current-goal-key*
+                      *gs-unknown-size*
+                      *gs-size*))
+                ((not (or *sat-case-found?* *goal-refuted?*))
+                 (fmt 0 "~% Goalkey: ~A.~% Goalset not built (use (b)).~%~%" 
+                      *current-goal-key*)))
+        (multiple-value-bind 
+            (parent-data p-exists?)
+            (gethash (car *current-goal-key*) *goal-stack-data*)
+          (declare (ignore p-exists?))
+          (fmt 0 "~% Goalkey: ~A,~% Unknown cases: ~A of ~A,~% Parent: ~A,~% Parent unknown cases: ~A of ~A.~%~%"
+               *current-goal-key*
+               *gs-unknown-size*
+               *gs-size*
+               (car *current-goal-key*)
+               (aref parent-data 2)
+               (aref parent-data 1)))))
+  (cond ((and (not *sat-case-found?*) (or (and *gs* (= *gs-unknown-size* 0)) *goal-refuted?*))
 	 (fmt 0 " Decision: unsat (proven).~%~%"))
 	(*sat-case-found?* 
 	 (fmt 0 " Decision: sat (disproven).~%~%~A~%" (format-model *sat-model*)))

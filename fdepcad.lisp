@@ -498,10 +498,10 @@
 			  `(- ,(cadr l)
 			      ,(caddr l)))
 		      c))
-	 (vs (vs-proj-order ps*))
+	 (vs (vs-all ps*))
 	 (vs* (mapcar #'(lambda (i) (nth i *vars-table*)) vs))
 	 (ps (mapcar #'poly-prover-rep-to-alg-rep ps*))
-	 (spts (fd-cad ps (vs-proj-order ps*) 
+	 (spts (fd-cad ps vs
 		       :epsilon epsilon
 		       :formula (when partial? c)
 		       :factor? factor?)))
@@ -535,7 +535,7 @@
 ;;;    we can't trust SAT answers, only UNSAT.
 ;;;
 
-(defun fdep-cad-on-case (c factor?)
+(defun fdep-cad-on-case (c &key (factor? t))
   (let ((sc (gather-strict-ineqs c)))
     (if sc 
 	(let ((s? (fd-cad-sat? 
@@ -561,9 +561,10 @@
 ;;;  for this and just use more-or-less the order they appear.
 ;;;
 ;;; Polynomials are given in prover notation.
+;;; Variable list returned is a list of variable IDs (indices in *VARS-TABLE*).
 ;;;
 
-(defun vs-proj-order (ps)
+(defun vs-all (ps)
   (mapcar #'(lambda (v)
 	      (let ((i (find-var v *vars-table* 0)))
 		(if (not i)
@@ -576,6 +577,78 @@
 	    (dolist (p ps)
 	      (setq vs (union vs (gather-vars p))))
 	    vs)))
+
+;;;
+;;; BM-PROJ-1: 1-step of Brown-McCallum projection.
+;;;
+
+(defun bm-proj-1 (ps var-id)
+  (let ((lcs (lcoeffs ps var-id))
+        (ds (discrs ps var-id))
+        (rs (ress ps var-id)))
+    (mapcar #'(lambda (p) 
+                (poly-prover-rep-to-alg-rep
+                 (poly-expand-expts p)))
+            (sqr-free-dps
+             (mapcar #'poly-alg-rep-to-prover-rep
+                     (clean-rcs
+                      (union (union lcs ds :test 'equal) 
+                             rs
+                             :test 'equal)))))))
+
+;;;
+;;; VS-PROJ-ORDER-GREEDY: Compute a projection order using the greedy
+;;;  method of Seidl et al.
+;;; 
+;;; We accept the polynomials in algebraic notation.
+;;; We return a list in algebraic notation (VAR-ID's).
+;;;
+
+(defun vs-proj-order-greedy (ps)
+  (let* ((all-vs (vs-all (mapcar #'poly-alg-rep-to-prover-rep ps)))
+         (num-vars (length all-vs))
+         (remaining-vs all-vs)
+         (out-order (make-array num-vars))
+         (last-ps ps))
+    (fmt 3 "~% Computing FD-CAD projection order greedily
+  (using Brown-McCallum FD projection operator).~%")
+    (loop for i from 0 to (1- num-vars) do
+          (fmt 3 "~%  Determining variable ~A..." (1+ i))
+          (cond ((= i (1- num-vars))
+                 (fmt 3 "... Winner: ~A (final var, so trivial choice)."
+                      (nth (car remaining-vs) *vars-table*))
+                 (setf (aref out-order (1- num-vars)) (car remaining-vs)))
+                (t (let ((winning-var) (winning-value))
+                     (dolist (v remaining-vs)
+                       (let ((candidate-value (ps-sum-mdeg (bm-proj-1 last-ps v))))
+                         (cond ((not winning-var)
+                                (setq winning-var v)
+                                (setq winning-value candidate-value))
+                               ((< candidate-value winning-value)
+                                (setq winning-var v)
+                                (setq winning-value candidate-value)))))
+                     (setf (aref out-order i) winning-var)
+                     (fmt 3 "... Winner: ~A.~%" (nth winning-var *vars-table*))
+                     (setq remaining-vs 
+                           (set-difference remaining-vs `(,winning-var)))))))
+    (let ((proj-order-lst 
+           (mapcar #'(lambda (x) (nth x *vars-table*))
+                   (coerce out-order 'list))))
+      (fmt 3 "~%~% Projection order: ~A.~%~%" proj-order-lst)
+      proj-order-lst)))
+
+;;;
+;;; VS-PROJ-ORDER-GREEDY-ON-CASE: Given a case, compute a projection order
+;;;  for it using the Seidl greedy approach.
+;;;
+
+(defun vs-proj-order-greedy-on-case (c)
+  (let ((ps (mapcar 
+             #'(lambda (x) 
+                 (poly-prover-rep-to-alg-rep
+                  `(- ,(cadr x) ,(caddr x))))
+             c)))
+    (vs-proj-order-greedy ps)))
 
 ;;;
 ;;; MAKE-CAD-TEST: Make a simple test instance for our fdcad.

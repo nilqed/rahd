@@ -63,7 +63,7 @@
 		     (- (i---num i-t0 i-t1))
  		     (* (if (equal t0 t1)
                             (i-intersect-num
-                             (make-interval '[ 0 '+inf '[)
+                             '([ 0 +inf [)
                              (i-*-num i-t0 i-t1))
                           (i-*-num i-t0 i-t1)))))))))
 
