@@ -25,7 +25,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/.
 ;;; 
 ;;; This file: began on         01-November-2010,
-;;;            last updated on  12-December-2010.
+;;;            last updated on  19-January-2011.
 ;;;
 
 ;;;
@@ -72,13 +72,15 @@
 ;;; Display a prompt and read its input (ended with a newline),
 ;;;  returning it as a string.
 ;;;
+;;; We eliminate (only) initial white-space at the beginning/end of the string.
+;;;
 
 (defun prompt-and-read (p)
   (finish-output)
   (format *standard-output* p)
   (finish-output)
   ;(clear-input)
-  (read-line *standard-input* nil 'EOF))
+  (string-trim " " (read-line *standard-input* nil 'EOF)))
 
 ;;;
 ;;; A simple command string parser for RAHD interaction.
@@ -198,6 +200,14 @@
                    (remove-if #'(lambda (x) (equal x arg))
                               prover-opts))
              (fmt 0 "Prover option ~A unset.~%~%" arg))
+            ((equal cmd "strats")
+             (fmt 0 "Available proof strategies:~%~%~A.~%~%" (all-strats)))
+            ((equal cmd "e")
+             (if (not *gs*)
+                 (fmt 0 "Goalset not build.  See build-gs.~%~%")
+               (with-simple-restart (continue-with-new-cmd
+                                     "Continue and enter a new RAHD command.")
+                                    (run-strategy (p-strategy arg)))))
             ((equal cmd "verbosity")
              (if (equal arg "")
                  (fmt 0 "Verbosity level is ~A.~%~%" verbosity)

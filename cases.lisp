@@ -10,7 +10,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;; 
 ;;; This file: began on         22-July-2008,
-;;;            last updated on  30-May-2010.
+;;;            last updated on  18-January-2011.
 ;;;
 
 (in-package RAHD)

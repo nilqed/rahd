@@ -135,15 +135,16 @@
    "rahd"
    "regression"
    "prfanal"
+   "maxima-package"
+   "maxima-rahd")
+  (init-maxima)
+  (compile-file-and-load
+   "factor"
+   "fdepcad"
    "help"
-   "frontend")
-  (when (not skip-maxima)
-    (compile-file-and-load
-     "maxima-package"
-     "maxima-rahd"
-     "factor"
-     "fdepcad")
-    (init-maxima))
+   "frontend"
+   "strategy" ; expects we have Maxima
+   "defstrat")
   (if (not hands-off-state) (rahd-reset-state))
   (format t "~%[RAHD-REBOOT]: RAHD ~D successfully rebooted." *rahd-version*)
   t)

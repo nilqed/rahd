@@ -291,83 +291,122 @@
 ;;; This function accepts a (parsed) S-expression presentation of a proof
 ;;;  strategy and then executes it upon the open cases.
 ;;;
+;;; This function returns T iff the execution of strat resulted in a change
+;;;  of at least one case in the current goalset.  Else, returns NIL.
+;;;
 
 (defun run-strategy (strat &key from to case guard)
-  (cond ((not (consp strat)) nil)
-        ((eq (car strat) 'APPLY)
-         (let* ((case-lb* (if case case (if from from 0)))
-                (case-ub* (if case case (if to to (1- *gs-size*))))
-                (case-lb (max case-lb* 0))
-                (case-ub (min case-ub* (1- *gs-size*))))
-           (loop for i from case-lb to case-ub do
-                 (let ((c (aref *gs* i 1))
-                       (c-status (aref *gs* i 2)))
-                   (when (eq (car c-status) ':UNKNOWN)
-                     (cond ((eq c nil)
-                            (update-case i 
-                                         :case c 
-                                         :status ':SAT 
-                                         :step ':EMPTY-CONJ))
-                           ((member nil c)
-                            (update-case i :case c 
-                                         :status ':UNSAT 
-                                         :step ':CONTAINS-NIL))
-                           (t 
-                            (let ((dim (case-dim c))
-                                  (deg (case-deg c))
-                                  (nl (case-nl c))
-                                  (bw (case-bw c)))
-                              (let ((cmf-name (cadr strat))
-                                    (pass-guard? 
-                                     (if guard (eval-strategy-cond 
-                                                guard
-                                                dim deg nl bw)
-                                       t)))
-                                (cond (pass-guard?
-                                       (fmt 1.5 "Executing cmf ~A on case ~A..." cmf-name i)
-                                       (let ((result (apply-cmf-to-case cmf-name c)))
-                                         (when (not (equal c result))
-                                           (if (eq result nil)
-                                               (update-case i :case c 
-                                                            :status ':SAT 
-                                                            :step ':EMPTY-CONJ)
-                                             (case (car result)
-                                               (:UNSAT (update-case i 
-                                                                    :status ':UNSAT
-                                                                    :step
-                                                                    cmf-name))
-                                               (:SAT (update-case i 
-                                                                  :status ':SAT
-                                                                  :step cmf-name))
-                                               (otherwise
-                                                (update-case i
-                                                             :status ':UNKNOWN
-                                                             :case result
-                                                             :step cmf-name))))))
-                                       (fmt 1.5 "...Done.~%"))
-                                      (t (fmt 1.5 "Case ~A did not pass guard ~A.~%" i guard))))))))))))
-        ((eq (car strat) 'THEN)
-         (run-strategy (cadr strat))
-         (run-strategy (caddr strat)))
-        ((eq (car strat) 'IF)
-         (let ((guard+ (cadr strat))
-               (strat0 (caddr strat))
-               (strat1 (cadddr strat)))
-         (run-strategy strat0
-                       :guard (if guard `(/\\ ,guard+
-                                              ,@guard)
-                                guard+))
-         (run-strategy strat1
-                       :guard (if guard `(/\\ (~ ,guard+)
-                                              ,@guard)
-                                `(~ ,guard+)))))
-        ((eq (car strat) 'RUN)
-         (run-strategy (cadr strat)))
-        (t (error "Strategy command ~A not understood." strat))))
+  (cond 
+   ((not (consp strat)) nil)
+   ((eq (car strat) 'APPLY)
+    (let* ((case-lb* (if case case (if from from 0)))
+           (case-ub* (if case case (if to to (1- *gs-size*))))
+           (case-lb (max case-lb* 0))
+           (case-ub (min case-ub* (1- *gs-size*)))
+           (progress?))
+      (loop for i from case-lb to case-ub while (not *sat-case-found?*) do
+            (setq *current-tactic-case* i)
+            (let ((c (aref *gs* i 1))
+                  (c-status (aref *gs* i 2)))
+              (when (eq (car c-status) ':UNKNOWN)
+                (cond 
+                 ((eq c nil)
+                  (update-case i 
+                               :case c 
+                               :status ':SAT 
+                               :step ':EMPTY-CONJ))
+                 ((member nil c)
+                  (update-case i :case c 
+                               :status ':UNSAT 
+                               :step ':CONTAINS-NIL))
+                 (t 
+                  (let ((dim (case-dim c))
+                        (deg (case-deg c))
+                        (nl (case-nl c))
+                        (bw (case-bw c)))
+                    (let ((cmf-name (cadr strat))
+                          (pass-guard? 
+                           (if guard (eval-strategy-cond 
+                                      guard
+                                      dim deg nl bw)
+                             t)))
+                      (cond (pass-guard?
+                             (fmt 1.5 "Executing cmf ~A on case ~A..." cmf-name i)
+                             (let ((result (apply-cmf-to-case cmf-name c)))
+                               (cond 
+                                ((not (equal c result))
+                                 (setq progress? t)
+                                 (if (eq result nil)
+                                     (update-case i :case c 
+                                                  :status ':SAT 
+                                                  :step ':EMPTY-CONJ)
+                                   (case (car result)
+                                     (:UNSAT (update-case i 
+                                                          :status ':UNSAT
+                                                          :step
+                                                          cmf-name)
+                                             (setq *gs-unknown-size*
+                                                   (1- *gs-unknown-size*)))
+                                     (:SAT (update-case i 
+                                                        :status ':SAT
+                                                        :step
+                                                        cmf-name)
+                                           (setq *gs-unknown-size*
+                                                 (1- *gs-unknown-size*))
+                                           (when (not *sat-model*)
+                                             (let* ((var-bindings (aref *gs* i 3))
+                                                    (candidate-model 
+                                                     `(:SAT (:MODEL ,var-bindings))))
+                                               (setq *sat-model* candidate-model)))
+                                           (setq *sat-case-found?* (list *current-goal-key* i)))
+                                     (otherwise
+                                      (update-case i
+                                                   :status ':UNKNOWN
+                                                   :case result
+                                                   :step cmf-name))))))
+                               (fmt 1.5 "...Done(progress?=~A).~%" progress?)))
+                            (t (fmt 1.5 "Case ~A did not pass guard ~A.~%" i
+                                    guard))))))))))
+      progress?))
+   ((eq (car strat) 'THEN)
+    (let* ((progress-0? (run-strategy (cadr strat)))
+           (progress-1? (run-strategy (caddr strat))))
+      (or progress-0? progress-1?)))
+   ((eq (car strat) 'IF)
+    (let* ((guard+ (cadr strat))
+           (strat0 (caddr strat))
+           (strat1 (cadddr strat))
+           (progress-0? 
+            (run-strategy strat0
+                          :guard (if guard `(/\\ ,guard+
+                                                 ,@guard)
+                                   guard+)))
+           (progress-1?
+            (run-strategy strat1
+                          :guard (if guard `(/\\ (~ ,guard+)
+                                                 ,@guard)
+                                   `(~ ,guard+)))))
+      (or progress-0? progress-1?)))
+   ((eq (car strat) 'RUN)
+    (run-strategy (get-strat (cadr strat))))
+   ((eq (car strat) 'REPEAT)
+    (let ((strat-to-rep (cadr strat))
+          (progress?)
+          (single-step-progress? t))
+      (loop while single-step-progress? do
+            (setq single-step-progress?
+                  (run-strategy strat-to-rep))
+            (when (and (not progress?)
+                       single-step-progress?)
+              (setq progress? t)))
+      progress?))
+   (t (error "Strategy command ~A not understood." strat))))
 
 ;;;
 ;;; Some auxiliary strategy parsing functions.
 ;;;
+
+(eval-when (:compile-toplevel :load-toplevel :execute)(in-package rahd)
 
 (defun proc-neg (a b)
   (declare (ignore a))
@@ -393,6 +432,13 @@
   (declare (ignore a c d))
   (append `(apply ,b) avl))
 
+(defun proc-apply-i (a)
+  `(apply ,a))
+
+(defun proc-apply-i-avl (a b avl d)
+  (declare (ignore b d))
+  (append `(apply ,a) avl))
+
 (defun proc-run (a b)
   (declare (ignore a))
   `(run ,b))
@@ -405,6 +451,7 @@
 (defun proc-cmf-avl (a b c)
   (declare (ignore b))
   (append a c))
+)
 
 ;;;
 ;;; Strategy grammar.
@@ -416,7 +463,7 @@
    (dim deg nl bw rational int cmf cmf-arg
         if try by then apply run repeat
         strategy-name
-        + - * = ==> |/\\| |\\/| |~| 
+        + - * = ==> |/\\| |\\/| |~| |;|
         |(| |)| > >= = /= != <= < |:=| |,| / ^ |[| |]|))
   (:precedence 
    ((:left then) (:left if) (:left run) 
@@ -428,7 +475,7 @@
    action
    (if cond strategy strategy #'proc-if)
    (try strategy strategy by cond #'proc-try)
-   (strategy then strategy #'proc-then)
+   (strategy |;| strategy #'proc-then)
    (repeat strategy #'list)
    (|[| strategy |]| #'k-2-3)
    (|(| strategy |)| #'k-2-3))
@@ -436,6 +483,8 @@
   (action
    (apply cmf |(| cmf-avl |)| #'proc-apply-avl)
    (apply cmf #'proc-apply)
+   (cmf #'proc-apply-i)
+   (cmf |(| cmf-avl |)| #'proc-apply-i-avl)
    (run strategy-name #'proc-run))
   
   (cmf-avl
@@ -566,9 +615,9 @@
                        (peek-5-c (when (> l-s 5) (char s 5))))
                    (cond ((and (equal l-s 1) 
                                (member c '(#\+ #\- #\* #\( #\) #\[ #\] #\= #\>
-                                           #\< #\^ #\~ #\,)))
+                                           #\< #\^ #\~ #\, #\;)))
                           (chunk-char c))
-                         ((member c '(#\+ #\* #\( #\) #\[ #\] #\^ #\~ #\,))
+                         ((member c '(#\+ #\* #\( #\) #\[ #\] #\^ #\~ #\, #\;))
                           (chunk-char c))
                          ((and (equal c #\-) 
                                (not (member peek-1-c 
@@ -684,7 +733,7 @@
                          value 
                          '(+ - * / |(| |)| = > >= <= < ==> |/\\| |\\/| |~| |[|
                              |]| ^ /= != |,| IF BY APPLY RUN REPEAT THEN NL DIM
-                             DEG BW |:=|)) value)
+                             DEG BW |:=| |;|)) value)
                        ((integerp value) 'int)
                        ((rationalp value) 'rational)
                        ((symbolp value) 
