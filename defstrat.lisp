@@ -4,35 +4,35 @@
 ;;;
 
 (defstrat 'stable-simp
-  "repeat [apply contra-eqs then 
-           apply demod-num then 
-           apply simp-gls then 
-           apply simp-tvs then 
-           apply simp-arith]")
+  "repeat [contra-eqs;
+           demod-num;
+           simp-gls;
+           simp-arith]")
 
 (defstrat 'waterfall
-  "[apply interval-cp(max-contractions:=10)] then
-   [apply simp-zrhs] then
-   [run stable-simp] then
-   [apply simp-real-null] then
-   [apply fert-tsos] then
-   [apply univ-sturm-ineqs] then
-   [apply interval-cp] then
-   [apply satur-lin] then
-   [apply bounded-gbrni] then
-   [apply interval-cp] then
-   [apply triv-ideals] then
-   [apply canon-tms] then
-   [run stable-simp] then
-   [apply interval-cp] then
-   [apply rcr-ineqs] then
-   [run stable-simp] then
-   [apply fert-tsos] then
-   [run stable-simp] then
-   [apply interval-cp] then
-   [apply factor-sign] then
-   [apply simp-zrhs] then
-   [apply interval-cp] then
-   [apply int-dom-zpb] then
-   [apply quick-sat] then
-   [apply rcr-ineqs]")
+  "interval-cp(max-contractions:=10,gb-bound:=5);
+   simp-zrhs;
+   run stable-simp;
+   simp-real-null;
+   fert-tsos;
+   univ-sturm-ineqs;
+   interval-cp;
+   satur-lin;
+   bounded-gbrni;
+   interval-cp;
+   triv-ideals;
+   canon-tms;
+   run stable-simp;
+   interval-cp;
+   rcr-ineqs;
+   run stable-simp;
+   fert-tsos;
+   run stable-simp;
+   interval-cp;
+   factor-sign;
+   simp-zrhs;
+   interval-cp;
+   int-dom-zpb;
+   quick-sat;
+   rcr-ineqs;
+   fdep-cad")

@@ -1937,43 +1937,23 @@ RAHD: Real Algebra in High Dimensions ~A
   with options:
 
     -verbosity q      (0<=q<=10)     degree of proof search output (def: 1)
-    -search-model                    search for counter-models
-    -search-model!                   search for counter-models, but only
-                                      after refutation cycle
-    -fdep-cad $                      full-dimensional extended partial
-                                      cylindrical algebraic decomposition
-    -quad-vts $                      quadratic virtual term substitution
-    -muchnik-qe $                    Muchnik full quantifier elimination
-    -phase-i $                       phase i proof search
-    -phase-ii $                      phase ii proof search
-    -div-nz-denoms                   automatically conjoin constraints stating
-                                      input formula denominators are non-zero
-    -rri %                           method for real root isolation
-    -rri-only                        only perform real root isolation
-    -rri-epsilon q                   maximum width of open real root 
-                                      isolation intervals (def: 1)
-    -gbrn-depth n                    depth of GB real nullstellensatz search
-    -crb-quotient q                  quotient base for refining Cauchy root
-                                      bounds (def: 1000)
-    -smsp-base q                     sample-point selection base for
-                                      counter-model search (def: 10)
-    -refine-crb                      refine Cauchy root bounds before
-                                      performing real root isolation
-    -gb-sat-disc                     perform discriminant saturation during
-                                      GB-based real Nullstellensatz search
-    -cmf-exec #                      execute only a given list of cmfs
+    -strategy #                      execute an explicitly given proof strategy
     -print-model                     print a counter-model, if found
-    -print-tactics                   print a tactic replay of proof search
+    -print-proof                     print a proof trace, even on failure
     -print-failure                   if a decision is not reached, print 
                                       a failure report (unrefuted cases)
     -regression                      run regression suite for testing build
-    -i                               (human-oriented) interactive shell
-    -ip                              (machine-oriented) formula evaluator
+    -run s                           use defined proof strategy named s
+                                      (equivalent to `-strategy [run s]')
+    -strats                          list all defined proof strategies
+    -i                               interactive top-level
+    -ip                              machine-oriented batch evaluator
 
   where n is a natural, q is a rational presented as `a/b' or `a' for integers a,b,
         $ is either `on', `off' or `only' (def: `on'), 
         % is either `sturm' or `bernstein' (def: `sturm'),
-        # is a list of the form \"(cmf1 cmf2 ... cmfn)\" of RAHD cmfs.~%"
+        s is a name of a defined proof strategy (def: `waterfall'),
+        # is an explicitly given RAHD proof strategy.~%"
 
     (car opts)))))
 	    (cond (regression? (wrv (if (rationalp verbosity) verbosity 1) 
@@ -1993,10 +1973,5 @@ RAHD: Real Algebra in High Dimensions ~A
 	    (fmt 0 "~%")))))))
 
 
-;
-;    -verify-and-extend f             verify a proof strategy (possibly with rulesets)
-;                                      and build a new RAHD binary including it
-;    -use-strategy s                  use a user-defined strategy for proving formula
-;    -list-strategies                 list all built-in verified proof strategies"
 ;
 ;        f is a filename, and s is the name of a known verified proof strategy.~%
