@@ -1216,7 +1216,7 @@
            'fdep-cad
            "Full-dimensional extended partial cylindrical algebraic decomposition"
            :case case :from from :to to :tactic-params
-           (list factor?)))
+           (list :factor? factor?)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -1770,9 +1770,9 @@
                (aref parent-data 2)
                (aref parent-data 1)))))
   (cond ((and (not *sat-case-found?*) (or (and *gs* (= *gs-unknown-size* 0)) *goal-refuted?*))
-	 (fmt 0 " Decision: unsat (proven).~%~%"))
+	 (fmt 0 " Decision: unsat.~%~%"))
 	(*sat-case-found?* 
-	 (fmt 0 " Decision: sat (disproven).~%~%~A~%" (format-model *sat-model*)))
+	 (fmt 0 " Decision: sat.~%~%~A~%" (format-model *sat-model*)))
 	(t (fmt 0 " Goal status unknown.~%~%"))))
   t)
 
@@ -1940,12 +1940,12 @@ RAHD: Real Algebra in High Dimensions ~A
     -strategy #                      execute an explicitly given proof strategy
     -print-model                     print a counter-model, if found
     -print-proof                     print a proof trace, even on failure
-    -print-failure                   if a decision is not reached, print 
+    -print-fail                      if a decision is not reached, print 
                                       a failure report (unrefuted cases)
-    -regression                      run regression suite for testing build
+    -regression                      test build against regression suite
     -run s                           use defined proof strategy named s
                                       (equivalent to `-strategy [run s]')
-    -strats                          list all defined proof strategies
+    -strategies                      list all defined proof strategies
     -i                               interactive top-level
     -ip                              machine-oriented batch evaluator
 
