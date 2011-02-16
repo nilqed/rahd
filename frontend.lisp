@@ -243,6 +243,10 @@
                   *gs-size*))
             ((equal cmd "opens")
              (pug))
+            ((equal cmd "verify-rule")
+             (let ((rule-name (intern arg)))
+               
+               ))
             ((equal cmd "proj-order")
              (cond (asserted-atoms-lst
                     (fmt 0 "Optimal projection order (Brown-McCallum projection): ~A.~%~%"
