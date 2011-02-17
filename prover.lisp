@@ -1958,7 +1958,7 @@ RAHD: Real Algebra in High Dimensions ~A
         $ is either `on', `off' or `only' (def: `on'), 
         % is either `sturm' or `bernstein' (def: `sturm'),
         s is a name of a defined proof strategy (def: `waterfall'),
-        # is an explicitly given RAHD proof strategy.~%"
+        # is an explicitly given proof strategy.~%"
 
     (car opts)))))
 	    (cond (regression? (wrv (if (rationalp verbosity) verbosity 1) 
