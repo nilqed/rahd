@@ -346,7 +346,7 @@
       (swap-to-goal parent-key)
       (update-case i
 		   :status subgoal-decision
-		   :step `(subgoal-spawned-from ,step then (run ,subgoal-strat)))
+		   :step `(subgoal-spawned-from ,step then ,subgoal-strat))
       (when (eq subgoal-decision ':UNSAT) 
 	(setq *gs-unknown-size* (1- *gs-unknown-size*))))
     (setq *vars-table* vars-table)
@@ -446,8 +446,8 @@
                                     guard))))))))))
       progress?))
    ((eq (car strat) 'THEN)
-    (let* ((progress-0? (run-strategy (cadr strat)))
-           (progress-1? (run-strategy (caddr strat))))
+    (let* ((progress-0? (run-strategy (cadr strat) :subgoal-strat subgoal-strat))
+           (progress-1? (run-strategy (caddr strat) :subgoal-strat subgoal-strat)))
       (or progress-0? progress-1?)))
    ((eq (car strat) 'IF)
     (let* ((guard+ (cadr strat))
@@ -457,12 +457,14 @@
             (run-strategy strat0
                           :guard (if guard `(/\\ ,guard+
                                                  ,@guard)
-                                   guard+)))
+                                   guard+)
+			  :subgoal-strat subgoal-strat))
            (progress-1?
             (run-strategy strat1
                           :guard (if guard `(/\\ (~ ,guard+)
                                                  ,@guard)
-                                   `(~ ,guard+)))))
+                                   `(~ ,guard+))
+			  :subgoal-strat subgoal-strat)))
       (or progress-0? progress-1?)))
    ((eq (car strat) 'WHEN)
     (let ((guard+ (cadr strat))
@@ -470,16 +472,19 @@
       (run-strategy strat0
 		    :guard (if guard `(/\\ ,guard+
 					   ,@guard)
-			     guard+))))
+			     guard+)
+		    :subgoal-strat subgoal-strat)))
    ((eq (car strat) 'RUN)
-    (run-strategy (get-strat (cadr strat))))
+    (run-strategy (get-strat (cadr strat))
+		  :subgoal-strat subgoal-strat))
    ((eq (car strat) 'REPEAT)
     (let ((strat-to-rep (cadr strat))
           (progress?)
           (single-step-progress? t))
       (loop while single-step-progress? do
             (setq single-step-progress?
-                  (run-strategy strat-to-rep))
+                  (run-strategy strat-to-rep
+				:subgoal-strat subgoal-strat))
             (when (and (not progress?)
                        single-step-progress?)
               (setq progress? t)))

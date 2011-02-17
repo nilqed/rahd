@@ -167,5 +167,5 @@ Stop watching a case in the current goalset.
   where keywords are:~%
    apply assert build-gs check cg cmfs default-strategy defrule defruleset 
    defstrat e goal goalkeys goalset help lisp options opens proj-order quit 
-   reset rules rulesets set set? show status strats up unset vars verbosity 
-   watch unwatch. ~%~%")))))
+   reset rules rulesets set set? show status strats up unset unwatch vars 
+   verbosity watch. ~%~%")))))
