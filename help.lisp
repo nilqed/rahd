@@ -23,7 +23,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/.
 ;;; 
 ;;; This file: began on         12-December-2010,
-;;;            last updated on  12-December-2010.
+;;;            last updated on  17-February-2011.
 ;;;
 
 (defparameter *help-alist*
@@ -144,6 +144,19 @@ This causes the watched case to be printed before every
  * See run for proof strategy execution.
  * See goalset for viewing the current goalset.
  * See status for viewing the current context judgment.~%~%")
+  ("unwatch" .
+   "Usage: unwatch <case-number>~%
+Stop watching a case in the current goalset.
+
+ Example:
+  unwatch 0
+
+ * See watch for case watching.
+ * See build-goalset for building a goalset from a goal.
+ * See apply for CMF execution.
+ * See run for proof strategy execution.
+ * See goalset for viewing the current goalset.
+ * See status for viewing the current context judgment.~%~%")
     ))
 
 (defun toplevel-help (arg)
@@ -152,6 +165,7 @@ This causes the watched case to be printed before every
   (cond (assoc-str (fmt 0 assoc-str))
         (t  (fmt 0 "Help with RAHD toplevel.  Try 'help <keyword>' ~
   where keywords are:~%
-   apply assert build-gs check cmfs default-strategy defrule defruleset 
-   defstrat goal goalset help lisp options opens proj-order quit reset 
-   rules rulesets set set? show status strats unset vars verbosity watch. ~%~%")))))
+   apply assert build-gs check cg cmfs default-strategy defrule defruleset 
+   defstrat e goal goalkeys goalset help lisp options opens proj-order quit 
+   reset rules rulesets set set? show status strats up unset vars verbosity 
+   watch unwatch. ~%~%")))))

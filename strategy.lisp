@@ -23,7 +23,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/.
 ;;; 
 ;;; This file: began on         13-December-2010,
-;;;            last updated on  19-January-2011.
+;;;            last updated on  17-February-2011.
 ;;;
 
 ;;;
@@ -110,6 +110,7 @@
     ("factor-sign"      ,#'factor-sign-case          nil)
     ("ruleset"          ,#'apply-ruleset-to-case     (NAME))
     ("fdep-cad"         ,#'fdep-cad-on-case          nil)
+    ("split-ineqs"      ,#'split-ineqs-cmf           nil)
     ))
     
 (defun cmf-from-str (str)
@@ -286,6 +287,72 @@
                                 (cdr cur-status)))))))
 
 ;;;
+;;; CREATE-SUBGOAL: Given a (sub)goalkey and either a list of cases or
+;;;  a formula in RAHD CNF form with :OR signifier, install the relevant 
+;;;  formula as a new (sub)goal.
+;;;
+;;; Note: We then swap into this new subgoal as the active context.
+;;; Note: The ':DISJ hasn't been removed from d-cnf before it is passed.
+;;;
+
+(defun create-subgoal (&key key cases d-cnf)
+  (cond (cases
+	 (g cases :goal-key key :overwrite-ok t))
+	(d-cnf
+	 (g (waterfall-disj-to-cnf (cdr d-cnf))
+	    :goal-key key 
+	    :overwrite-ok t))))
+
+;;;
+;;; ALL-CASES-REFUTED: Have all of the cases in the current goalset been
+;;;  refuted?
+;;;
+
+(defun all-cases-refuted ()
+  (let ((out nil))
+    (loop for i from 0 to (1- *gs-size*) do
+	  (let ((c-status (car (aref *gs* i 2))))
+	    (setq out (and (eq c-status ':UNSAT) out))))
+    out))
+
+;;;
+;;; PROCESS-SUBGOAL: Given a current case ID, a formula which is the result
+;;;  of a CMF upon the corresponding case, and a strategy to be used for
+;;;  subgoal execution, we do the following:
+;;;   1. Create a subgoal for the case ID with formula drawn from result
+;;;       (the way this is done depends on if :CASES or :DISJ is used
+;;;        as the subgoal signifier),
+;;;   2. Run subgoal-strat on this new subgoal, if subgoal-strat is non-nil.
+;;;   3. If subgoal-strat exists and succeeds in refuting the subgoal or 
+;;;        finding a counter-expample, then we mark the corresponding case 
+;;;        appropriately.
+;;;   4. We then swap back to the case which generated the subgoal.
+;;; 
+
+(defun process-subgoal (i &key step result subgoal-strat)
+  (let* ((parent-key *current-goal-key*)
+	 (new-key (list parent-key i))
+	 (vars-table *vars-table*))
+    (case (car result)
+      (:CASES (create-subgoal :key new-key :cases result))
+      (:DISJ (create-subgoal :key new-key :d-cnf result)))
+    (build-gs :do-not-split-ineqs? t)
+    (when subgoal-strat
+      (run-strategy subgoal-strat :subgoal-strat subgoal-strat))
+    (let ((subgoal-decision
+	   (cond ((all-cases-refuted) ':UNSAT)
+		 (*sat-case-found?* ':SAT)
+		 (t `(:UNKNOWN-WITH-SPAWNED-SUBGOAL ,new-key)))))
+      (swap-to-goal parent-key)
+      (update-case i
+		   :status subgoal-decision
+		   :step `(subgoal-spawned-from ,step then (run ,subgoal-strat)))
+      (when (eq subgoal-decision ':UNSAT) 
+	(setq *gs-unknown-size* (1- *gs-unknown-size*))))
+    (setq *vars-table* vars-table)
+    t))
+
+;;;
 ;;; RUN-STRATEGY: A proof strategy interpreter (mapped over open cases).
 ;;;
 ;;; This function accepts a (parsed) S-expression presentation of a proof
@@ -294,8 +361,13 @@
 ;;; This function returns T iff the execution of strat resulted in a change
 ;;;  of at least one case in the current goalset.  Else, returns NIL.
 ;;;
+;;; Note the keyword argument subgoal-strat.  When this argument is
+;;;  given, its value (a strategy) will be executed upon any generated
+;;;  subgoals.  When subgoal-strat is the same as strat, this then
+;;;  gives a `recursive waterfall' execution of the strategy.
+;;;
 
-(defun run-strategy (strat &key from to case guard)
+(defun run-strategy (strat &key from to case guard subgoal-strat)
   (cond 
    ((not (consp strat)) nil)
    ((eq (car strat) 'APPLY)
@@ -359,6 +431,11 @@
                                                      `(:SAT (:MODEL ,var-bindings))))
                                                (setq *sat-model* candidate-model)))
                                            (setq *sat-case-found?* (list *current-goal-key* i)))
+				     ((:CASES :DISJ)
+				      (process-subgoal i 
+						       :step cmf-name 
+						       :subgoal-strat subgoal-strat
+						       :result result))
                                      (otherwise
                                       (update-case i
                                                    :status ':UNKNOWN
@@ -387,6 +464,13 @@
                                                  ,@guard)
                                    `(~ ,guard+)))))
       (or progress-0? progress-1?)))
+   ((eq (car strat) 'WHEN)
+    (let ((guard+ (cadr strat))
+	  (strat0 (caddr strat)))
+      (run-strategy strat0
+		    :guard (if guard `(/\\ ,guard+
+					   ,@guard)
+			     guard+))))
    ((eq (car strat) 'RUN)
     (run-strategy (get-strat (cadr strat))))
    ((eq (car strat) 'REPEAT)
@@ -415,6 +499,10 @@
 (defun proc-if (a b c d)
   (declare (ignore a))
   `(if ,b ,c ,d))
+
+(defun proc-when (a b c)
+  (declare (ignore a))
+  `(when ,b ,c))
 
 (defun proc-try (a b c d)
   (declare (ignore a))
@@ -451,6 +539,10 @@
 (defun proc-cmf-avl (a b c)
   (declare (ignore b))
   (append a c))
+
+(defun proc-print-trace (a b) ; print trace at verbosity b
+  (declare (ignore a))
+  `(print-trace ,b))
 )
 
 ;;;
@@ -461,8 +553,8 @@
   (:start-symbol strategy)
   (:terminals 
    (dim deg nl bw rational int cmf cmf-arg
-        if try by then apply run repeat
-        strategy-name
+        if when try by then apply run repeat
+        strategy-name print-trace
         + - * = ==> |/\\| |\\/| |~| |;|
         |(| |)| > >= = /= != <= < |:=| |,| / ^ |[| |]|))
   (:precedence 
@@ -474,6 +566,7 @@
   (strategy
    action
    (if cond strategy strategy #'proc-if)
+   (when cond strategy #'proc-when)
    (try strategy strategy by cond #'proc-try)
    (strategy |;| strategy #'proc-then)
    (repeat strategy #'list)
@@ -485,7 +578,8 @@
    (apply cmf #'proc-apply)
    (cmf #'proc-apply-i)
    (cmf |(| cmf-avl |)| #'proc-apply-i-avl)
-   (run strategy-name #'proc-run))
+   (run strategy-name #'proc-run)
+   (print-trace int #'proc-print-trace))
   
   (cmf-avl
    cmf-av
@@ -526,6 +620,7 @@
    deg
    nl
    bw)
+
 )
 
 ;;;

@@ -30,6 +30,32 @@
 	(setq adj-c (cons adj-lit adj-c))))
     (reverse adj-c)))
 
+;;;
+;;; NUM-SOFT-INEQS: Count the number of soft inequalities in a 
+;;;  case.
+;;;
+
+(defun num-soft-ineqs (c)
+  (let ((out 0))
+    (dolist (l c)
+      (if (or (eq (car l) '>=)
+	      (eq (car l) '<=))
+	  (setq out (1+ out))))
+    out))
+
+;;;
+;;; SPLIT-INEQS-CMF: A CMF for splitting soft inequalities.
+;;;  It returns a :CASES form.
+;;;
+
+(defun split-ineqs-cmf (c)
+  (if (= (num-soft-ineqs c) 0)
+      c
+    (let ((cases
+	   (drill-down
+	    (expand-formula (mapcar #'list c)))))
+      (cons ':CASES cases))))
+
 ;;; Before drill down, we need to fire away NOT's and soft inequalities (<=, =>).
 ;;; Updated drill-down to be more optimized for dealing with unit clauses (01-March-2009).
 
@@ -43,7 +69,6 @@
 
       (if (= (length o) (length unit-clauses))
 	  (list unit-clauses-conjoined)
-	
 
 	(let ((split-cases (drill-down* non-unit-clauses nil (length non-unit-clauses))))
 	  (let ((final-o nil))
@@ -62,35 +87,44 @@
 			 (drill-down* (cdr o) (cons cur-hyp a) n)
 			 (drill-down* (cons (cdr cur-clause) (cdr o)) a n)))))))))
 
-(defun expand-formula (c)
+(defun expand-formula (c &key do-not-split-ineqs?)
   (cond ((endp c) nil)
-	(t (let ((expanded-clause (expand-clause (car c) nil)))
-	     (cons expanded-clause (expand-formula (cdr c)))))))
+	(t (let ((expanded-clause (expand-clause (car c) nil
+						 :do-not-split-ineqs? do-not-split-ineqs?)))
+	     (cons expanded-clause (expand-formula (cdr c)
+						   :do-not-split-ineqs? do-not-split-ineqs?))))))
 
-(defun expand-clause (cl cur-clause)
+(defun expand-clause (cl cur-clause &key do-not-split-ineqs?)
   (cond ((endp cl) cur-clause)
-	(t (let ((cur-expanded-lit (expand-special-syms (car cl))))
+	(t (let ((cur-expanded-lit (expand-special-syms 
+				    (car cl)
+				    :do-not-split-ineqs?
+				    do-not-split-ineqs?)))
 	     (if (consp (car cur-expanded-lit))
 		 (expand-clause (cdr cl) 
-				(union cur-expanded-lit cur-clause))
+				(union cur-expanded-lit cur-clause)
+				:do-not-split-ineqs? do-not-split-ineqs?)
 	       (expand-clause (cdr cl)
-			      (union (list cur-expanded-lit) cur-clause)))))))
+			      (union (list cur-expanded-lit) cur-clause)
+			      :do-not-split-ineqs? do-not-split-ineqs?))))))
       
 
 ; 19-Sept-2008 added TERM-TO-BIN-OPS here.
 ; 23-Nov-2008 added EXPAND-DIVS here.
 
-(defun expand-special-syms (lit)
+(defun expand-special-syms (lit &key do-not-split-ineqs?)
   (let ((cur-op (car lit)))
     (cond ((not (equal cur-op 'NOT))
 	   (let ((cur-x (expand-divs (term-to-bin-ops (cadr lit))))
-		 (cur-y (expand-divs (term-to-bin-ops (caddr lit))))) 
-	     (case cur-op
-		   (<= `((< ,cur-x ,cur-y) 
-			 (= ,cur-x ,cur-y)))
-		   (>= `((> ,cur-x ,cur-y)
-			 (= ,cur-x ,cur-y)))
-		   (otherwise `(,cur-op ,cur-x ,cur-y)))))
+		 (cur-y (expand-divs (term-to-bin-ops (caddr lit)))))
+	     (if do-not-split-ineqs?
+		 `(,cur-op ,cur-x ,cur-y)
+	       (case cur-op
+		 (<= `((< ,cur-x ,cur-y)
+		       (= ,cur-x ,cur-y)))
+		 (>= `((> ,cur-x ,cur-y)
+		       (= ,cur-x ,cur-y)))
+		 (otherwise `(,cur-op ,cur-x ,cur-y))))))
 	  (t (let ((cur-atom (cadr lit)))
 	       (let ((cur-r (car cur-atom))
 		     (cur-x (expand-divs (term-to-bin-ops (cadr cur-atom))))
@@ -98,10 +132,12 @@
 		 (case cur-r
 		       (<= `(> ,cur-x ,cur-y))
 		       (>= `(< ,cur-x ,cur-y))
-		       (=  `((< ,cur-x ,cur-y) 
+		       (=  `((< ,cur-x ,cur-y)
 			     (> ,cur-x ,cur-y)))
-		       (<  (expand-special-syms `(>= ,cur-x ,cur-y)))
-		       (>  (expand-special-syms `(<= ,cur-x ,cur-y)))
+		       (<  (expand-special-syms `(>= ,cur-x ,cur-y)
+						:do-not-split-ineqs? do-not-split-ineqs?))
+		       (>  (expand-special-syms `(<= ,cur-x ,cur-y)
+						:do-not-split-ineqs? do-not-split-ineqs?))
 		       (otherwise (break "Bad symbol in goal.")))))))))
 
 
@@ -160,8 +196,9 @@
 ;;; 
 
 (defun all-vars-in-cnf (cs)
-  (let ((cs-conj nil))
-    (dolist (c cs)
+  (let ((cs-conj nil)
+	(cs* (if (eq (car cs) ':CASES) (cdr cs) cs)))
+    (dolist (c cs*)
       (dolist (l c)
 	(setq cs-conj (append (list l) cs-conj))))
     (all-vars-in-conj cs-conj)))
