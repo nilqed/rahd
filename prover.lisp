@@ -532,7 +532,7 @@
   (setf (gethash *current-goal-key* *goal-sets*) *gs*)
   (when (not no-output)
     (fmt 2 "~% Proof state for goal ~A has been saved." 
-	 (format-goal-key *current-goal-key*)))
+	 *current-goal-key*))
   t)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -656,8 +656,8 @@
 	   (set-goal-stack-data goal-key :goal-in-cnf f)
 	   (setq *g* f)
 	   (setq *current-goal-key* goal-key)
-	   (fmt 2 "~% Goal ~A installed and locally bound to *g*. ~%~%" 
-		(format-goal-key goal-key))
+;	   (fmt 2 "~% Goal ~A installed and locally bound to *g*. ~%~%" 
+;		goal-key)
 	   t)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -701,11 +701,16 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun build-goal-set (&key do-not-process-div keep-gbasis-cache)
-  (let ((cs ;(subset-subsumption-gs
-	     (drill-down 
-	      (if do-not-process-div (expand-formula *g*)
-		  (f-to-div-free-cnf-duc (expand-formula *g*))))))
+(defun build-goal-set (&key do-not-process-div keep-gbasis-cache do-not-split-ineqs?)
+  (let ((cs (if (eq (car *g*) ':CASES)
+		(cdr *g*)
+	      (drill-down 
+	       (if do-not-process-div 
+		   (expand-formula *g* 
+				   :do-not-split-ineqs? do-not-split-ineqs?)
+		 (f-to-div-free-cnf-duc (expand-formula *g*
+							:do-not-split-ineqs?
+							do-not-split-ineqs?)))))))
     (setq *sat-case-found?* nil)
     (let ((num-cases (length cs)))
       (set-goal-stack-data *current-goal-key* 
@@ -747,11 +752,11 @@
 	(clrhash *proof-analysis-cache*))
 
       (fmt 2 "~% Goalset for goal ~A built and locally bound to *gs*." 
-	   (format-goal-key *current-goal-key*))
+	   *current-goal-key*)
       (prgs))))
 
-(defun build-gs ()
-  (build-goal-set))
+(defun build-gs (&key do-not-split-ineqs?)
+  (build-goal-set :do-not-split-ineqs? do-not-split-ineqs?))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -1424,13 +1429,13 @@
 	(fmt 2 (if goal-proved-by-waterfall?
 		   "~% Goal ~A proved (~D sec).~%"
 		   "~% Goal ~A run complete (~A sec): ~D.~%")
-	     (format-goal-key *current-goal-key*)
+	     *current-goal-key*
 	     (float (/ (- (get-internal-real-time) start-time) internal-time-units-per-second))
 	     (if *sat-case-found?* "counter-example found" 
 		 (format nil "~A of ~A unrefuted cases remain" *gs-unknown-size* *gs-size*)))
 
 	(fmt 3 "~% Goal ~A tactic replay: ~A.~%"
-	     (format-goal-key *current-goal-key*)
+	     *current-goal-key*
 	     (tactic-replay))
 	  
 	;;
@@ -1520,7 +1525,7 @@
 					(setf (aref *gs* i 2)
 					      `(:SAT nil ,(append (cdr c-status) (cons fcn-symbol (cdr fcn-result)))))
 					(fmt 2 "~% *** Counter-example found: Case ~D of goal ~A is satisfiable *** ~%"
-					     i (format-goal-key *current-goal-key*))
+					     i *current-goal-key*)
 					(setq num-satisfied (1+ num-satisfied))
 					(setq *last-tactic-progress-lst*
 					      (cons `(:CASE-ID ,i :STATUS :SAT :CMF ,fcn-symbol)
@@ -1551,9 +1556,9 @@
 					  (setf (aref *gs* i 2) `((:UNKNOWN-WITH-SPAWNED-SUBGOAL ,new-subgoal-key) 
 								  ,(append (cdr c-status) `(,fcn-symbol))))
 					  (fmt 3 "~% W\/: Spawning subgoal ~A as a sufficient condition for case ~A of goal ~A.~%"
-					       (format-goal-key new-subgoal-key) 
+					       new-subgoal-key
 					       i
-					       (format-goal-key *current-goal-key*))
+					       *current-goal-key*)
 					  (let ((result-of-waterfall-on-subgoal
 						 (create-subgoal-and-invoke-proof-proc new-subgoal-formula
 										       #'go!
@@ -1561,10 +1566,10 @@
 					    (if result-of-waterfall-on-subgoal
 						(progn
 						  (fmt 3 "~% W\/: Subgoal ~A for goal ~A discharged, thus discharging case ~A of goal ~A.~%"
-						       (format-goal-key new-subgoal-key) 
-						       (format-goal-key *current-goal-key*)
+						       new-subgoal-key
+						       *current-goal-key*
 						       i
-						       (format-goal-key *current-goal-key*))
+						       *current-goal-key*)
 						  (setq num-refuted (1+ num-refuted))
 						  (setf (aref *gs* i 2)
 							`(:UNSAT :DISCHARGED-BY-SUBGOAL ,new-subgoal-key
@@ -1688,7 +1693,7 @@
 	     (if (equal *current-goal-key* 0)
 		 (fmt 2 "~% Q.E.D.  Theorem proved.~%~%")
 	       (fmt 2 "~% .:. Goal ~A proved.~%~%" 
-		    (format-goal-key *current-goal-key*))))))
+		    *current-goal-key*)))))
   t)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

@@ -18,6 +18,8 @@
 ; OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 ; THE SOFTWARE.
 
+; Slightly modified by Grant Olney Passmore (error msg formatting)
+
 (defpackage #:yacc
   (:use #:common-lisp)
   (:export #:make-production #:make-grammar #:make-parser #:parse-with-lexer
@@ -1041,7 +1043,7 @@ shift-reduce conflicts and SS shift-shift conflicts."
    (expected-terminals :initarg :expected-terminals
                        :reader yacc-parse-error-expected-terminals))
   (:report (lambda (e stream)
-             (format stream "Unexpected terminal ~S (value ~S). ~@:_~
+             (format stream "Unexpected terminal ~S (value ~S). ~@:_~~%
                              Expected one of: ~S"
                      (yacc-parse-error-terminal e)
                      (yacc-parse-error-value e)

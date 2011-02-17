@@ -25,7 +25,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/.
 ;;; 
 ;;; This file: began on         01-November-2010,
-;;;            last updated on  19-January-2011.
+;;;            last updated on  17-February-2011.
 ;;;
 
 ;;;
@@ -118,10 +118,16 @@
 ;;;
 
 (defun prompt-str ()
-  (cond (*sat-model* "RAHD!m> ")
-        (*sat-case-found?* "RAHD!s> ")
-        ((or (and *gs* (= *gs-unknown-size* 0)) *goal-refuted?*) "RAHD!u> ")
-        (t "RAHD!> ")))
+  (let ((rahd-str
+	 (if (<= (length *goal-stack-keys*) 1)
+	     "RAHD"
+	   (format nil "RAHD:~A" *current-goal-key*))))
+    (let ((suffix-str
+	   (cond (*sat-model* "!m> ")
+		 (*sat-case-found?* "!s> ")
+		 ((or (and *gs* (= *gs-unknown-size* 0)) *goal-refuted?*) "!u> ")
+		 (t "!> "))))
+      (format nil "~A~A" rahd-str suffix-str))))
 
 ;;;
 ;;; Process a defrule command.
@@ -207,7 +213,9 @@
                  (fmt 0 "Goalset not build.  See build-gs.~%~%")
                (with-simple-restart (continue-with-new-cmd
                                      "Continue and enter a new RAHD command.")
-                                    (run-strategy (p-strategy arg)))))
+				    (let ((parsed-strat (p-strategy arg)))
+				      (wrv verbosity (run-strategy parsed-strat
+								 :subgoal-strat parsed-strat))))))
             ((equal cmd "verbosity")
              (if (equal arg "")
                  (fmt 0 "Verbosity level is ~A.~%~%" verbosity)
@@ -238,7 +246,7 @@
                  (equal cmd "build-gs"))
              (r)
              (g (mapcar #'list (reverse asserted-atoms-lst)))
-             (b)
+             (build-gs :do-not-split-ineqs? t)
              (fmt 0 "Goalset built with ~A open cases.~%~%"
                   *gs-size*))
             ((equal cmd "opens")
@@ -289,6 +297,8 @@
              (fmt 0 "Value: ~A.~%~%" (eval (read-from-string arg))))
             ((equal cmd "help")
              (toplevel-help arg))
+	    ((equal cmd "goalkeys")
+	     (fmt 0 "Goalkeys: ~A.~%" *goal-stack-keys*))
             ((equal cmd ""))
             (t (fmt 0 "Input error: Command '~A' not understood.~%~%" cmd)
                ))))))

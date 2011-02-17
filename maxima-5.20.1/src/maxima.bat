@@ -17,8 +17,8 @@ rem set MAXIMA_LANG_SUBDIR=es
 
 set lisp=sbcl
 set version=5.20.1
-set prefix=/Research/Programs/MyCode/rahd/maxima-5.20.1
-set maxima_prefix=/Research/Programs/MyCode/rahd/maxima-5.20.1
+set prefix=/Users/grant/Research/Programs/MyCode/rahd/maxima-5.20.1
+set maxima_prefix=/Users/grant/Research/Programs/MyCode/rahd/maxima-5.20.1
 set package=maxima
 set verbose=false
 set mingw_gccver=GCCVER

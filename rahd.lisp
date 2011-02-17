@@ -21,7 +21,7 @@
 ;;;  very much for their support.
 ;;; 
 ;;; This file: began on         22-Sept-2008,
-;;;            last updated on  27-June-2010.
+;;;            last updated on  16-February-2011.
 ;;;
 
 ;;;
@@ -91,15 +91,16 @@
                               #+ccl :load 
                               #+ccl t 
                               #+ccl :verbose #+ccl t)
-		#+sbcl (load fname)
-		(format t "~%[RAHD-REBOOT]: ~D compiled and loaded successfully." fname-full)))
+		#+sbcl (load fname :verbose nil)
+		(format t "~%[rahd-reboot]: ~D compiled and loaded." fname-full)))
 	      fnames))
 
 ;;;
 ;;; RAHD-REBOOT: Compile and reload all files in our system.
 ;;;
 
-(defun rahd-reboot (&key hands-off-state skip-maxima)
+(defun rahd-reboot (&key hands-off-state)
+  (declaim #+sbcl(sb-ext:muffle-conditions style-warning))
   (compile-file-and-load
    "polyalg"
    "polyeval"
@@ -146,7 +147,8 @@
    "strategy" ; expects we have Maxima
    "defstrat")
   (if (not hands-off-state) (rahd-reset-state))
-  (format t "~%[RAHD-REBOOT]: RAHD ~D successfully rebooted." *rahd-version*)
+  (format t "~%[rahd-reboot]: RAHD ~D rebooted." *rahd-version*)
+  (declaim #+sbcl(sb-ext:unmuffle-conditions style-warning))
   t)
 
 ;;;
