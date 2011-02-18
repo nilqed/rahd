@@ -143,7 +143,7 @@
    "factor"
    "fdepcad"
    "help"
-   "frontend"
+   "toplevel"
    "strategy" ; expects we have Maxima
    "defstrat")
   (if (not hands-off-state) (rahd-reset-state))
