@@ -21,7 +21,7 @@
 ;;;  very much for their support.
 ;;; 
 ;;; This file: began on         22-Sept-2008,
-;;;            last updated on  16-February-2011.
+;;;            last updated on  18-February-2011.
 ;;;
 
 ;;;
@@ -130,7 +130,7 @@
    "cnf"
    "division"
    "quicksat"
-   "prover"
+   "genfun"
    "rules"
    "rulesets"
    "rahd"

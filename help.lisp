@@ -50,6 +50,17 @@
  * See check for checking the satisfiability of a context.
  * See show for viewing the current context.
  * See reset for clearing the current context.~%~%")
+    ("build-gs" .
+     "Usage: build-gs~%
+Build a goalset from the current collection of assertions.
+This promotion from a collection of assertions to a goalset
+ is required before proof strategies may be applied.
+
+ * See assert for more on asserting formulas.
+ * See default-strategy for setting the default strategy.
+ * See e for executing an explicit proof strategy.
+ * See show for viewing the current context.
+ * See reset for clearing the current context.~%~%")
     ("check" .
      "Usage: check~%
  Checks the satisfiability of the current context
@@ -65,6 +76,27 @@
 
  * See apply for more on executing CMFs.
  * See run for more on executing proof strategies.~%~%")
+    ("e" .
+     "Usage: e <explicit-proof-strategy>~%
+Executes explicit-proof-strategy against the current goalset.
+
+Example: e [demod-lin; run stable-simp; run waterfall]
+
+ * See assert for more on asserting formulas.
+ * See build-gs for building a goalset from context.
+ * See cg for changing between active goals.
+ * See default-strategy for setting the default strategy.
+ * See opens for viewing open cases.
+ * See watch for how to monitor progress of CMFs upon cases.~%~%")
+    ("goals" .
+     "Usage: goals~%
+ List all known (sub)goals.
+
+ * See cg for changing between active goals.
+ * See up for navigating up to a goal's parent.
+ * See build-gs for building a goalset.
+ * See status for viewing the decision status of a goal.
+ * See opens for viewing the open cases of a goal.~%~%")
     ("help" .
      "Usage: help <keyword>~%
  Invoke 'help' with no arguments for possible keywords.~%~%")
@@ -96,6 +128,25 @@
  * See check for checking the satisfiability of a context.
  * See set for more on setting prover options.
  * See options for more on possible prover options.~%~%")
+    ("up" .
+     "Usage: up~%
+ Navigate to the current goal's parent, if it exists.
+
+ In the process, any decision reached as to the satisfiability
+  of the current goal will be percolated appropriately to the
+  parent.
+
+ In particular, if the current goal is a subgoal and has been
+  found unsatisfiable, the parent's case which generated the
+  subgoal will be closed.  If instead the current goal is a
+  subgoal which has been found satisfiable, this implies the
+  satisfiability of the entire parent goal, and this judgment
+  will be inherited by the parent.
+
+ * See cg for changing between active goals.
+ * See goals for listing all goals.
+ * See build-gs for building goalsets.
+ * See opens for viewing the open cases of a goal.~%~%")
     ("vars" .
      "Usage: vars <variables-list>~%
  Declares variables for use in the current context.~%
@@ -139,7 +190,7 @@ This causes the watched case to be printed before every
  Example:
   watch 0
 
- * See build-goalset for building a goalset from a goal.
+ * See build-gs for building a goalset from a goal.
  * See apply for CMF execution.
  * See run for proof strategy execution.
  * See goalset for viewing the current goalset.
@@ -152,7 +203,7 @@ Stop watching a case in the current goalset.
   unwatch 0
 
  * See watch for case watching.
- * See build-goalset for building a goalset from a goal.
+ * See build-gs for building a goalset from a goal.
  * See apply for CMF execution.
  * See run for proof strategy execution.
  * See goalset for viewing the current goalset.
@@ -165,7 +216,7 @@ Stop watching a case in the current goalset.
   (cond (assoc-str (fmt 0 assoc-str))
         (t  (fmt 0 "Help with RAHD toplevel.  Try 'help <keyword>' ~
   where keywords are:~%
-   apply assert build-gs check cg cmfs default-strategy defrule defruleset 
-   defstrat e goal goalkeys goalset help lisp options opens proj-order quit 
-   reset rules rulesets set set? show status strats up unset unwatch vars 
-   verbosity watch. ~%~%")))))
+   assert build-gs check cg cmfs default-strategy defrule defruleset 
+   defstrat e goal goals goalset help lisp options opens proj-order 
+   quit reset rules rulesets set set? show status strats up unset 
+   unwatch vars verbosity watch. ~%~%")))))

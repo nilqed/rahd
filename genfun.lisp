@@ -2,7 +2,10 @@
 ;;; RAHD: Real Algebra in High Dimensions v0.6
 ;;; A proof procedure for the existential theory of real closed fields.
 ;;;
-;;; Core prover interface routines.
+;;; Core general prover data structures and functions.
+;;;
+;;;   (in old versions of RAHD, before the proof strategy machinery,
+;;;      the ancestor of this file was known as "prover.lisp")
 ;;;
 ;;; Written by Grant Olney Passmore
 ;;; Postdoc, Cambridge-Edinburgh EPSRC grant
@@ -22,8 +25,8 @@
 ;;;
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;;
-;;; This file: began on         29-July-2008,
-;;;            last updated on  14-December-2010.
+;;; This file: began on         29-July-2008           (as "prover.lisp"),
+;;;            last updated on  18-February-2011.
 ;;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -760,39 +763,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; CREATE-SUBGOAL-AND-INVOKE-PROOF-PROC (f proc): A higher-order functional for making
-;;;  recursive waterfall invocations.
-;;;
-;;; Given a formula f (in top-level CNF, just as the formulas passed to (G ...)), and a
-;;; proof procedure that operates on the local proof state (such as #'waterfall, or #'go!),
-;;; do the following:
-;;;
-;;;   (i) Save the current proof state (done by (G ...)),
-;;;   (ii) Create a new subgoal for f, named `(,*current-goal-key* ,*current-tactic-case*),
-;;;   (iii) Place this new subgoal on the top of the stack (done by (G ...)),
-;;;   (iv) Build a goal-set for it,
-;;;   (v) Invoke proc upon it,
-;;;   (vi) Return t if #'proc refutes f, otherwise save the state of this
-;;;        new subgoal and swap back to the parent goal (a user can then work on this
-;;;        new subgoal interactively if desired).
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun create-subgoal-and-invoke-proof-proc (f proc &key explicit-key)
-  (let ((new-subgoal-key (or explicit-key `(,*current-goal-key* ,*current-tactic-case*)))
-	(parent-goal-key *current-goal-key*)
-	(vars-table *vars-table*))
-    (g f :goal-key new-subgoal-key :overwrite-ok t)
-    ;(build-gs) ;;; For now, we let PROC handle build-gs for us.
-    (funcall proc)
-    (let ((subgoal-refuted? (and (= *gs-unknown-size* 0)
-                                 (not *sat-case-found?*))))
-      (when parent-goal-key (swap-to-goal parent-goal-key))
-      (setq *vars-table* vars-table)
-      (if subgoal-refuted? t nil))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
 ;;; ADD-NUM-BINDING: If a new substitution has been derived and applied (e.g.,
 ;;;  substituting a rational for a variable, or a term in other variables for a variable), 
 ;;;  then we store the binding in *active-vt-bindings*, expanding ground terms.
@@ -826,811 +796,6 @@
     (when *current-tactic-case* 
       (setq out (union out (aref *gs* *current-tactic-case* 3))))
     out))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; ** Tactics (mapped CMFs) **
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-      
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; CONTRA-EQS: Clear simply inconsistent goals.
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun contra-eqs (&key case from to)
-  (MAP-CMF #'simply-incons* 
-           'CONTRA-EQS 
-           "simple equality reasoning"
-           :case case :from from :to to))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; DEMOD-NUM: Numerically demodulate goals.
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun demod-num (&key case from to)
-  (MAP-CMF #'demodulate-numerically
-           'DEMOD-NUM
-           "numerical demodulation"
-           :case case :from from :to to))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; SIMP-GLS: Simplify ground literals.
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun simp-gls (&key case from to)
-  (MAP-CMF #'simplify-ground-lits
-           'SIMP-GLS
-           "ground literal simplification"
-           :case case :from from :to to))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; SIMP-TVS: Simplify truth values.
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun simp-tvs (&key case from to)
-  (MAP-CMF #'remove-truth-vals*
-           'SIMP-TVS
-           "truth value simplification"
-           :case case :from from :to to))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; SIMP-ARITH: Simplify terms by simple polynomial arithmetic.
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun simp-arith (&key case from to)
-  (MAP-CMF #'arith-simplify-case
-           'SIMP-ARITH
-           "arithmetic simplification"
-           :case case :from from :to to))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; FERT-TSOS: Fertilize trivial sums of squares with PSD inequalities.
-;;;  * This also finds an unsatisfiable witness if a conjunct is of the
-;;;    form (< p 0) where p is a trivial square.
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun fert-tsos (&key case from to)
-  (MAP-CMF #'fertilize-trivial-squares
-           'FERT-TSOS
-           "inequality fertilization for trivial sums of squares"
-           :case case :from from :to to))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; UNIV-STURM-INEQS: Use univariate sturm theory to refute systems of univariate
-;;; polynomial inequalities, provided that the single variable is constrained to
-;;; take values in an explicitly given open interval.
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun univ-sturm-ineqs (&key case from to)
-  (MAP-CMF #'open-interval-univ-ineq
-           'UNIV-STURM-INEQS
-           "Sturm sequence analysis"
-           :case case :from from :to to))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; OPEN-CAD: Use the EX-INF-MANY quantifier relaxation for open conjunctions via QEPCAD-B.
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun open-ex-inf-cad (&key case from to)
-  (MAP-CMF #'open-cad
-           'OPEN-EX-INF-CAD
-           "CAD with open relaxation via QEPCAD-B"
-           :case case :from from :to to))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; GEN-EX-CAD: Generic use of QEPCAD-B.
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun gen-ex-cad (&key case from to)
-  (MAP-CMF #'gen-cad
-           'GEN-EX-CAD
-           "generic CAD via QEPCAD-B"
-           :case case :from from :to to))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; CANON-TMS: Canonicalize all terms.  This is more expensive than SIMP-ARITH, but
-;;;  does much more.
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun canon-tms (&key case from to)
-  (MAP-CMF #'canonize-terms
-           'CANON-TMS
-           "polynomial canonicalization, arithmetic, and simplification"
-           :case case :from from :to to))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; ZERO-RHS: Make the RHS of all non-stable formulas zero.
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun simp-zrhs (&key case from to)
-  (MAP-CMF #'zero-rhs
-           'SIMP-ZRHS
-           "RHS zeroing with polynomial canonicalization"
-           :case case :from from :to to))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; TRIV-IDEALS: Check for trivial ideals generated by equational constraints.
-;;;              (this uses reduced Groebner bases.)
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun triv-ideals (&key case from to)
-  (MAP-CMF #'trivial-ideal
-           'TRIV-IDEALS
-           "ideal triviality via reduced Groebner bases"
-           :case case :from from :to to))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; RESIDUE-CLASS-RING-INEQS: Reduce all terms in strict inequalities to their
-;;;  canonical representatives in the residue class ring induced by the
-;;;  ideal generated by the equational constraints in the case.
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun residue-class-ring-ineqs (&key case from to)
-  (MAP-CMF #'ineqs-over-quotient-ring
-           'RESIDUE-CLASS-RING-INEQS
-           "residue class ring inequality term reduction"
-           :case case :from from :to to))
-
-(defun rcr-ineqs (&key case from to)
-  (MAP-CMF #'ineqs-over-quotient-ring
-           'RCR-INEQS
-           "residue class ring inequality term reduction"
-           :case case :from from :to to))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; OPEN-FRAG-EX-INF-CAD: Extract the strict inequalities from a constraint and check, 
-;;;  via OPEN-EX-INF-CAD, if the resulting conjunction is :UNSAT over the reals.
-;;;  
-;;; Note: We cannot trust :SAT answers here, as equality constraints in the conjunction 
-;;;  have been ignored.  The OPEN-FRAG-CAD function takes care of this and ignores them.
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun open-frag-ex-inf-cad (&key case from to)
-  (MAP-CMF #'open-frag-cad
-           'OPEN-FRAG-EX-INF-CAD
-           "open CAD"
-           :case case :from from :to to))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; SIMP-REAL-NULLSTELLENSATZ: Check to see if any equational constraint is an explicit real 
-;;;  nullstellensatz refutation certificate.
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun simp-real-null (&key case from to)
-  (MAP-CMF #'simp-real-nullstellensatz
-           'SIMP-REAL-NULL
-           "simple real nullstellensatz refutation"
-           :case case :from from :to to))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; RESIDUE-CLASS-RING-FERT-SCALAR-VARS: Heuristically search to see if any indeteriminates 
-;;;  in the residue class ring of a case are implied to be scalar valued in that ring.  
-;;;  
-;;;  We do this by examining a bounded sequence of powers of each residue class ring var-
-;;;  iable, and using the fact that if the pth power of a variable v is a scalar c in a res-
-;;;  idue class ring, then the variable v itself is equal to the pth root of c in the res-
-;;;  idue class ring (and thus in the case being examined).  
-;;;
-;;;  In the case of c=0 for some v^k, it follows by the property that every RCF is an 
-;;;  integral domain that v=0.  In the case of c=q for some v^k with q rational, we use 
-;;;  exact real arithmetic to set v = (expt q 1/k) if k is odd, and to (+/-)(expt q 1/k) 
-;;;  if k is even.  If k is even, we then recursively split on these two cases, placing them
-;;;  on the goal-stack and invoking a new waterfall upon the subgoal (and its two cases) 
-;;;  induced by the disjunction (MAP-CMF takes care of this by recognizing the :DISJ
-;;;  disjunctive waterfall signifier).
-;;;
-;;;  If k is odd, then we just reduce the current case to the positive exact exponent
-;;;  case mentioned above.
-;;;
-;;;  *** Note: We currently only do this when (expt q 1/k) is rational; irrational exact
-;;;       real arithmetic support isn't yet complete.  
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun rcr-svars (&key case from to)
-  (MAP-CMF #'fertilize-scalar-vars-over-quotient-ring
-           'RCR-SVARS
-           "residue class ring power sequence to scalar reduction"
-           :case case :from from :to to))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; INTEGRAL-DOMAIN-ZERO-PRODUCT-BRANCH: If any equations of the form (= (* A B) 0) for 
-;;; any variables A,B in the polynomial ring exist, then we pick the first one and invoke
-;;; a waterfall disjunction to branch upon (:OR (= A 0) (= B 0)).
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun int-dom-zpb (&key case from to)
-  (MAP-CMF #'integral-domain-zpb
-           'INT-DOM-ZPB
-           "integral domain zero product branching"
-           :case case :from from :to to))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; GENERAL-INTEGRAL-DOMAIN-ZERO-PRODUCT-BRANCH: An extension of the above INT-DOM-ZPB
-;;; procedure for conjuncts of the form (= (* T_0 T_1) 0) for *arbitrary terms* T_0, T_1.
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun int-dom-zpb-gen (&key case from to)
-  (MAP-CMF #'integral-domain-zpb-gen
-           'INT-DOM-ZPB-GEN
-           "integral domain zero product branching"
-           :case case :from from :to to))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; DERIVE-PARTIAL-DEMOD-LINS: Derive and apply partially linear demodulators.
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun demod-lin (&key case from to)
-  (MAP-CMF #'derive-partial-demod-lins
-           'DEMOD-LIN
-           "partial linear demodulation"
-           :case case :from from :to to))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Interactive variable interval splitting:.
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun interval-split (&key case from to tm pt)
-  (MAP-CMF #'split-term-for-case
-           'INTERVAL-SPLIT
-           "variable interval splitting"
-           :case case :from from :to to :tactic-params (list tm pt)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; INTERVAL-CP: Interval constraint propagation.
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun interval-cp (&key case from to)
-  (MAP-CMF #'icp-on-case
-           'INTERVAL-CP
-           "interval constraint propagation"
-           :case case :from from :to to))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; SATURATE-ORIENT-LIN: Saturate a case with all linear orientations of its atoms.
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun saturate-orient-lin (&key case from to)
-  (MAP-CMF #'saturate-case-with-linear-orientations
-           'SATURATE-ORIENT-LIN
-           "saturation by all linear orientations"
-           :case case :from from :to to))
-
-(defun satur-lin (&key case from to)
-  (MAP-CMF #'saturate-case-with-linear-orientations
-           'SATUR-LIN
-           "saturation by all linear orientations"
-           :case case :from from :to to))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; FULL-GB-RNULL+ICP: Full GB search for Real Nullstellensatz witnesses using interval
-;;;  constraint propagation upon slack variables. 
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun full-gbrni (&key case from to)
-  (MAP-CMF #'full-gb-real-null-on-case
-           'FULL-GBRNI
-           "Real Nullstellensatz witness search (full GB + ICP)"
-           :case case :from from :to to))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; BOUNDED-GB-RNULL+ICP: Bounded GB search for Real Nullstellensatz witnesses using 
-;;;  interval constraint propagation upon slack variables. 
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun bounded-gbrni (&key case from to gb-bound icp-period union-case summand-level)
-  (MAP-CMF #'bounded-gb-real-null-on-case
-           'bounded-gbrni
-           "Real Nullstellensatz witness search (bounded GB + ICP)"
-           :case case :from from :to to :tactic-params 
-           (list gb-bound icp-period union-case summand-level)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; QUICK-SAT: Do a quick search for models (counter-examples) using bounds obtained 
-;;;  through interval constraint propagation.
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun quick-sat (&key case from to)
-  (MAP-CMF #'qsi-on-case
-           'quick-sat
-           "Counter-example search using interval constraints"
-           :case case :from from :to to))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; FACTOR-SIGN: Use multivariate factorisation to deduce signs of polynomials appearing
-;;;  in literals, adjoining new literals expressing their signs when successful.
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun factor-sign (&key case from to)
-  (MAP-CMF #'factor-sign-case
-           'factor-sign
-           "Sign determination by multivariate factorisation"
-           :case case :from from :to to))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; APPLY-RULESET: Saturate a case with the result of applying a ruleset.
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun apply-ruleset (rs-name &key case from to)
-  (MAP-CMF #'apply-ruleset-to-case
-           'apply-ruleset
-           "Apply a verified ruleset for forward-chaining"
-           :case case :from from :to to :tactic-params 
-           (list rs-name)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; FDEP-CAD: Full-dimensional extended partial CAD.
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun fdep-cad (&key case from to factor?)
-  (MAP-CMF #'fdep-cad-on-case
-           'fdep-cad
-           "Full-dimensional extended partial cylindrical algebraic decomposition"
-           :case case :from from :to to :tactic-params
-           (list :factor? factor?)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; STABLE-SIMP: A combination of the lightest arithmetical simplifiers that loops until
-;;;  their composition reaches a fixed point w.r.t. *GS*.
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun stable-simp ()
-  (repeat-until-stable
-   '(contra-eqs
-     demod-num
-     simp-gls
-     simp-tvs
-     simp-arith)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; UPDATE-STATUS: Check to see if a CMF returns a SAT/UNSAT statement, and update the
-;;;  globals *goal-refuted?* and *sat-case-found?* accordingly.
-;;;
-;;;  FULL-SYS: Does this case represent the entire input system?  If so, then a :SAT
-;;;   answer can be trusted.  Otherwise, it cannot.
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun update-status (c fcn str full-sys?)
-  (when (not (or *goal-refuted?* *sat-case-found?*))
-    (fmt 1 " ~A" str)
-    (let ((o (apply fcn (list c))))
-      (cond ((equal (car o) ':UNSAT)
-	     (setq *goal-refuted?* t))
-	    ((and (equal (car o) ':SAT)
-		  full-sys?) 
-	     (setq *sat-case-found?* t))
-	    (t nil)))
-    (fmt 1 ".~%")))
-
-;;;
-;;; A phase-I rulesets tactic.
-;;;
-
-(defun phase-i-rulesets (c)
-  (let ((c* (apply-ruleset-to-case c 'inequality-squeeze)))
-    (if (not (equal c* c)) 
-	(icp-on-case c*)
-      c)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; PHASE-I: Apply pre-processing to initial goal, before expanding to goal-sets.
-;;; 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun phase-i (&key search-model)
-  (declare (ignore search-model))
-  (let ((unit-clauses 
-	 (mapcar #'car (remove-if 
-			#'(lambda (x) 
-			    (or (> (length x) 1)
-				(neg-lit? x)
-				(div-formula?* (list x)))) *g*))))
-    (let ((full-sys? (= (length *g*) (length unit-clauses))))
-      (cond ((= (length unit-clauses) 0) (fmt 1 " No df-units.  Phase I aborted.~%"))
-	    (t (update-status 
-		unit-clauses #'icp-on-case "Contracting intervals" full-sys?)
-	       (update-status
-		unit-clauses #'phase-i-rulesets "Applying verified ruleset `inequality-squeeze.'\
- Contracting intervals" full-sys?))))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; FP: Print status text at level 1 only if goal's status is unknown.
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun fp (str)
-  (when (not (or *goal-refuted?* *sat-case-found?* (= *gs-unknown-size* 0)))
-    (fmt 1 str)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; WATERFALL: A heuristic procedure tying together the above tactics.
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun waterfall (&key union-case search-model search-model* gbrn-depth
-                       skip-cad skip-factor-sign)
-  (when search-model
-    (fp " Searching for trivial models.~%")
-    (quick-sat))
-  (fp " Contracting intervals.~%")
-  (interval-cp)
-  (fp " Applying simplifiers.~%")
-  (simp-zrhs)
-  (stable-simp)
-  (demod-lin)
-  (stable-simp)
-  (simp-real-null)
-  (fert-tsos)
-  (univ-sturm-ineqs)
-  (fp " Contracting intervals.~%")
-  (interval-cp)
-  (fp " Deriving additional linear constraints.~%")
-  (satur-lin)
-  (fp " Searching for real nullstellensatz interval obstructions.~%")
-  (bounded-gbrni :union-case union-case :gb-bound gbrn-depth)
-  (when (ruleset-enabled? 'inequality-squeeze)
-    (fp " Applying verified ruleset `inequality-squeeze.'~%")
-    (apply-ruleset 'inequality-squeeze)
-    (fp " Applying verified ruleset `force-sign.'~%")
-    (apply-ruleset 'force-sign))
-  (fp " Contracting intervals.~%")
-  (interval-cp)
-  (fp " Examining ideal triviality.~%")
-  (triv-ideals)
-  (fp " Applying simplifiers.~%")
-  (canon-tms)
-  (stable-simp)
-  (interval-cp)
-  (fp " Injecting inequalities into induced quotient ring.~%")
-  (rcr-ineqs)
-  (stable-simp)
-  (fert-tsos)
-  (when *enable-rcr-svars*
-    (rcr-svars))
-  (stable-simp)
-  (fp " Contracting intervals.~%")
-  (interval-cp)
-  (when (not skip-factor-sign)
-    (fp " Computing multivariate factorisations and deducing signs.~%")
-    (factor-sign))
-  (simp-zrhs)
-  (when (ruleset-enabled? 'inequality-squeeze)
-    (fp " Applying verified ruleset `inequality-squeeze.'~%")
-    (apply-ruleset 'inequality-squeeze)
-    (fp " Applying verified ruleset `force-sign.'~%")
-    (apply-ruleset 'force-sign))
-  (fp " Contracting intervals.~%")
-  (interval-cp)  
-  (fp " Searching for real nullstellensatz interval obstructions.~%")
-  (bounded-gbrni :union-case union-case :gb-bound gbrn-depth)
-  (fp " Contracting intervals.~%")
-  (interval-cp)
-  (fp " Searching for zero-products.~%")
-  (int-dom-zpb)
-  (when (or search-model search-model*)
-    (fp " Searching for trivial models.~%")
-    (quick-sat))
-  (fp " Injecting inequalities into induced quotient ring.~%")
-  (rcr-ineqs)
-  (when (not skip-cad)
-    (fp " Performing full-dimensional cylindrical algebraic decomposition.~%")
-    (fdep-cad))
-  (when (or search-model search-model*)
-    (fp " Searching for trivial models.~%")
-    (quick-sat))
-  (if (= *gs-unknown-size* 0) t nil))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; GO!: A top-level waterfall invoker.
-;;; 
-;;; Keywords:
-;;;
-;;;  :TACTIC-REPLAY l, where l is a list of tactics that will be applied in order,
-;;;  :DO-NOT-REBUILD-GS t, causes the goal-set to not be rebuilt,
-;;;  :DO-NOT-RESET-CPC t, causes the canonicalized poly cache to not be reset.
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun go! (&key tactic-replay do-not-reset-tactic-replay do-not-rebuild-gs
-		 do-not-reset-cpc verbosity union-case search-model search-model*
-		 vars-table gbrn-depth skip-cad skip-factor-sign)
-  (if (not *G*) (fmt 0 "~%~% *** No goal installed.  See :DOC G. ~%~%")
-    (let ((*rahd-verbosity* (if verbosity verbosity *rahd-verbosity*))
-	  (start-time (get-internal-real-time)))
-      (setq *current-tactic-case* nil)
-
-      (fmt 1 "[Phase I]~%")
-      (phase-i)
-
-      (cond (*goal-refuted?* (fmt 1 " Real solution set empty.~%"))
-	    (*sat-case-found?* (fmt 1 " Real solution set non-empty.~%"))
-	    (t
-	     (fmt 1 "~%[Phase II]~%")
-	     (fmt 1 " Building DNF.~%")
-	     (when (not do-not-rebuild-gs) 
-	       (build-goal-set 
-		:do-not-process-div 
-		(if (not (equal *current-goal-key* 0)) t nil))
-	       (setq *vars-table* (or vars-table (all-vars-in-cnf *g*))))
-	     (when (and *canon-poly-use-cache* (not do-not-reset-cpc))
-	       (clrhash *canon-poly-cache*))
-	     (setq *exact-real-arith-used* nil)
-	     (when (not do-not-reset-tactic-replay) (ctr))
-	     (if tactic-replay
-		 (mapcar #'(lambda (tactic) (eval `(,tactic))) tactic-replay)
-	       (waterfall :union-case union-case :search-model search-model
-			  :search-model* search-model* :gbrn-depth gbrn-depth
-                          :skip-cad skip-cad :skip-factor-sign skip-factor-sign))))
-      
-      (let ((goal-proved-by-waterfall? (not (extract-non-refuted-cases))))
-
-	(fmt 2 (if goal-proved-by-waterfall?
-		   "~% Goal ~A proved (~D sec).~%"
-		   "~% Goal ~A run complete (~A sec): ~D.~%")
-	     *current-goal-key*
-	     (float (/ (- (get-internal-real-time) start-time) internal-time-units-per-second))
-	     (if *sat-case-found?* "counter-example found" 
-		 (format nil "~A of ~A unrefuted cases remain" *gs-unknown-size* *gs-size*)))
-
-	(fmt 3 "~% Goal ~A tactic replay: ~A.~%"
-	     *current-goal-key*
-	     (tactic-replay))
-	  
-	;;
-	;; Only print " *** Theorem (GOAL ...) Proved *** " for the top-level goal, 0.
-	;;
-	  
-	(when (equal *current-goal-key* 0) (prgs))
-	(or goal-proved-by-waterfall? *goal-refuted?*)))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; REPEAT-UNTIL-STABLE: Given a sequence of tactics (given as a list), repeat their 
-;;;  execution until the proof state is stable under their execution.
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun repeat-until-stable (tactics &key case from to)
-  (let ((last-tactic-made-progress? t))
-    (while (and last-tactic-made-progress?
-		(not *sat-case-found?*))
-      (setq last-tactic-made-progress? nil)
-      (dolist (tac tactics)
-	(eval `(,tac :case ,case :from ,from :to ,to))
-	(when (and (not last-tactic-made-progress?)
-		   *last-tactic-made-progress*)
-	  (setq last-tactic-made-progress? t))))
-  t))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; MAP-CMF: Map a CMF across the open cases of a goal.
-;;;
-;;; fcn-case-manip : a case manipulation function
-;;; fcn-symbol     : a pretty printable name for fcn-case-manip, used both
-;;;                  in printing and in justification.  This must be a symbol.
-;;; fcn-desc       : a nice operational description of the tactic.
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun MAP-CMF (fcn-case-manip fcn-symbol fcn-desc &key case from to tactic-params)
-  (declare (ignorable fcn-desc))
-  (setq *last-tactic-progress-lst* nil)
-  (cond ((= *gs-unknown-size* 0) (progn (setq *last-tactic-made-progress* nil) t))
-	(*sat-case-found?* nil)
-	(t (let* ((num-changed 0)
-		  (num-refuted 0)
-		  (num-satisfied 0)
-		  (start-time (get-internal-real-time))
-		  (case-lb* (if case case (if from from 0)))
-		  (case-ub* (if case case (if to to (1- *gs-size*))))
-		  (case-lb (max case-lb* 0))
-		  (case-ub (min case-ub* (1- *gs-size*)))
-		  (fcn-str (format nil "~(~a~)" (symbol-name fcn-symbol))))
-	     (when (or case from to) 
-	       (fmt 3 "~% Thanks for the hint!  ~A is being applied only to cases in the range [~D..~D]." 
-		    fcn-str case-lb case-ub))
-	     (loop for i from case-lb to case-ub while (not *sat-case-found?*) do
-		   (setq *current-tactic-case* i) ; Used for naming spawned subgoals.
-		   (let ((c        (aref *gs* i 1))
-			 (c-status (aref *gs* i 2)))
-		     (if (equal (car c-status) ':UNKNOWN)
-			 (if (not c) 
-
-			     ;;
-			     ;; The current case has been reduced to an empty conjunction 
-			     ;; -- an implicit t -- Thus, we've found a counter-example.
-			     ;;
-
-			     (setf (aref *gs* i 2) `(:SAT :CASE-REDUCED-TO-EMPTY-CONJUNCTION ,(cdr c-status)))
-			   (let ((fcn-result (if (not tactic-params)
-						 (funcall fcn-case-manip c)
-					       (apply fcn-case-manip `(,c ,@tactic-params)))))
-			     (if (not (equal c fcn-result)) ; The current tactic actually did something.
-				 (if (consp fcn-result)
-				     (case (car fcn-result)
-
-				       (:UNSAT 
-					(setf (aref *gs* i 2)
-					      `(:UNSAT ,(append (cdr c-status) (cons fcn-symbol (cdr fcn-result)))))
-					(setq num-refuted (1+ num-refuted))
-					(setq *last-tactic-progress-lst* 
-					      (cons `(:CASE-ID ,i :STATUS :UNSAT :CMF ,fcn-symbol)
-						    *last-tactic-progress-lst*))
-					(fmt 7 "!"))
-				       
-				       (:SAT 
-					(setf (aref *gs* i 2)
-					      `(:SAT nil ,(append (cdr c-status) (cons fcn-symbol (cdr fcn-result)))))
-					(fmt 2 "~% *** Counter-example found: Case ~D of goal ~A is satisfiable *** ~%"
-					     i *current-goal-key*)
-					(setq num-satisfied (1+ num-satisfied))
-					(setq *last-tactic-progress-lst*
-					      (cons `(:CASE-ID ,i :STATUS :SAT :CMF ,fcn-symbol)
-						    *last-tactic-progress-lst*))
-					(fmt 7 "@")
-
-					;; 
-					;; Try to extract a SAT witness from variable bindings, if it
-					;; has been implicitly constructed.
-					;;
-
-					(when (not *sat-model*)
-					  (let* ((var-bindings (aref *gs* i 3))
-						 (candidate-model 
-                                                  `(:SAT (:MODEL ,var-bindings))))
-					    ;;
-					    ;; Now, let's check we really have a model.
-					    ;;
-					    
-					    ;(when (eval-c c var-bindings)
-					      (setq *sat-model* candidate-model)))
-
-					(setq *sat-case-found?* (list *current-goal-key* i)))
-
-				       (:DISJ
-					(let ((new-subgoal-key `(,*current-goal-key* ,i))
-					      (new-subgoal-formula (waterfall-disj-to-cnf (cdr fcn-result))))
-					  (setf (aref *gs* i 2) `((:UNKNOWN-WITH-SPAWNED-SUBGOAL ,new-subgoal-key) 
-								  ,(append (cdr c-status) `(,fcn-symbol))))
-					  (fmt 3 "~% W\/: Spawning subgoal ~A as a sufficient condition for case ~A of goal ~A.~%"
-					       new-subgoal-key
-					       i
-					       *current-goal-key*)
-					  (let ((result-of-waterfall-on-subgoal
-						 (create-subgoal-and-invoke-proof-proc new-subgoal-formula
-										       #'go!
-										       :explicit-key new-subgoal-key)))
-					    (if result-of-waterfall-on-subgoal
-						(progn
-						  (fmt 3 "~% W\/: Subgoal ~A for goal ~A discharged, thus discharging case ~A of goal ~A.~%"
-						       new-subgoal-key
-						       *current-goal-key*
-						       i
-						       *current-goal-key*)
-						  (setq num-refuted (1+ num-refuted))
-						  (setf (aref *gs* i 2)
-							`(:UNSAT :DISCHARGED-BY-SUBGOAL ,new-subgoal-key
-								 ,(append (cdr c-status) (cons fcn-symbol (list (cdr fcn-result))))))
-						  (setq *last-tactic-progress-lst* 
-							(cons `(:CASE-ID ,i :STATUS (:UNSAT :DISCHARGED-BY-SUBGOAL) :CMF ,fcn-symbol)
-							      *last-tactic-progress-lst*)))
-					      
-					      ;;
-					      ;; If the subgoal isn't automatically discharged, we'll just leave it for the user to attack manually,
-					      ;; and we will leave the formula for the current case unchanged.
-					      ;;
-
-					      (setq fcn-result c)
-
-					      ))))
-					  
-				       (otherwise 
-					(setf (aref *gs* i 1) fcn-result)
-					(setf (aref *gs* i 2) (append c-status `(,fcn-symbol)))
-					(setq num-changed (1+ num-changed))
-					(setq *last-tactic-progress-lst*
-					      (cons `(:CASE-ID ,i :STATUS :UNKNOWN :CMF ,fcn-symbol)
-						    *last-tactic-progress-lst*))
-					(fmt 7 "$"))))
-
-			       ;;; Tactic execution on case i did nothing, so we print `.' at verbosity level 2.
-
-			       (fmt 7 ".")))))))
-	     
-	     (setq *current-tactic-case* nil)
-	     (if (or (> num-changed 0) (> num-refuted 0) *sat-case-found?*)
-		 (progn 
-		   (setq *last-tactic-made-progress* t)
-		   (setq *tactic-replay* (cons `(,fcn-symbol ,@tactic-params) *tactic-replay*))
-		   (setq *gs-unknown-size* (- *gs-unknown-size* (+ num-refuted num-satisfied)))
-		   (let ((tactic-time (float (/ (- (get-internal-real-time) start-time) internal-time-units-per-second))))
-
-		     (when *enable-proof-analysis* 
-		       (let* ((cur-tactic-pa-rec (gethash fcn-symbol *proof-analysis-cache*))
-			      (cur-tactic-count (when cur-tactic-pa-rec (car cur-tactic-pa-rec)))
-			      (cur-tactic-time (when cur-tactic-pa-rec (cadr cur-tactic-pa-rec))))
-		       (setf (gethash fcn-symbol *proof-analysis-cache*)
-			     (list (+ num-changed num-refuted (or cur-tactic-count 0))
-				   (+ tactic-time (or cur-tactic-time 0))))))
-
-		     (case (not *sat-case-found?*)
-			   (nil (fmt 2 "~%   ~D: Satisfiable case has been found.  Goal is not refutable." fcn-symbol))
-			   (otherwise
-			    (fmt 2 "   ~17A: [~4d refuted, ~4d reduced] ~4d ~A (~7d sec).~%" 
-				 fcn-str num-refuted num-changed *gs-unknown-size* 
-				 (if (= *gs-unknown-size* 1) "case remains" "cases remain") 
-				 tactic-time)))
-
-		     ;(prgs)
-		     ))
-	       (progn 
-		 (setq *last-tactic-made-progress* nil)
-		 (fmt 8 "~%   Tactic executed but did not make progress: ~A.~%" fcn-str)
-		 t))
-	     (when (or (= *gs-unknown-size* 0) *sat-case-found?*) t)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -1696,53 +861,6 @@
 		    *current-goal-key*)))))
   t)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Print the tactic replay of the current session.
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun tactic-replay ()
-  (reverse *tactic-replay*))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Extract non-refuted goals (both those marked `:UNKNOWN' or `:SAT') together with 
-;;; their possible witnesses in the following form:
-;;;
-;;;     `(  (FORMULA_i  WITNESS_i) ).
-;;;
-;;; This is for PVS integration.
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun extract-non-refuted-cases ()
-  (let ((nrc-lst nil))
-    (dotimes (i *gs-size*)
-      (let ((c        (aref *gs* i 1))
-	    (c-status (aref *gs* i 2)))
-	(let ((c-mark (car c-status)))
-	  (if (or (eq c-mark ':UNKNOWN)
-		  (eq c-mark ':SAT)
-		  (and (consp c-mark)
-		       (eq (car c-mark) ':UNKNOWN-WITH-SPAWNED-SUBGOAL)))
-	      (let ((nrc-case
-		     (cons c (if (equal c-mark ':SAT) (cadr c-status) nil))))
-		(setq nrc-lst (cons nrc-case nrc-lst)))))))
-    nrc-lst))
-
-;;;
-;;; TRY-TO-PROVE: Given a top-level RAHD formula F and a goal name, G, try to prove F,
-;;;  binding the proof attempt to goal-key G.  If we succeed, we return T. 
-;;;  Otherwise, we return NIL.
-;;;
-
-(defun try-to-prove (f goal-key)
-  (create-subgoal-and-invoke-proof-proc 
-   f 
-   #'go! 
-   :explicit-key goal-key))
-
 ;;;
 ;;; CURRENT-STATS: Give some basic info about where the system currently is
 ;;;  within a proof tree.
@@ -1757,21 +875,21 @@
       (if (equal *current-goal-key* 0)
           (cond (*gs*
                  (fmt 0 "~% Goalkey: ~A,~% Unknown cases: ~A of ~A.~%~%"
-                      *current-goal-key*
+                      (format-goal-key *current-goal-key*)
                       *gs-unknown-size*
                       *gs-size*))
                 ((not (or *sat-case-found?* *goal-refuted?*))
                  (fmt 0 "~% Goalkey: ~A.~% Goalset not built (use (b)).~%~%" 
-                      *current-goal-key*)))
+                      (format-goal-key *current-goal-key*))))
         (multiple-value-bind 
             (parent-data p-exists?)
             (gethash (car *current-goal-key*) *goal-stack-data*)
           (declare (ignore p-exists?))
           (fmt 0 "~% Goalkey: ~A,~% Unknown cases: ~A of ~A,~% Parent: ~A,~% Parent unknown cases: ~A of ~A.~%~%"
-               *current-goal-key*
+               (format-goal-key *current-goal-key*)
                *gs-unknown-size*
                *gs-size*
-               (car *current-goal-key*)
+               (format-goal-key (car *current-goal-key*))
                (aref parent-data 2)
                (aref parent-data 1)))))
   (cond ((and (not *sat-case-found?*) (or (and *gs* (= *gs-unknown-size* 0)) *goal-refuted?*))
@@ -1795,45 +913,53 @@
       ;;  to our parent.
       ;;
 
-      (progn
-	(when (= *gs-unknown-size* 0)
-	  (let ((parent-key (car *current-goal-key*))
-		(child-gs-idx (cadr *current-goal-key*)))	    
-	    (multiple-value-bind
+      (let ((refuted? (all-cases-refuted)))
+	
+	(progn
+	  (when (or refuted? *sat-case-found?*)
+	    (let ((parent-key (car *current-goal-key*))
+		  (child-gs-idx (cadr *current-goal-key*)))	    
+	      (multiple-value-bind
 		  (parent-gs p-exists?)
 		  (gethash parent-key *goal-sets*)
-		  (declare (ignore p-exists?))
-	      (let ((known-child-status 
-		     (aref parent-gs child-gs-idx 2)))
-		(fmt 9 "~%[UP] Known status from above: ~A~%"
-		     known-child-status)
-		(when (not (equal (car known-child-status)
-				  ':UNSAT))  
+		(declare (ignore p-exists?))
+		(let ((known-child-status 
+		       (aref parent-gs child-gs-idx 2)))
+		  (fmt 9 "~%[UP] Known status from above: ~A~%"
+		       known-child-status)
+		  (when (not (member (car known-child-status)
+				     '(:SAT :UNSAT)))
 		  
-		  ;;
-		  ;; At this point, the child has been refuted, so the parent's
-		  ;;  case who spawned it needs to be updated to reflect this.
-		  ;; * We also need to adjust the total number of unknown cases
-		  ;;   remaining for the parent.
-		  ;;
+		    ;;
+		    ;; At this point, the child has been decided, so the parent's
+		    ;;  case who spawned it needs to be updated to reflect this.
+		    ;; * We also need to adjust the total number of unknown cases
+		    ;;   remaining for the parent.
+		    ;;
 
-		  (setf (aref parent-gs child-gs-idx 2)
-			`(:UNSAT :DISCHARGED-BY-SUBGOAL ,*current-goal-key*
-			  ,(append (cdr known-child-status))))
-
-		  (multiple-value-bind
-		      (parent-gs-data p-gs-exists?)
-		      (gethash parent-key *goal-stack-data*)
-		      (declare (ignore p-gs-exists?))
-		    (setf (aref parent-gs-data 2) 
-			  (1- (aref parent-gs-data 2))))
+		    (setf (aref parent-gs child-gs-idx 2)
+			  (if refuted?
+			      `(:UNSAT :DISCHARGED-BY-SUBGOAL ,*current-goal-key*
+				       ,(append (cdr known-child-status)))
+			    `(:SAT :SATISFYING-SUBGOAL ,*current-goal-key*
+				   ,(append (cdr known-child-status)))))
 		    
-		  (fmt 1 "~% Trickled refutation up to Case ~A of Goal ~A.~%"
-		       child-gs-idx parent-key))))))
-      
-	(swap-to-goal (car *current-goal-key*)))
+		    (multiple-value-bind
+			(parent-gs-data p-gs-exists?)
+			(gethash parent-key *goal-stack-data*)
+		      (declare (ignore p-gs-exists?))
+		      (setf (aref parent-gs-data 2) 
+			    (1- (aref parent-gs-data 2))))
+		    
+		    (if refuted? 
+			(fmt 1 "Trickled refutation up to Case ~A of Goal ~A.~%~%"
+			     child-gs-idx parent-key)
+		      (fmt 1 "Trickled satisfaction up to Goal ~A.~%~%"
+			   parent-key)))))))
+	    
+	(swap-to-goal (car *current-goal-key*))))
 
-    (fmt 0 "~% You are already at the root goal. ~%"))
+    (fmt 0 "You are already at the root goal.~%~%"))
   t)
 
 ;;;
@@ -1977,6 +1103,14 @@ RAHD: Real Algebra in High Dimensions ~A
 			      :gbrn-depth gbrn-depth))))
 	    (fmt 0 "~%")))))))
 
+;;;
+;;; Print all goals.
+;;;
 
-;
-;        f is a filename, and s is the name of a known verified proof strategy.~%
+(defun print-all-goals ()
+  (cond (*goal-stack-keys*
+	 (fmt 0 "~%All goals: ~%")
+	 (dolist (g *goal-stack-keys*)
+	   (fmt 0 " ~A~%" (format-goal-key g)))
+	 (fmt 0 "~%"))
+	(t (fmt 0 " ~%No goals.~%~%"))))
