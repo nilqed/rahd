@@ -25,7 +25,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/.
 ;;; 
 ;;; This file: began on         01-November-2010,
-;;;            last updated on  17-February-2011.
+;;;            last updated on  18-February-2011.
 ;;;
 
 ;;;
