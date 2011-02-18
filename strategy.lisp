@@ -23,7 +23,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/.
 ;;; 
 ;;; This file: began on         13-December-2010,
-;;;            last updated on  17-February-2011.
+;;;            last updated on  18-February-2011.
 ;;;
 
 ;;;
@@ -309,7 +309,7 @@
 ;;;
 
 (defun all-cases-refuted ()
-  (let ((out nil))
+  (let ((out t))
     (loop for i from 0 to (1- *gs-size*) do
 	  (let ((c-status (car (aref *gs* i 2))))
 	    (setq out (and (eq c-status ':UNSAT) out))))
