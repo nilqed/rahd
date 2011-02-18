@@ -101,6 +101,7 @@
 
 (defun rahd-reboot (&key hands-off-state)
   (declaim #+sbcl(sb-ext:muffle-conditions style-warning))
+  (load "lib/cl-yacc-0.3/yacc")
   (compile-file-and-load
    "polyalg"
    "polyeval"

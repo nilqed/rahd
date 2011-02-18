@@ -975,34 +975,33 @@
   t)
 
 ;;;
-;;; CHECK: Front-end ``unsat'' or ``unknown'' function.
+;;; CHECK: Command-line ``unsat,'' ``sat,'' or ``unknown'' function.
 ;;;
 
-(defun check (f &key verbosity print-model search-model search-model*
-		gbrn-depth from-repl skip-cad skip-factor-sign)
+(defun check (f &key verbosity print-model strategy
+		non-recursive?)
   (cond 
    ((top-level-syntax-check f)
     (let ((*rahd-verbosity* 
 	   (if (rationalp verbosity) verbosity 1)))
       (when *current-goal-key* (r))
       (g f)
-      (let ((result (go! :search-model search-model
-			 :search-model* search-model*
-			 :gbrn-depth gbrn-depth
-                         :skip-cad skip-cad
-                         :skip-factor-sign skip-factor-sign)))
+      (build-gs :do-not-split-ineqs? t)
+      (run-strategy strategy
+		    :subgoal-strat
+		    (when (not non-recursive?) strategy))
+      (let ((refuted? (all-cases-refuted)))
 	(fmt 1 "~%[Decision]")
 	(fmt 0 "~%")
-	(cond (result (if from-repl "unsat." " unsat~%"))
+	(cond (refuted? " unsat~%")
 	      (*sat-case-found?* 
-	       (format nil (if from-repl "sat.~A"
-                             " sat~A~%")
+	       (format nil " sat~A~%"
 		       (if (and print-model *sat-model*)
 			   (format nil "~%~A~%" 
 				   (format-model *sat-model*))
-			   "")))
-	      (t (if from-repl "unknown." " unknown~%"))))))
-   (t (if from-repl "formula syntax error." "~%formula syntax error~%"))))
+			 "")))
+	      (t  " unknown~%")))))
+   (t "")))
 
 ;;;
 ;;; CL-FIND-OPTION: Given a flag string, return an MV of
@@ -1016,12 +1015,28 @@
 
 (defun cl-find-option (f opts arg?)
   (cond ((endp opts) (values nil nil))
-	((equal (read-from-string (car opts)) f)
+	((equal (car opts) f)
 	 (cond ((not arg?) (values t nil))
 	       (t (if (consp (cdr opts))
-		      (values t (read-from-string (cadr opts)))
+		      (values t (cadr opts))
 		      (values nil f)))))
 	(t (cl-find-option f (cdr opts) arg?))))
+
+;;;
+;;; GET-FORMULA: Given a string variable list and a string
+;;;  formula, parse the formula and get a RAHD S-expr in
+;;;  prover representation.
+;;;
+;;;  * We now restrict ourselves to conjunctions.
+;;;
+
+(defun get-formula (&key vars-str formula-str)
+  (with-simple-restart 
+   (continue-with-new-cmd
+    "Continue and enter a new RAHD command.")
+   (mapcar #'list (atom-lst (p-formula-str 
+			     formula-str 
+			     :vars-lst (p-vars-lst vars-str))))))
 
 ;;;
 ;;; RAHD-CL-CHECK: Command-line version of CHECK that accepts
@@ -1030,41 +1045,60 @@
 
 (defun rahd-cl-check ()
   (in-package rahd)
-  (let ((opts #+ccl ccl:*command-line-argument-list* 
-	      #+sbcl sb-ext:*posix-argv*))
-    (multiple-value-bind (formula-given? formula)
-	(cl-find-option '-FORMULA opts t)
-      (multiple-value-bind (verbosity-given? verbosity)
-	  (cl-find-option '-VERBOSITY opts t)
-	(multiple-value-bind (gbrn-depth-given? gbrn-depth)
-	    (cl-find-option '-GBRN-DEPTH opts t)
-	  (declare (ignorable verbosity-given? gbrn-depth-given?))
-	  (let ((print-model? (cl-find-option '-PRINT-MODEL opts nil))
-		(search-model? (cl-find-option '-SEARCH-MODEL opts nil))
-		(search-model*? (cl-find-option '-SEARCH-MODEL! opts nil))
-		(regression? (cl-find-option '-REGRESSION opts nil))
-		(div-nz-denoms? (cl-find-option '-DIV-NZ-DENOMS opts nil))
-                (interactive? (cl-find-option '-I opts nil))
-                (ip-evaluator? (cl-find-option '-IP opts nil)))
-	    (when (and (not ip-evaluator?) 
-                       (or (not formula-given?) 
-                           (or (not verbosity)
-                               (and (rationalp verbosity) (>= verbosity 1)))))
-	      (progn
-		(fmt 0 "
+  (handler-bind 
+   ((yacc:yacc-parse-error 
+     #'(lambda (c)
+         (let ((restart (find-restart 'continue-with-new-cmd)))
+           (when restart
+             (fmt 0 "Parser error: ~A.~%~%" c)
+             (invoke-restart restart)))))
+    (lex-error 
+     #'(lambda (c)
+         (let ((restart (find-restart 'continue-with-new-cmd)))
+           (when restart
+             (fmt 0 "Lexer error: ~A.~%Have you declared all variables?
+ Example: 
+  ./rahd-v0.6 -v \"a b c x\" -f \"a*x^2 + b*x + c = 0 /\\ b^2 - 4*a*c < 0\"~%~%" c)
+             (invoke-restart restart))))))
+   (let ((opts #+ccl ccl:*command-line-argument-list* 
+	       #+sbcl sb-ext:*posix-argv*))
+     (multiple-value-bind (vars-given? vars-str)
+	 (cl-find-option "-v" opts t)
+       (multiple-value-bind (formula-given? formula-str)
+	   (cl-find-option "-f" opts t)
+	 (multiple-value-bind (verbosity-given? verbosity-str)
+	     (cl-find-option "-verbosity" opts t)
+	   (let ((verbosity (if verbosity-given? 
+				(let ((rat-v (car (p-rational verbosity-str))))
+				  (if rat-v rat-v 1))
+			      1)))
+	     (let ((print-model? (cl-find-option "-print-model" opts nil))
+		   (div-nz-denoms? (cl-find-option "-div-nz-denoms" opts nil))
+		   (interactive? (cl-find-option "-i" opts nil))
+		   (ip-evaluator? (cl-find-option "-ip" opts nil))
+		   (regression? (cl-find-option "-regression" opts nil))
+		   (non-recursive? (cl-find-option "-non-recursive" opts nil)))
+	       (when (and (not ip-evaluator?)
+			  (or (not formula-given?)
+			      (not vars-given?)
+			      (>= verbosity 1)))
+		 (progn
+		   (fmt 0 "
 RAHD: Real Algebra in High Dimensions ~A
  designed and programmed by grant o. passmore {g.o.passmore@sms.ed.ac.uk}
   with intellectual contributions from p.b.jackson, b.boyer, g.collins, 
   h.hong, f.kirchner, j moore, l.de moura, s.owre, n.shankar, a.tiwari,
   v.weispfenning and many others.  This version of RAHD is using Maxima 
   multivariate factorisation & SARAG subresultant PRS + Bernstein bases.~%~%" 
-		     *rahd-version*)
-		(when (and (not formula-given?) (not interactive?)
-                           (not ip-evaluator?))
-		  (fmt 0 
-" Error: No formula given.
+			*rahd-version*)
+		   (when (and (or (not formula-given?) 
+				  (not vars-given?))
+			      (not interactive?)
+			      (not ip-evaluator?))
+		     (fmt 0 
+			  " Error: Variables and formula not given.
 
- Usage: ~A -formula \"RAHD formula\" <options>
+ Usage: ~A -v \"vars list\" -f \"formula\" <options>
   with options:
 
     -verbosity q      (0<=q<=10)     degree of proof search output (def: 1)
@@ -1085,24 +1119,24 @@ RAHD: Real Algebra in High Dimensions ~A
         % is either `sturm' or `bernstein' (def: `sturm'),
         s is a name of a defined proof strategy (def: `waterfall'),
         # is an explicitly given proof strategy.~%"
-
-    (car opts)))))
-	    (cond (regression? (wrv (if (rationalp verbosity) verbosity 1) 
-				    (rahd-regression-suite)))
-                  (interactive? (r-repl))
-                  (ip-evaluator? (p-repl))
-		  (formula-given?
-		   (when div-nz-denoms?
-		     (setq *div-nz-denoms* t))
-		   (fmt 0 (check formula 
-			      :verbosity (when (rationalp verbosity)
-					   (min verbosity 10))
-			      :print-model print-model?
-			      :search-model search-model?
-			      :search-model* search-model*?
-			      :gbrn-depth gbrn-depth))))
-	    (fmt 0 "~%")))))))
-
+			
+			(car opts)))))
+	     (cond (regression? (wrv (if (rationalp verbosity) verbosity 1) 
+				     (rahd-regression-suite)))
+		   (interactive? (r-repl))
+		   (ip-evaluator? (p-repl))
+		   (formula-given?
+		    (when div-nz-denoms?
+		      (setq *div-nz-denoms* t))
+		    (fmt 0 (check (get-formula :formula-str formula-str
+					       :vars-str vars-str)
+				  :verbosity (when (rationalp verbosity)
+					       (min verbosity 10))
+				  :print-model print-model?
+				  :strategy '(run waterfall)
+				  :non-recursive? non-recursive?))))
+	     (fmt 0 "~%")))))))))
+  
 ;;;
 ;;; Print all goals.
 ;;;
