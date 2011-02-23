@@ -1,7 +1,38 @@
 ;;;
 ;;; An utterly disorganised scratch-sheet of personal RAHD notes.
-;;;  g.o.passmore (2008-2010)
+;;;  g.o.passmore (2008-2011)
 ;;;
+
+Working on a problem from Munoz via Paulson:
+
+--
+vars x1 x2 x3 x4 x5 x6 x7 x8
+assert -0.1 <= x1 /\ x1 <= 0.4
+assert -1/10 <= x1 /\ x1 <= 4/10
+assert 4/10 <= x2 /\ x2 <= 1
+assert -7/10 <= x3 /\ x3 <= -4/10
+assert -7/10 <= x4 /\ x4 <= 4/10
+assert 1/10 <= x5 /\ x5 <= 2/10
+assert -1/10 <= x6 /\ x6 <= 6/10
+assert -3/10 <= x7 /\ x7 <= 11/10
+assert -11/10 <= x8 /\ x8 <= -3/10
+assert (0 - x1)*x6^3 + 3*x1*x6*x7^2 - x3*x7^3 + 3*x3*x7*x6^2 - x2*x5^3 + 3*x2*x5*x8^2 - x4*x8^3 + 3*x4*x8*x5^2 < -17435/10000
+--
+
+build-gs
+e [split-ineqs; demod-lin; run stable-simp; interval-cp; if (dim<=2) fdep-cad contra-eqs]
+lisp (swap-to-goal '(0 0))
+e [canon-tms; interval-cp]
+e [when (dim=3) [qepcad(open? := 1)]]
+e [when (dim=4) [qepcad(open? := 1)]]
+
+e1 [split-ineqs; cg(goal := 0.0); demod-lin; 
+    run-stable-simp; interval-cp;
+    when (dim <= 2) fdep-cad(factor? := 1);
+    canon-tms; interval-cp;
+    when (dim <= 4) qepcad(open? := 1);
+   ]
+
 
 
 ;;; Thoughts on strategy language.

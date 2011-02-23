@@ -221,11 +221,12 @@
 	       (maxima::mexpt 
 		`(expt ,(maxima-p-to-rahd (cadr m))
 		       ,(maxima-p-to-rahd (caddr m))))
-	       ((maxima::mplus maxima::mtimes maxima::rat)
+	       (maxima::rat
+		(/ (cadr m) (caddr m)))
+	       ((maxima::mplus maxima::mtimes)
 		(let ((rahd-op (case op
 				 (maxima::mplus '+)
-				 (maxima::mtimes '*)
-				 (maxima::rat '/))))
+				 (maxima::mtimes '*))))
 		  (cond ((= (length m) 3)
 			 `(,rahd-op ,(maxima-p-to-rahd (cadr m))
 				    ,(maxima-p-to-rahd (caddr m))))
