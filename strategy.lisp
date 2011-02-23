@@ -109,9 +109,16 @@
     ("quick-sat"        ,#'qsi-on-case               (GEN-PT-BOUND))
     ("factor-sign"      ,#'factor-sign-case          nil)
     ("ruleset"          ,#'apply-ruleset-to-case     (NAME))
-    ("fdep-cad"         ,#'fdep-cad-on-case          nil)
+    ("fdep-cad"         ,#'fdep-cad-on-case          (PROJ-ORDER-GREEDY? FACTOR?))
     ("split-ineqs"      ,#'split-ineqs-cmf           nil)
     ))
+
+(defun install-cmf (&key cmf-str cmf-fcn cmf-args)
+  (let ((new-table (remove-if (lambda (x) (equal (car x) cmf-str))
+			      *cmf-str-fcn-table*)))
+  (setq *cmf-str-fcn-table*
+	(append new-table
+		(list (list cmf-str cmf-fcn cmf-args))))))
     
 (defun cmf-from-str (str)
   (cadr (assoc str *cmf-str-fcn-table* :test 'equal)))
@@ -269,7 +276,7 @@
           (t
            (let ((cmf-fcn (cmf-from-sym cmf-name)))
              (if params 
-                 (apply cmf-fcn (list poly-case params))
+                 (apply cmf-fcn (append (list poly-case) params))
                (funcall cmf-fcn poly-case)))))))
 
 ;;;
@@ -378,6 +385,7 @@
            (progress?))
       (loop for i from case-lb to case-ub while (not *sat-case-found?*) do
             (setq *current-tactic-case* i)
+	    (setq progress? nil)
             (let ((c (aref *gs* i 1))
                   (c-status (aref *gs* i 2)))
               (when (eq (car c-status) ':UNKNOWN)
@@ -404,7 +412,8 @@
                              t)))
                       (cond (pass-guard?
                              (fmt 1.5 "Executing cmf ~A on case ~A..." cmf-name i)
-                             (let ((result (apply-cmf-to-case cmf-name c)))
+			     (finish-output)
+                             (let ((result (apply-cmf-to-case cmf-name c :params (cddr strat))))
                                (cond 
                                 ((not (equal c result))
                                  (setq progress? t)
@@ -496,6 +505,9 @@
 ;;;
 
 (eval-when (:compile-toplevel :load-toplevel :execute)(in-package rahd)
+
+(defun i2p-strat (a b c)
+  (list b a c))
 
 (defun proc-neg (a b)
   (declare (ignore a))
@@ -595,9 +607,9 @@
 
   (cond
    a-cond
-   (cond |/\\| cond #'i2p)
-   (cond |\\/| cond #'i2p)
-   (cond ==> cond #'i2p)
+   (cond |/\\| cond #'i2p-strat)
+   (cond |\\/| cond #'i2p-strat)
+   (cond ==> cond #'i2p-strat)
    (~ cond #'proc-neg)
    (|(| cond |)| #'k-2-3))
 
@@ -796,6 +808,12 @@
                           (cond ((equal peek-1-c '#\l)
                                  (chunk-prefix "NL"))
                                 (t (chunk-char c))))
+			 ((equal c '#\w)
+			  (cond ((and (equal peek-1-c '#\h)
+				      (equal peek-2-c '#\e)
+				      (equal peek-3-c '#\n))
+				 (chunk-prefix "WHEN"))
+				(t (chunk-char c))))
                          ((equal c '#\b)
                           (cond ((equal peek-1-c '#\y)
                                  (chunk-prefix "BY"))
@@ -833,7 +851,7 @@
                          value 
                          '(+ - * / |(| |)| = > >= <= < ==> |/\\| |\\/| |~| |[|
                              |]| ^ /= != |,| IF BY APPLY RUN REPEAT THEN NL DIM
-                             DEG BW |:=| |;|)) value)
+                             DEG BW |:=| |;| WHEN CID)) value)
                        ((integerp value) 'int)
                        ((rationalp value) 'rational)
                        ((symbolp value) 

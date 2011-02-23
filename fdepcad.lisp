@@ -244,7 +244,7 @@
 	(cached-pfs pfs-present?)
 	(gethash hash-key *cad-pfs-cache*)
       (cond (pfs-present? 
-	     (fmt 4 "~%   Projection factor set found in PFS cache! ~%")
+	     (fmt 3 "~%   Projection factor set found in PFS cache! ~%")
 	     cached-pfs)
 	    (t (let ((pfs (fd-cad-project* ps var-order :factor? factor?)))
 		 (setf (gethash hash-key *cad-pfs-cache*) pfs)
@@ -482,6 +482,16 @@
     result))
 
 ;;;
+;;; VAR-IDS: Given a list of variable symbols, convert it into
+;;;  a list of variable IDs w.r.t. *VARS-TABLE*.
+;;;
+
+(defun var-ids (vs)
+  (mapcar #'(lambda (v)
+	      (find-var v *vars-table* 0))
+	  vs))
+
+;;;
 ;;; FD-CAD-SAT?: Given an open RAHD case, check to see if it is
 ;;;  satisfied by computing a full-dimensional CAD.
 ;;;
@@ -493,12 +503,15 @@
 ;;;  gather-strict-ineqs is the entire case!
 ;;;
 
-(defun fd-cad-sat? (c &key epsilon partial? factor?)
+(defun fd-cad-sat? (c &key epsilon partial? factor? proj-order-greedy?)
   (let* ((ps* (mapcar #'(lambda (l)
 			  `(- ,(cadr l)
 			      ,(caddr l)))
 		      c))
-	 (vs (vs-all ps*))
+	 (vs (if proj-order-greedy? 
+		 (var-ids (vs-proj-order-greedy 
+			   (mapcar #'poly-prover-rep-to-alg-rep ps*)))
+	       (vs-all ps*)))
 	 (vs* (mapcar #'(lambda (i) (nth i *vars-table*)) vs))
 	 (ps (mapcar #'poly-prover-rep-to-alg-rep ps*))
 	 (spts (fd-cad ps vs
@@ -535,13 +548,14 @@
 ;;;    we can't trust SAT answers, only UNSAT.
 ;;;
 
-(defun fdep-cad-on-case (c &key (factor? t))
+(defun fdep-cad-on-case (c &key (factor? t) proj-order-greedy?)
   (let ((sc (gather-strict-ineqs c)))
     (if sc 
 	(let ((s? (fd-cad-sat? 
 		   sc 
 		   :partial? t
-		   :factor? factor?)))
+		   :factor? factor?
+		   :proj-order-greedy? proj-order-greedy?)))
 	  (cond (s? (if (= (length sc) (length c))
 			(let ((judgment 
                                `(:SAT (:MODEL 

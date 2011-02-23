@@ -216,6 +216,14 @@
 				    (let ((parsed-strat (p-strategy arg)))
 				      (wrv verbosity (run-strategy parsed-strat
 								 :subgoal-strat parsed-strat))))))
+            ((equal cmd "e1")
+             (if (not *gs*)
+                 (fmt 0 "Goalset not build.  See build-gs.~%~%")
+               (with-simple-restart (continue-with-new-cmd
+                                     "Continue and enter a new RAHD command.")
+				    (let ((parsed-strat (p-strategy arg)))
+				      (wrv verbosity (run-strategy parsed-strat
+								 :subgoal-strat nil))))))
             ((equal cmd "verbosity")
              (if (equal arg "")
                  (fmt 0 "Verbosity level is ~A.~%~%" verbosity)

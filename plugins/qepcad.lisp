@@ -1,50 +1,48 @@
 ;;;
-;;; An interface to the QEPCAD-B tool
+;;; An RAHD plugin for the QEPCAD-B tool
 ;;;
-;;;    for
-;;; 
-;;;     RAHD: Real Algebra in High Dimensions
-;;;   
-;;;   v0.6,
-;;;
-;;; A proof procedure for the existential theory of real closed fields.
 ;;; Written by Grant Olney Passmore
 ;;; Ph.D. Student, University of Edinburgh
 ;;; Visiting Fellow, SRI International
 ;;; Contact: (g.passmore@ed.ac.uk . http://homepages.inf.ed.ac.uk/s0793114/)
 ;;;
-;;; >>> Requires: sturmineq.lisp
-;;;
-;;;
-;;; This file: began on         31-July-2008,
-;;;            last updated on  24-August-2010.
+;;; This file: began on         31-July-2008       (not as a plugin),
+;;;            last updated on  23-February-2011.
 ;;;
 
 (in-package RAHD)
 
-;;;
-;;; Note: We have now added a ``generic'' mode for interfacing with QEPCAD.
-;;;  This mode is for semialgebraic sets that are not a priori known to be
-;;;  open.  In this case, we cannot use the EX-INF-MANY relaxation, and just
-;;;  do straight-forward CAD.
-;;;
+(defun qepcad-plugin (c &key open?)
+  (if open? (open-qepcad c)
+    (full-qepcad c)))
 
 ;;;
-;;; Given an open conjunction, produce an EX-INF relaxation of the problem
-;;; as a string in QEPCAD-B notation.
-;;;
-;;; If generic is T, then we do generic CAD instead of EX-INF relaxation.
+;;; Install the plugin as a cmf.
 ;;;
 
-(defun open-cad (c)
-  (cad c nil))
+(install-plugin
+ :cmf-str "qepcad"
+ :cmf-fcn #'qepcad-plugin
+ :cmf-args '(open?))
 
-(defun gen-cad (c)
-  (cad c t))
+;;;
+;;; Implementation.
+;;;
 
-#+ccl (defun cad (c generic) (declare (ignore c generic)) nil)
+(defun open-qepcad (c)
+  (let ((open-frag (gather-strict-ineqs c)))
+    (if open-frag 
+	(let ((result (run-qepcad open-frag nil)))
+	  (if (or (equal result open-frag) 
+		  (equal (car result) ':SAT)) ; Cannot trust :SAT here
+	      c
+	    result))
+    c)))
 
-#+allegro (defun cad (c generic)
+(defun full-qepcad (c)
+  (run-qepcad c t))
+
+(defun run-qepcad (c generic)
   (cond ((and (not generic) (not (open-conj c))) c)
 	((not (all-vars-in-conj c)) c)
 	(t (progn
@@ -52,13 +50,16 @@
 	     (let ((error-code
 		    (#+allegro excl:run-shell-command
 			       #+cmu extensions:run-program
-			       "qepcad.bash")))
-	       (fmt 10 "~% [CAD] :: Sys-call for QEPCAD.BASH successfull with exit code: ~A. ~%" error-code)
+			       #+sbcl sb-ext:run-program
+			       (prepend-plugins-path "qepcad.bash")
+			       #+sbcl nil)))
+	       (fmt 3 "~% [Plugin:Qepcad] Qepcad.bash exited with code: ~A. ~%" error-code)
 	       (if #+allegro (= error-code 0)
-		 #+cmu t ;; Need to learn how to get CMUCL error code here.
-		 (with-open-file (cad-output "proofobl.out" :direction :input)
+		 #+cmu t  ;;
+		 #+sbcl t ;; Need to learn how to get error codes for SBCL and CMUCL.
+		 (with-open-file (cad-output (prepend-plugins-path "proofobl.out") :direction :input)
 				 (let ((cad-decision (read-line cad-output nil)))
-				   (fmt 10 "~% [CAD] :: CAD decision: ~A ;  Generic? ~A. ~%" cad-decision generic)
+				   (fmt 10 "~% [Plugin:Qepcad] Qepcad decision: ~A, Generic? ~A. ~%" cad-decision generic)
 				   (if (equal cad-decision "\"FALSE\"")
 				       (if (not generic)
 					   '(:UNSAT (:OPEN-PREDICATE :EX-INF-MANY-RELAXATION :QEPCAD-B-REDUCES-TO-FALSE))
@@ -69,23 +70,6 @@
 					   '(:SAT (:GENERIC-PREDICATE :QEPCAD-B-REDUCES-TO-TRUE)))
 				       c))))
 		 c))))))
-
-
-;;;
-;;; OPEN-FRAG-CAD: Given a conjunction that may contain equations, extract only the
-;;; open fragment (strict inequalities) and check to see whether or not that subset
-;;; of constraints is unsatisfiable over the reals, via OPEN-CAD.
-;;;
-
-(defun open-frag-cad (c)
-  (let ((open-frag (gather-strict-ineqs c)))
-    (if open-frag 
-	(let ((result (open-cad open-frag)))
-	  (if (or (equal result open-frag) 
-		  (equal (car result) ':SAT)) ; Cannot trust :SAT here
-	      c
-	    result))
-    c)))
 
 (defun open-conj (c)
   (let ((is-open? t))
@@ -149,9 +133,11 @@
 
 
 (defun write-open-cad-file (c generic)
-  (with-open-file (cad-file "proofobl.in.raw" :direction :output :if-exists :supersede)
-		  (dolist (l (open-cad-input c generic))
-		    (write-line l cad-file))))
+  (with-open-file 
+   (cad-file (prepend-plugins-path "proofobl.in.raw") 
+	     :direction :output :if-exists :supersede)
+   (dolist (l (open-cad-input c generic))
+     (write-line l cad-file))))
 
 (defun open-cad-input (c generic)
   `("[ RAHD Goal ]"
@@ -270,7 +256,6 @@
        (not (equal term '<))
        (not (equal term '<=))
        (not (equal term '>=))))
-
 
 ;;;
 ;;; Functions for exporting REDLOG input.

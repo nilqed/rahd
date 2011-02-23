@@ -21,7 +21,7 @@
 ;;;  very much for their support.
 ;;; 
 ;;; This file: began on         22-Sept-2008,
-;;;            last updated on  18-February-2011.
+;;;            last updated on  23-February-2011.
 ;;;
 
 ;;;
@@ -114,8 +114,6 @@
    "ineqfert"
    "canonizer"
    "ideals"
-   "qepcad"
-   "cocoa"
    "cases"
    "realnull"
    "cauchyeval"
@@ -146,7 +144,8 @@
    "help"
    "toplevel"
    "strategy" ; expects we have Maxima
-   "defstrat")
+   "defstrat"
+   "plugin")
   (if (not hands-off-state) (rahd-reset-state))
   (format t "~%[rahd-reboot]: RAHD ~D rebooted." *rahd-version*)
   (declaim #+sbcl(sb-ext:unmuffle-conditions style-warning))
