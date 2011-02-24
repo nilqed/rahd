@@ -2,9 +2,22 @@
 ;;; An RAHD plugin for the QEPCAD-B tool
 ;;;
 ;;; Written by Grant Olney Passmore
-;;; Ph.D. Student, University of Edinburgh
-;;; Visiting Fellow, SRI International
-;;; Contact: (g.passmore@ed.ac.uk . http://homepages.inf.ed.ac.uk/s0793114/)
+;;; Postdoc, Cambridge-Edinburgh EPSRC grant
+;;;   ``Automatic Proof Procedures for Polynomials and Special Functions.''
+;;; Postdoctoral Associate, Clare Hall, University of Cambridge
+;;; Research Associate, LFCS, University of Edinburgh
+;;;
+;;; The following institutions have provided support for RAHD development
+;;;  through funding the following positions for me (Passmore):
+;;;    - Ph.D. Student, University of Edinburgh,
+;;;    - Visiting Fellow, SRI International,
+;;;    - Research Intern, Microsoft Research,
+;;;    - Visiting Researcher, INRIA/IRISA.
+;;;
+;;; These positions have been crucial to RAHD progress and we thank the host 
+;;;  institutions and groups very much for their support and encouragement.
+;;;
+;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;;
 ;;; This file: began on         31-July-2008       (not as a plugin),
 ;;;            last updated on  23-February-2011.
@@ -257,77 +270,3 @@
        (not (equal term '<=))
        (not (equal term '>=))))
 
-;;;
-;;; Functions for exporting REDLOG input.
-;;;
-
-(defun goal-to-redlog (goal)
-  (let ((g (tlf-to-bin-ops goal)))
-    (let ((vars-in-g nil))
-      (dolist (c g)
-	(setq vars-in-g (union vars-in-g (all-vars-in-conj c)))
-	vars-in-g)
-      (let ((redlog-formula "")
-	    (count 0))
-	(dolist (c g)
-	  (setq redlog-formula
-		(format nil "~A~% phi~A := ~A;"
-			redlog-formula
-			count
-			(disj-to-redlog c "")))
-	  (setq count (1+ count)))
-	(format nil "~A~% phi := ex({~{~D~#[~:;, ~]~}}, ~A);" 
-		redlog-formula 
-		vars-in-g 
-		(let ((out ""))
-		  (loop for i from 0 to (1- count) do
-			(setq out (format nil "~A~Aphi~A"
-					out (if (> i 0) " and " "") i)))
-		  out))))))
-
-
-(defun term-to-redlog (term)
-  (cond ((equal term nil) "")
-	((numberp term) 
-	 (if (< term 0) 
-	     (format nil "(0 - ~d)" (write-to-string (- (rational term))))
-	   (write-to-string (rational term))))
-	((varp term) (format nil "~D" term))
-	((consp term)
-	 (let ((cur-f (car term))
-	       (cur-x (cadr term))
-	       (cur-y (caddr term)))
-	   (concatenate 
-	    'string
-	    "(" (term-to-redlog cur-x)
-	    (format nil " ~d " (write-to-string cur-f))
-	    (term-to-redlog cur-y) ")")))))
-
-(defun disj-to-redlog (d result)
-  (cond ((endp d) result)
-	(t (let ((cur-lit (car d)))
-	     (let ((use-lit (if (equal (car cur-lit) 'NOT)
-				(cadr cur-lit)
-			      cur-lit)))
-	     (disj-to-redlog
-	      (cdr d)
-	      (format nil "~A~A~A~A"
-		      result
-		      (if (not (equal use-lit cur-lit))
-			  "not" "")
-		      (lit-to-redlog use-lit)
-		      (if (consp (cdr d)) " or " ""))))))))
-
-(defun lit-to-redlog (lit)
-  (concatenate 'string
-	       "("
-	       (let ((cur-r (car lit))
-		     (cur-x (cadr lit))
-		     (cur-y (caddr lit)))
-		 (concatenate 'string
-			      (term-to-redlog cur-x) 
-			      " "
-			      (write-to-string cur-r)
-			      " "
-			      (term-to-redlog cur-y)))
-	       ")"))
