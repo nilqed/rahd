@@ -10,10 +10,10 @@
            simp-arith]")
 
 (defstrat 'waterfall
-  "interval-cp(max-contractions:=20, gb-bound:=7);
+  "interval-cp(max-contractions:=20);
    bounded-gbrni;
    split-ineqs;
-   interval-cp(max-contractions:=10, gb-bound:=5);
+   interval-cp(max-contractions:=10);
    simp-zrhs;
    run stable-simp;
    demod-lin;

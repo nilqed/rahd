@@ -23,7 +23,17 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/.
 ;;; 
 ;;; This file: began on         23-February-2011,
-;;;            last updated on  23-February-2011.
+;;;            last updated on  24-February-2011.
+;;;
+
+;;;
+;;; Require SBCL posix lib so plugins can be aware of their processes.
+;;;
+
+(require :sb-posix)
+
+;;;
+;;; Plugins path.  Eventually, will make this updatable from ~/.rahdrc .
 ;;;
 
 (defparameter *plugins-path*
@@ -34,7 +44,8 @@
 ;;;
 
 (defparameter *plugin-files*
-  '("qepcad.lisp"))
+  '("qepcad.lisp"
+    "redlog.lisp"))
 
 ;;;
 ;;; Install a plugin.
@@ -60,7 +71,7 @@
 
 (defun refresh-plugin (f)
   (declaim #+sbcl(sb-ext:muffle-conditions style-warning))
-  (fmt 0 "Loading plugin ~A:~%" f)
+  (fmt 0 "~%Loading plugin ~A:~%" f)
   (load (prepend-plugins-path f))
   (declaim #+sbcl(sb-ext:unmuffle-conditions style-warning)))
 
