@@ -434,7 +434,8 @@
                                                         cmf-name)
                                            (setq *gs-unknown-size*
                                                  (1- *gs-unknown-size*))
-                                           (when (not *sat-model*)
+                                           (when (and (not *sat-model*)
+						      (aref *gs* i 3))
                                              (let* ((var-bindings (aref *gs* i 3))
                                                     (candidate-model 
                                                      `(:SAT (:MODEL ,var-bindings))))
