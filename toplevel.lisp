@@ -165,7 +165,9 @@
              (fmt 0 "Lexer error: ~A.~%Have you declared all variables?
   (Try 'help vars')~%~%" c)
              (invoke-restart restart))))))
-   (let ((exit?) (vars-lst) (asserted-atoms-lst) 
+   (let ((exit?) (vars-lst) (asserted-atoms-lst)
+	 (default-strategy-str "[run waterfall]")
+	 (default-strategy-parsed '(RUN WATERFALL))
          (prover-opts '("print-infix")) (verbosity 0)
          (watched-case))
      (while (not exit?)
@@ -224,6 +226,18 @@
 				    (let ((parsed-strat (p-strategy arg)))
 				      (wrv verbosity (run-strategy parsed-strat
 								 :subgoal-strat nil))))))
+	    ((equal cmd "default-strategy")
+	     (if (equal arg "")
+		 (fmt 0 "Default strategy is~% String: ~A,~% Parsed: ~A.~%~%"
+		      default-strategy-str
+		      default-strategy-parsed)
+	       (with-simple-restart (continue-with-new-cmd
+				     "Continue and enter a new RAHD command.")
+				    (let ((parsed-strat (p-strategy arg)))
+				      (setq default-strategy-str arg)
+				      (setq default-strategy-parsed parsed-strat)
+				      (fmt 0 "Default strategy updated.~%~%")))))
+				      
             ((equal cmd "verbosity")
              (if (equal arg "")
                  (fmt 0 "Verbosity level is ~A.~%~%" verbosity)
@@ -234,17 +248,15 @@
             ((equal cmd "check")
              (if (not asserted-atoms-lst)
                  (fmt 0 "Prover error: No atoms asserted.~%~%")
-               (let ((result (check (mapcar #'list (reverse asserted-atoms-lst))
-                                    :from-repl t
+               (let ((result (check (mapcar #'list (reverse asserted-atoms-lst))                                    
                                     :print-model 
                                     (member "print-model" prover-opts :test 'equal)
-                                    :search-model
-                                    (member "search-model" prover-opts :test 'equal)
-                                    :search-model*
-                                    (member "search-model*" prover-opts :test 'equal)
-                                    :verbosity verbosity)
+                                    :verbosity verbosity
+				    :strategy default-strategy-parsed
+				    :non-recursive? (equal arg "1"))
                                     ))
-                 (fmt 0 " ~A~%~%" result))))
+                 (fmt 0 result)
+		 (fmt 0 "~%"))))
             ((equal cmd "show")
              (if (member "print-infix" prover-opts :test 'equal)
                  (show-f-infix (reverse asserted-atoms-lst))

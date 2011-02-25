@@ -62,9 +62,29 @@ This promotion from a collection of assertions to a goalset
  * See show for viewing the current context.
  * See reset for clearing the current context.~%~%")
     ("check" .
-     "Usage: check~%
+     "Usage: check       -or-        check 1.~%
  Checks the satisfiability of the current context
   using the default proof strategy.
+
+ When a simple \"check\" is issued, the current assertion
+  context is promoted to a goalset and the default strategy
+  is used to analyse it.  If any subgoals are generated,
+  then the default strategy is applied to them recursively.
+
+ When \"check 1\" is issued, the process is the same except
+  for the following: If subgoals are generated, they will
+  be left alone, i.e., no strategy will be automatically
+  applied to them.
+
+ To be precise, \"check\" is effectively the same as
+
+   > build-gs
+   > e <default-strategy>,
+
+ while \"check 1\" is effectively the same as
+
+   > build-gs
+   > e1 <default-strategy>.
 
  * See assert for more on asserting formulas.
  * See default-strategy for setting the default strategy.
@@ -78,10 +98,38 @@ This promotion from a collection of assertions to a goalset
  * See run for more on executing proof strategies.~%~%")
     ("e" .
      "Usage: e <explicit-proof-strategy>~%
-Executes explicit-proof-strategy against the current goalset.
+ Executes explicit-proof-strategy against the current goalset,
+  with recursive subgoaling.
 
-Example: e [demod-lin; run stable-simp; run waterfall]
+ Example: e [demod-lin; run stable-simp; run waterfall]
 
+ Note that if any subgoals are generated during the run of
+  explicit-proof-strategy, then explicit-proof-strategy
+  will be run against them recursively.
+
+ For a non-recursive method of running strategies, see e1.
+
+ * See e1 for more on running strategies non-recursively.
+ * See assert for more on asserting formulas.
+ * See build-gs for building a goalset from context.
+ * See cg for changing between active goals.
+ * See default-strategy for setting the default strategy.
+ * See opens for viewing open cases.
+ * See watch for how to monitor progress of CMFs upon cases.~%~%")
+    ("e1" .
+     "Usage: e1 <explicit-proof-strategy>~%
+ Executes explicit-proof-strategy against the current goalset,
+  with non-recursive subgoaling.
+
+ Example: e1 [demod-lin; run stable-simp; run waterfall]
+
+ Note that if any subgoals are generated during the run of
+  explicit-proof-strategy, then they will be left alone, i.e.,
+  explicit-proof-strategy will not be run against them.
+
+ For a recursive method of running strategies, see e.
+
+ * See e for more on running strategies recursively.
  * See assert for more on asserting formulas.
  * See build-gs for building a goalset from context.
  * See cg for changing between active goals.
@@ -217,6 +265,6 @@ Stop watching a case in the current goalset.
         (t  (fmt 0 "Help with RAHD toplevel.  Try 'help <keyword>' ~
   where keywords are:~%
    assert build-gs check cg cmfs default-strategy defrule defruleset 
-   defstrat e goal goals goalset help lisp options opens proj-order 
+   defstrat e e1 goal goals goalset help lisp options opens proj-order 
    quit reset rules rulesets set set? show status strats up unset 
    unwatch vars verbosity watch. ~%~%")))))
