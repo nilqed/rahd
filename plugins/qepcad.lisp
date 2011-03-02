@@ -20,7 +20,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;;
 ;;; This file: began on         31-July-2008       (not as a plugin),
-;;;            last updated on  23-February-2011.
+;;;            last updated on  02-March-2011.
 ;;;
 
 (in-package RAHD)
@@ -28,15 +28,6 @@
 (defun qepcad-plugin (c &key open?)
   (if open? (open-qepcad c)
     (full-qepcad c)))
-
-;;;
-;;; Install the plugin as a cmf.
-;;;
-
-(install-plugin
- :cmf-str "qepcad"
- :cmf-fcn #'qepcad-plugin
- :cmf-args '(open?))
 
 ;;;
 ;;; Implementation.
@@ -269,4 +260,28 @@
        (not (equal term '<))
        (not (equal term '<=))
        (not (equal term '>=))))
+
+
+;;;
+;;; Install the plugin as a cmf.
+;;;
+
+(install-plugin
+ :cmf-str "qepcad"
+ :cmf-fcn #'qepcad-plugin
+ :cmf-args '(open?)
+ :cmf-tests '( ( ((> x y) (< y z)) . 
+		 (:SAT (:GENERIC-PREDICATE :QEPCAD-B-REDUCES-TO-TRUE)) )
+	       ( ((> (* x y) y) (= x z) (> z (* x y))) . 
+		 (:SAT (:GENERIC-PREDICATE :QEPCAD-B-REDUCES-TO-TRUE)) )
+	       ( ((> x 10) (< x 11) (> y (* z z)) (>= (* z x) (+ x y))) .
+		 (:SAT (:GENERIC-PREDICATE :QEPCAD-B-REDUCES-TO-TRUE)) )
+	       ( ((> (* x x) y) (< (* x x) y)) .
+		 (:UNSAT (:GENERIC-PREDICATE :QEPCAD-B-REDUCES-TO-FALSE)) )
+	       ( ((> 0
+		     (- (* 2 (+ (* X Z) (+ (* X Y) (* Y Z))))
+			(+ (* X X) (+ (* Y Y) (* Z Z)))))
+		  (<= X 4) (<= Y 4) (<= Z 4) (<= 2 X) (<= 2 Y) (<= 2 Z)) .
+		 (:UNSAT (:GENERIC-PREDICATE :QEPCAD-B-REDUCES-TO-FALSE)) )		 
+	       ))
 

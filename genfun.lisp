@@ -1058,7 +1058,7 @@
            (when restart
              (fmt 0 "Lexer error: ~A.~%Have you declared all variables?
  Example: 
-  ./rahd-v0.6 -v \"a b c x\" -f \"a*x^2 + b*x + c = 0 /\\ b^2 - 4*a*c < 0\"~%~%" c)
+  rahd-v0.6 -v \"a b c x\" -f \"a*x^2 + b*x + c = 0 /\\ b^2 - 4*a*c < 0\"~%~%" c)
              (invoke-restart restart))))))
    (let ((opts #+ccl ccl:*command-line-argument-list* 
 	       #+sbcl sb-ext:*posix-argv*))
@@ -1099,6 +1099,8 @@ RAHD: Real Algebra in High Dimensions ~A
 			  " Error: Variables and formula not given.
 
  Usage: ~A -v \"vars list\" -f \"formula\" <options>
+   or   ~A [-i | -ip | -strategies | -strategy # | -regression]
+
   with options:
 
     -verbosity q      (0<=q<=10)     degree of proof search output (def: 1)
@@ -1120,6 +1122,7 @@ RAHD: Real Algebra in High Dimensions ~A
         s is a name of a defined proof strategy (def: `waterfall'),
         # is an explicitly given proof strategy.~%"
 			
+			(car opts)
 			(car opts)))))
 	     (cond (regression? (wrv (if (rationalp verbosity) verbosity 1) 
 				     (rahd-regression-suite)))

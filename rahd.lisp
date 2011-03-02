@@ -144,8 +144,8 @@
    "help"
    "toplevel"
    "strategy" ; expects we have Maxima
-   "defstrat"
-   "plugin")
+   "plugin"
+   "defstrat")
   (if (not hands-off-state) (rahd-reset-state))
   (format t "~%[rahd-reboot]: RAHD ~D rebooted." *rahd-version*)
   (declaim #+sbcl(sb-ext:unmuffle-conditions style-warning))

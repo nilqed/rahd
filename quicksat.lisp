@@ -195,7 +195,7 @@
 
 (defun format-model (m)
   (cond ((or (not m)
-	     (not (cadadr m))) " No model constructed.")
+	     (not (cadadr m))) " No model constructed.~%~%")
 	(t (let ((m* (reverse (cadadr m))))
 	     (format nil
 	    " model: [~A"

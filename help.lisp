@@ -23,7 +23,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/.
 ;;; 
 ;;; This file: began on         12-December-2010,
-;;;            last updated on  17-February-2011.
+;;;            last updated on  02-March-2011.
 ;;;
 
 (defparameter *help-alist*
@@ -176,6 +176,17 @@ This promotion from a collection of assertions to a goalset
  * See check for checking the satisfiability of a context.
  * See set for more on setting prover options.
  * See options for more on possible prover options.~%~%")
+    ("strategies" .
+     "Usage: strategies~%
+ List all defined proof strategies.
+
+ * See strategy for how to view the parsed definition of
+    a proof strategy.~%~%")
+    ("strategy" .
+     "Usage: strategy <strategy-name>~%
+ Print the parsed definition of a proof strategy.
+
+ * See strategies for how to list all defined strategies.~%~%")
     ("up" .
      "Usage: up~%
  Navigate to the current goal's parent, if it exists.
@@ -266,5 +277,5 @@ Stop watching a case in the current goalset.
   where keywords are:~%
    assert build-gs check cg cmfs default-strategy defrule defruleset 
    defstrat e e1 goal goals goalset help lisp options opens proj-order 
-   quit reset rules rulesets set set? show status strats up unset 
+   quit reset rules rulesets set set? show status strategies up unset 
    unwatch vars verbosity watch. ~%~%")))))
