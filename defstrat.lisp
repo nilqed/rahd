@@ -41,3 +41,39 @@
    quick-sat;
    rcr-ineqs;
    fdep-cad")
+
+(defstrat 's-rq-qsat-end
+  "interval-cp(max-contractions:=10);
+   bounded-gbrni;
+   when (dim <= 5) qepcad(open? := 1);
+   split-ineqs;
+   simp-zrhs;
+   run stable-simp;
+   if (dim <= 7) qepcad(open? := 1)
+     redlog-vts;
+   quick-sat")
+
+(defstrat 's-rq-rl-end
+  "interval-cp(max-contractions:=10);
+   bounded-gbrni;
+   when (dim <= 5) qepcad(open? := 1);
+   split-ineqs;
+   simp-zrhs;
+   run stable-simp;
+   if (dim <= 7) qepcad(open? := 1)
+     redlog-vts;
+   interval-cp(max-contractions:=20);
+   bounded-gbrni;
+   redlog-vts")
+
+(defstrat 's-rq-rl-end-no-bg-end
+  "interval-cp(max-contractions:=10);
+   bounded-gbrni;
+   when (dim <= 5) qepcad(open? := 1);
+   split-ineqs;
+   simp-zrhs;
+   run stable-simp;
+   if (dim <= 7) qepcad(open? := 1)
+     redlog-vts;
+   interval-cp(max-contractions:=20);
+   redlog-vts")

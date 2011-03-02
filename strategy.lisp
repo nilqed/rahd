@@ -48,6 +48,14 @@
   out))
 
 ;;;
+;;; Print all available defined strategies.
+;;;
+
+(defun print-all-strats ()
+  (fmt 0 "Defined strategies:~%~%")
+  (fmt 0 "~{ ~A~%~}" (all-strats)))
+
+;;;
 ;;; Insert a strategy (symbol name, string-rep, S-expression body) triple
 ;;;  into the *proof-strategies* hash table, keyed by symbol name.
 ;;;
@@ -72,6 +80,24 @@
 
 (defun get-strat (name)
   (cdr (gethash name *proof-strategies*)))
+
+
+;;;
+;;; Print info about a particular strategy.
+;;;
+
+(defun print-strat (name-str)
+  (let ((strat-name (intern (string-upcase name-str))))
+    (let ((strat (get-strat strat-name)))
+      (cond (strat 
+	     (fmt 0 "--
+Strategy Definition Record
+--
+ Name: ~A,
+ Defn: ~A.~%~%" name-str strat))
+	    (t (fmt 0 "Error: No strategy named ~A defined.~%~%"
+		    name-str))))))
+
 
 ;;;
 ;;; Match CMF string to CMF function.  Note that we return the

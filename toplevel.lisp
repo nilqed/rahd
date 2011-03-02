@@ -25,7 +25,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/.
 ;;; 
 ;;; This file: began on         01-November-2010,
-;;;            last updated on  18-February-2011.
+;;;            last updated on  02-March-2011.
 ;;;
 
 ;;;
@@ -208,8 +208,13 @@
                    (remove-if #'(lambda (x) (equal x arg))
                               prover-opts))
              (fmt 0 "Prover option ~A unset.~%~%" arg))
-            ((equal cmd "strats")
-             (fmt 0 "Available proof strategies:~%~%~A.~%~%" (all-strats)))
+            ((equal cmd "strategies")
+             (print-all-strats)
+	     (fmt 0 "~% To see the definition of a strategy, try 'strategy strategy-name'.~%~%"))
+	    ((equal cmd "strategy")
+	     (cond ((equal arg "")
+		    (fmt 0 "No strategy name given.  Try 'help strategy'.~%~%"))
+		   (t (print-strat arg))))
             ((equal cmd "e")
              (if (not *gs*)
                  (fmt 0 "Goalset not build.  See build-gs.~%~%")
@@ -311,7 +316,9 @@
                                   (process-defrule arg vars-lst)
                                   (fmt 0 "~%")))
             ((equal cmd "lisp")
-             (fmt 0 "Value: ~A.~%~%" (eval (read-from-string arg))))
+	     (cond ((equal arg "")
+		    (fmt 0 "Error: No Lisp form given to evaluate.~%See 'help lisp'.~%~%"))
+		   (t (fmt 0 "Value: ~A.~%~%" (eval (read-from-string arg))))))
             ((equal cmd "help")
              (toplevel-help arg))
 	    ((equal cmd "up")

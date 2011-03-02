@@ -93,15 +93,6 @@ rahd-pid)))
 	     (t c))))))
 
 ;;;
-;;; Install the plugin as a cmf.
-;;;
-
-(install-plugin
- :cmf-str "redlog-vts"
- :cmf-fcn #'redlog-vts-plugin
- :cmf-args '(vars))
-
-;;;
 ;;; Functions for exporting REDLOG input.
 ;;;
 
@@ -175,3 +166,28 @@ rahd-pid)))
 			      " "
 			      (term-to-redlog cur-y)))
 	       ")"))
+
+
+;;;
+;;; Install the plugin as a cmf.
+;;;
+
+(install-plugin
+ :cmf-str "redlog-vts"
+ :cmf-fcn #'redlog-vts-plugin
+ :cmf-args '(vars)
+ :cmf-tests '( ( ((> x y) (< y z)) . 
+		 (:SAT :REDLOG-RLQE) )
+	       ( ((> (* x y) y) (= x z) (> z (* x y))) . 
+		 (:SAT :REDLOG-RLQE) )
+	       ( ((> x 10) (< x 11) (> y (* z z)) (>= (* z x) (+ x y))) .
+		 (:SAT :REDLOG-RLQE) )
+	       ( ((> (* x x) y) (< (* x x) y)) .
+		 (:UNSAT :REDLOG-RLQE) )
+	       ( ((> 0
+		     (- (* 2 (+ (* X Z) (+ (* X Y) (* Y Z))))
+			(+ (* X X) (+ (* Y Y) (* Z Z)))))
+		  (<= X 4) (<= Y 4) (<= Z 4) (<= 2 X) (<= 2 Y) (<= 2 Z)) .
+		  (:UNSAT :REDLOG-RLQE) )
+	       ))
+
