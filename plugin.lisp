@@ -23,7 +23,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/.
 ;;; 
 ;;; This file: began on         23-February-2011,
-;;;            last updated on  02-March-2011.
+;;;            last updated on  04-March-2011.
 ;;;
 
 ;;;
@@ -97,9 +97,11 @@
  If you later fix your environment and want to
   try again, you can type 'refresh-plugins' at 
   the RAHD top-level.~%~%"
-		  cmf-str cmf-str)))))
-
-
+		  cmf-str cmf-str)
+             (install-cmf :cmf-str cmf-str
+                          :cmf-fcn #'(lambda (x) x)
+                          :cmf-args cmf-args)
+             (build-cmf-sym-hash)))))
 
 ;;;
 ;;; Prepend Plugins Path to a file string.
