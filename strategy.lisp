@@ -380,7 +380,8 @@ Strategy Definition Record
       (update-case i
 		   :status subgoal-decision
 		   :step `(subgoal-spawned-from ,step then ,subgoal-strat))
-      (when (eq subgoal-decision ':UNSAT) 
+      (when (or (eq subgoal-decision ':UNSAT)
+                (eq subgoal-secition ':SAT))
 	(setq *gs-unknown-size* (1- *gs-unknown-size*))))
     (setq *vars-table* vars-table)
     t))
