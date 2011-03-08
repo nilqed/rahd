@@ -33,11 +33,18 @@
 (require :sb-posix)
 
 ;;;
+;;; Get user's home directory.
+;;;
+
+(defun home-dir ()
+  (sb-unix::posix-getenv "HOME"))
+
+;;;
 ;;; Plugins path.  Eventually, will make this updatable from ~/.rahdrc .
 ;;;
 
 (defparameter *plugins-path*
-  "./plugins/")
+  (concatenate 'string (home-dir) "/.rahd/plugins/"))
 
 ;;;
 ;;; Register list of plugin files here.
