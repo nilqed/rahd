@@ -43,9 +43,9 @@ off nat;
 off echo;
 ~A
 result := rlqe phi;
-out \"./plugins/~A.redlog.out\";
+out \"/Users/grant/.rahd/plugins/~A.redlog.out\";
 write result;
-shut \"./plugins/~A.redlog.out\";
+shut \"/Users/grant/.rahd/plugins/~A.redlog.out\";
 quit;"
 case-to-redlog
 rahd-pid

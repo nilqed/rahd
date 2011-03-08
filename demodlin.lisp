@@ -110,30 +110,33 @@
 ;;;
 
 (defun derive-partial-demod-lins (c)
-  (let ((derived-demods nil))
-    (dolist (l c)
-      (if (eq (car l) '=)
-	  (let ((l-oriented (orient-partial-lineq l)))
-	    (when l-oriented
-	      (setq derived-demods (cons l-oriented derived-demods))))))
-    
-    ;; Now, the collection of demodulators in DERIVED-DEMODS is guaranteed to
-    ;; be terminating, so we can just use SUBST-EQS with (TERM -> T) upon the c.
-
-    (if derived-demods 
-	(let ((demod-out 
-               (subst-eqs 
-                c 
-                derived-demods 
-                #'(lambda (x) (declare
-                               (ignore x)) t))))
-          (dolist (cur-eq derived-demods)
-            (add-vt-binding (cadr cur-eq) (caddr cur-eq)))
-          
-	  (fmt 5 "~% >> Applying derived demodulators (listed above) to case.  ~%     Case before demodulation: ~A. ~%     Case after demodulation: ~A.~%"
-	       c demod-out)
-	  demod-out)
-      c)))
+  (if (not (all-vars-in-conj c))
+      c
+    (let ((derived-demods nil))
+      (dolist (l c)
+	(if (and (eq (car l) '=)
+		 (all-vars-in-conj (list l)))
+	    (let ((l-oriented (orient-partial-lineq l)))
+	      (when l-oriented
+		(setq derived-demods (cons l-oriented derived-demods))))))
+      
+      ;; Now, the collection of demodulators in DERIVED-DEMODS is guaranteed to
+      ;; be terminating, so we can just use SUBST-EQS with (TERM -> T) upon the c.
+      
+      (if derived-demods 
+	  (let ((demod-out 
+		 (subst-eqs 
+		  c 
+		  derived-demods 
+		  #'(lambda (x) (declare
+				 (ignore x)) t))))
+	    (dolist (cur-eq derived-demods)
+	      (add-vt-binding (cadr cur-eq) (caddr cur-eq)))
+	    
+	    (fmt 5 "~% >> Applying derived demodulators (listed above) to case.  ~%     Case before demodulation: ~A. ~%     Case after demodulation: ~A.~%"
+		 c demod-out)
+	    demod-out)
+	c))))
 
 ;;;
 ;;; GATHER-PURE-LINEQS: Given a case, return the list of all purely linear equations it contains.

@@ -26,7 +26,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;;
 ;;; This file: began on         29-July-2008           (as "prover.lisp"),
-;;;            last updated on  18-February-2011.
+;;;            last updated on  08-March-2011.
 ;;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -993,14 +993,14 @@
       (let ((refuted? (all-cases-refuted)))
 	(fmt 1 "~%[Decision]")
 	(fmt 0 "~%")
-	(cond (refuted? " unsat~%")
+	(cond (refuted? " unsat")
 	      (*sat-case-found?* 
 	       (format nil " sat~A~%"
 		       (if (and print-model *sat-model*)
 			   (format nil "~%~A~%" 
 				   (format-model *sat-model*))
 			 "")))
-	      (t  " unknown~%")))))
+	      (t  " unknown")))))
    (t "")))
 
 ;;;
@@ -1116,7 +1116,7 @@ RAHD: Real Algebra in High Dimensions ~A
     -i                               interactive top-level
     -ip                              machine-oriented batch evaluator
 
-  where n is a natural, q is a rational presented as `a/b' or `a' for integers a,b,
+  where n is natural, q is rational presented `a/b' or `a' for integers a,b,
         $ is either `on', `off' or `only' (def: `on'), 
         % is either `sturm' or `bernstein' (def: `sturm'),
         s is a name of a defined proof strategy (def: `waterfall'),
@@ -1137,7 +1137,8 @@ RAHD: Real Algebra in High Dimensions ~A
 					       (min verbosity 10))
 				  :print-model print-model?
 				  :strategy '(run waterfall)
-				  :non-recursive? non-recursive?))))
+				  :non-recursive? non-recursive?))
+		    (fmt 0 "~%~%")))
 	     (fmt 0 "~%")))))))))
   
 ;;;

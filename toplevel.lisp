@@ -210,7 +210,8 @@
              (fmt 0 "Prover option ~A unset.~%~%" arg))
             ((equal cmd "strategies")
              (print-all-strats)
-	     (fmt 0 "~% To see the definition of a strategy, try 'strategy strategy-name'.~%~%"))
+	     (fmt 0 "~% To see the definition of a strategy, 
+  try 'strategy strategy-name'.~%~%"))
 	    ((equal cmd "strategy")
 	     (cond ((equal arg "")
 		    (fmt 0 "No strategy name given.  Try 'help strategy'.~%~%"))
@@ -352,10 +353,11 @@
              (fmt 0 "Lexer error: ~A.~%Have you declared all~
   variables?~%~%" c)
              (invoke-restart restart))))))
-   (let ((exit?))
+   (let ((exit?) (vl-str))
      (while (not exit?)
        (let ((vars-lst
               (let ((vl-attempt (prompt-and-read "~%v>~%")))
+		(setq vl-str vl-attempt)
                 (if (or (equal vl-attempt "quit")
                         (equal vl-attempt 'EOF))
                     (setq exit? t)
@@ -371,13 +373,26 @@
                                                     :vars-lst
                                                     vars-lst)))
                                 (mapcar #'list (elim-ands raw-f))))))
+		(log-formula :vars-lst vl-str :formula-str f-attempt)
                 (fmt 2 "Formula: ~A.~%~%" prover-formula)
                 (format *standard-output* 
-                        "~A~%" (check prover-formula 
-                                      :from-repl t
-                                      :verbosity 0
-                                      :skip-cad t
-                                      :skip-factor-sign t)))))))))))
+                        "~A~%" (check prover-formula
+				      :strategy '(RUN ICP-GBRNI-REDLOG)
+                                      :verbosity 1
+                                      )))))))))))
+
+;;;
+;;; Log formula: Used to gather benchmark problems.
+;;;
+
+(defun log-formula (&key vars-lst formula-str)
+  (with-open-file 
+   (log-file "/Users/grant/.rahd/problems.log"
+	     :direction :output :if-exists :append)
+   (write-line " " log-file)
+   (write-line " " log-file)
+   (write-line vars-lst log-file)
+   (write-line formula-str log-file)))
 
 ;;;
 ;;; CASE-INFIX-STR: Given a RAHD case in prover notation, build
@@ -770,7 +785,7 @@
 
   (qf-formula
    atom
-   (~ atom #'neg)
+   (~ qf-formula #'neg)
    (qf-formula |/\\| qf-formula #'i2p)
    (|[| qf-formula |]| #'k-2-3)
    (|(| qf-formula |)| #'k-2-3))
