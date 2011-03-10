@@ -23,7 +23,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/.
 ;;; 
 ;;; This file: began on         23-February-2011,
-;;;            last updated on  04-March-2011.
+;;;            last updated on  09-March-2011.
 ;;;
 
 ;;;
@@ -47,13 +47,34 @@
   (concatenate 'string (home-dir) "/.rahd/plugins/"))
 
 ;;;
-;;; Register list of plugin files here.
+;;; Register list of plugin source Lisp files here.
 ;;;
 
 (defparameter *plugin-files*
   '("qepcad.lisp"
     "redlog.lisp"))
 
+;;;
+;;; Prepend Plugins Path to a file string.
+;;;
+
+(defun prepend-plugins-path (f)
+  (concatenate 'string *plugins-path* f))
+
+;;;
+;;; Check to see if plugins path and associated files exist.
+;;;
+
+(defun plugins-path-ok? ()
+  (and (probe-file *plugins-path*)
+       (let ((out t))
+	 (dolist (f *plugin-files*)
+	   (setq out 
+		 (and (probe-file
+		       (prepend-plugins-path f))
+		      out)))
+	 out)))
+	 
 ;;;
 ;;; Run plugin cmf tests.
 ;;;
@@ -111,13 +132,6 @@
              (build-cmf-sym-hash)))))
 
 ;;;
-;;; Prepend Plugins Path to a file string.
-;;;
-
-(defun prepend-plugins-path (f)
-  (concatenate 'string *plugins-path* f))
-
-;;;
 ;;; Refresh plugins.
 ;;;
 
@@ -128,7 +142,14 @@
   (declaim #+sbcl(sb-ext:unmuffle-conditions style-warning)))
 
 (defun refresh-plugins ()
-  (dolist (f *plugin-files*)
-    (refresh-plugin f)))
+  (if (plugins-path-ok?)
+      (dolist (f *plugin-files*)
+	(refresh-plugin f))
+    (fmt 0 " 
+Error: There is a problem with the following path
+ which is required for this build of RAHD:~%
+  Path: ~A.~%~%
+ Please make sure it exists and contains the 
+  required files.~%~%" *plugins-path*)))
 
 (refresh-plugins)
