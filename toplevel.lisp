@@ -387,8 +387,9 @@
 
 (defun log-formula (&key vars-lst formula-str)
   (with-open-file 
-   (log-file "/Users/grant/.rahd/problems.log"
-	     :direction :output :if-exists :append)
+   (log-file (prepend-plugins-path "problems.log")
+	     :direction :output :if-exists :append
+             :if-does-not-exist :create)
    (write-line " " log-file)
    (write-line " " log-file)
    (write-line vars-lst log-file)

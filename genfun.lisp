@@ -26,7 +26,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;;
 ;;; This file: began on         29-July-2008           (as "prover.lisp"),
-;;;            last updated on  08-March-2011.
+;;;            last updated on  14-March-2011.
 ;;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1072,12 +1072,26 @@
 				(let ((rat-v (car (p-rational verbosity-str))))
 				  (if rat-v rat-v 1))
 			      1)))
+             (multiple-value-bind (run-strat-given? run-strat)
+                 (cl-find-option "-run-strat" opts t)
+               (multiple-value-bind (exec-strat-given? exec-strat)
+                   (cl-find-option "-exec-strat" opts t)
+                 (let ((strategy-to-use '(run waterfall)))
+                   (if run-strat-given?
+                       (let ((strat-sym (intern (string-upcase run-strat)))
+                             (strat-num (car (p-rational run-strat))))
+                         (if strat-num
+                             (setq strategy-to-use 
+                                   `(run ,(get-strat-by-num strat-num)))
+                           (setq strategy-to-use
+                                 `(run ,strat-sym)))))
 	     (let ((print-model? (cl-find-option "-print-model" opts nil))
 		   (div-nz-denoms? (cl-find-option "-div-nz-denoms" opts nil))
 		   (interactive? (cl-find-option "-i" opts nil))
 		   (ip-evaluator? (cl-find-option "-ip" opts nil))
 		   (regression? (cl-find-option "-regression" opts nil))
-		   (non-recursive? (cl-find-option "-non-recursive" opts nil)))
+		   (non-recursive? (cl-find-option "-non-recursive" opts nil))
+                   (strategies? (cl-find-option "-strategies" opts nil)))
 	       (when (and (not ip-evaluator?)
 			  (or (not formula-given?)
 			      (not vars-given?)
@@ -1094,7 +1108,8 @@ RAHD: Real Algebra in High Dimensions ~A
 		   (when (and (or (not formula-given?) 
 				  (not vars-given?))
 			      (not interactive?)
-			      (not ip-evaluator?))
+			      (not ip-evaluator?)
+                              (not strategies?))
 		     (fmt 0 
 			  " Error: Variables and formula not given.
 
@@ -1104,22 +1119,21 @@ RAHD: Real Algebra in High Dimensions ~A
   with options:
 
     -verbosity q      (0<=q<=10)     degree of proof search output (def: 1)
-    -strategy #                      execute an explicitly given proof strategy
+    -exec-strat #                    execute an explicitly given proof strategy
+    -run-strat s                     run defined proof strategy named s
+    -strategies                      list all defined proof strategies
+    -i                               interactive top-level
+    -ip                              machine-oriented batch evaluator
     -print-model                     print a counter-model, if found
     -print-proof                     print a proof trace, even on failure
     -print-fail                      if a decision is not reached, print 
                                       a failure report (unrefuted cases)
     -regression                      test build against regression suite
-    -run s                           use defined proof strategy named s
-                                      (equivalent to `-strategy [run s]')
-    -strategies                      list all defined proof strategies
-    -i                               interactive top-level
-    -ip                              machine-oriented batch evaluator
 
   where n is natural, q is rational presented `a/b' or `a' for integers a,b,
         $ is either `on', `off' or `only' (def: `on'), 
         % is either `sturm' or `bernstein' (def: `sturm'),
-        s is a name of a defined proof strategy (def: `waterfall'),
+        s is a name or ID number of a defined proof strategy (def: `waterfall'),
         # is an explicitly given proof strategy.~%"
 			
 			(car opts)
@@ -1128,6 +1142,7 @@ RAHD: Real Algebra in High Dimensions ~A
 				     (rahd-regression-suite)))
 		   (interactive? (r-repl))
 		   (ip-evaluator? (p-repl))
+                   (strategies? (print-all-strats :id-nums t))
 		   (formula-given?
 		    (when div-nz-denoms?
 		      (setq *div-nz-denoms* t))
@@ -1136,10 +1151,10 @@ RAHD: Real Algebra in High Dimensions ~A
 				  :verbosity (when (rationalp verbosity)
 					       (min verbosity 10))
 				  :print-model print-model?
-				  :strategy '(run waterfall)
+				  :strategy strategy-to-use
 				  :non-recursive? non-recursive?))
 		    (fmt 0 "~%~%")))
-	     (fmt 0 "~%")))))))))
+	     (fmt 0 "~%"))))))))))))
   
 ;;;
 ;;; Print all goals.

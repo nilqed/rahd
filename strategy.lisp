@@ -23,7 +23,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/.
 ;;; 
 ;;; This file: began on         13-December-2010,
-;;;            last updated on  18-February-2011.
+;;;            last updated on  14-March-2011.
 ;;;
 
 ;;;
@@ -51,10 +51,25 @@
 ;;; Print all available defined strategies.
 ;;;
 
-(defun print-all-strats ()
-  (fmt 0 "Defined strategies:~%~%")
-  (fmt 0 "~{ ~A~%~}" (all-strats)))
+(defun print-all-strats (&key id-nums)
+  (fmt 0 "Defined proof strategies:~%~%")
+  (if id-nums
+      (let ((id 0))
+        (dolist (s (all-strats))
+          (fmt 0 " ~A. ~A~%" id s)
+          (setq id (1+ id))))
+    (fmt 0 "~{ ~A~%~}" (all-strats))))
 
+;;;
+;;; Get strategy by numerical ID.
+;;;
+
+(defun get-strat-by-num (id)
+  (let ((strats (all-strats)))
+    (nth (if (and (<= 0 id) (<= id (1- (length strats))))
+             id
+           0)
+         strats)))
 ;;;
 ;;; Insert a strategy (symbol name, string-rep, S-expression body) triple
 ;;;  into the *proof-strategies* hash table, keyed by symbol name.
@@ -80,7 +95,6 @@
 
 (defun get-strat (name)
   (cdr (gethash name *proof-strategies*)))
-
 
 ;;;
 ;;; Print info about a particular strategy.

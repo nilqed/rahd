@@ -94,6 +94,15 @@
     passed?))
 
 ;;;
+;;; A simple no-op CMF.
+;;; Note: Additional arguments need to be added here as plugins
+;;;  are defined which take optional arguments.
+;;;
+
+(defun noop-cmf (x &key open?)
+  x)
+
+;;;
 ;;; Install a plugin.
 ;;;
 ;;; CMF-Tests is a list of pairs of the form:
@@ -127,7 +136,7 @@
   the RAHD top-level.~%~%"
 		  cmf-str cmf-str)
              (install-cmf :cmf-str cmf-str
-                          :cmf-fcn #'(lambda (x) x)
+                          :cmf-fcn #'noop-cmf
                           :cmf-args cmf-args)
              (build-cmf-sym-hash)))))
 
