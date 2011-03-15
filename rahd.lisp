@@ -46,7 +46,7 @@
 ;;; Current version of RAHD.
 ;;;
 
-(defparameter *rahd-version* "v0.6")
+(defparameter *rahd-version* "v0.6a1")
 
 ;;;
 ;;; Declare our global compiler optimization setting.

@@ -20,7 +20,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;;
 ;;; This file: began on         24-February-2011       (before, was part of 
-;;;            last updated on  24-February-2011.          qepcad.lisp)
+;;;            last updated on  15-March-2011.          qepcad.lisp)
 ;;;
 
 ;;;
@@ -43,12 +43,14 @@ off nat;
 off echo;
 ~A
 result := rlqe phi;
-out \"/Users/grant/.rahd/plugins/~A.redlog.out\";
+out \"~A/~A.redlog.out\";
 write result;
-shut \"/Users/grant/.rahd/plugins/~A.redlog.out\";
+shut \"~A/~A.redlog.out\";
 quit;"
 case-to-redlog
+(plugins-path)
 rahd-pid
+(plugins-path)
 rahd-pid)))
 
     ;;
@@ -75,22 +77,25 @@ rahd-pid)))
     ;;  read back true or false.
     ;;
 
-    (let ((result))
+(if (not (probe-file (prepend-plugins-path (format nil "~A.redlog.out.final" rahd-pid))))
+    c
+    
+  (let ((result))
 
-      (with-open-file
-       (redlog-file (prepend-plugins-path (format nil "~A.redlog.out.final" rahd-pid))
-		    :direction :input)
-       (let ((rl (read-line redlog-file nil)))
-	 (if (equal rl "false$")
-	     (setq result ':UNSAT)
-	   (if (equal rl "true$")
-	       (setq result ':SAT))))
-
-       (cond ((equal result ':UNSAT)
-	      '(:UNSAT :REDLOG-RLQE))
-	     ((equal result ':SAT)
-	      '(:SAT :REDLOG-RLQE))
-	     (t c))))))
+    (with-open-file
+     (redlog-file (prepend-plugins-path (format nil "~A.redlog.out.final" rahd-pid))
+		  :direction :input)
+     (let ((rl (read-line redlog-file nil)))
+       (if (equal rl "false$")
+	   (setq result ':UNSAT)
+	 (if (equal rl "true$")
+	     (setq result ':SAT))))
+     
+     (cond ((equal result ':UNSAT)
+	    '(:UNSAT :REDLOG-RLQE))
+	   ((equal result ':SAT)
+	    '(:SAT :REDLOG-RLQE))
+	   (t c)))))))
 
 ;;;
 ;;; Functions for exporting REDLOG input.

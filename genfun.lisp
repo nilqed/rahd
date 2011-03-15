@@ -26,7 +26,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;;
 ;;; This file: began on         29-July-2008           (as "prover.lisp"),
-;;;            last updated on  14-March-2011.
+;;;            last updated on  15-March-2011.
 ;;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1091,7 +1091,8 @@
 		   (ip-evaluator? (cl-find-option "-ip" opts nil))
 		   (regression? (cl-find-option "-regression" opts nil))
 		   (non-recursive? (cl-find-option "-non-recursive" opts nil))
-                   (strategies? (cl-find-option "-strategies" opts nil)))
+                   (strategies? (cl-find-option "-strategies" opts nil))
+		   (self-test? (cl-find-option "-self-test" opts nil)))
 	       (when (and (not ip-evaluator?)
 			  (or (not formula-given?)
 			      (not vars-given?)
@@ -1109,17 +1110,18 @@ RAHD: Real Algebra in High Dimensions ~A
 				  (not vars-given?))
 			      (not interactive?)
 			      (not ip-evaluator?)
-                              (not strategies?))
+                              (not strategies?)
+			      (not self-test?))
+;    -exec-strat #                    execute an explicitly given proof strategy
 		     (fmt 0 
 			  " Error: Variables and formula not given.
 
  Usage: ~A -v \"vars list\" -f \"formula\" <options>
-   or   ~A [-i | -ip | -strategies | -strategy # | -regression]
+   or   ~A [-i | -ip ] [-strategies | -run-strat s | -self-test]
 
   with options:
 
     -verbosity q      (0<=q<=10)     degree of proof search output (def: 1)
-    -exec-strat #                    execute an explicitly given proof strategy
     -run-strat s                     run defined proof strategy named s
     -strategies                      list all defined proof strategies
     -i                               interactive top-level
@@ -1128,7 +1130,7 @@ RAHD: Real Algebra in High Dimensions ~A
     -print-proof                     print a proof trace, even on failure
     -print-fail                      if a decision is not reached, print 
                                       a failure report (unrefuted cases)
-    -regression                      test build against regression suite
+    -self-test                       check environment (including plugins)
 
   where n is natural, q is rational presented `a/b' or `a' for integers a,b,
         $ is either `on', `off' or `only' (def: `on'), 
@@ -1140,8 +1142,9 @@ RAHD: Real Algebra in High Dimensions ~A
 			(car opts)))))
 	     (cond (regression? (wrv (if (rationalp verbosity) verbosity 1) 
 				     (rahd-regression-suite)))
+		   (self-test? (self-test))
 		   (interactive? (r-repl))
-		   (ip-evaluator? (p-repl))
+		   (ip-evaluator? (p-repl :strategy strategy-to-use))
                    (strategies? (print-all-strats :id-nums t))
 		   (formula-given?
 		    (when div-nz-denoms?
@@ -1167,3 +1170,23 @@ RAHD: Real Algebra in High Dimensions ~A
 	   (fmt 0 " ~A~%" (format-goal-key g)))
 	 (fmt 0 "~%"))
 	(t (fmt 0 " ~%No goals.~%~%"))))
+
+;;;
+;;; Self-test
+;;;
+
+(defun self-test ()
+  (let ((out (plugins-path-ok?)))
+    (fmt 0 " RAHD self test: ~%
+  Checking plugin paths and files...
+   Required path $HOME/.rahd/
+   Required path $HOME/.rahd/plugins/
+   Required file $HOME/.rahd/plugins/qepcad.lisp
+   Required file $HOME/.rahd/plugins/redlog.lisp
+   Required file $HOME/.rahd/plugins/qepcad.bash
+   Required file $HOME/.rahd/plugins/redlog.bash
+  ... ~A.~%" (if out "paths and files OK"
+	       "paths and files FAILURE"))
+    (when out
+      (refresh-plugins))))
+    
