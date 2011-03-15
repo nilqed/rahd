@@ -23,7 +23,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/.
 ;;; 
 ;;; This file: began on         23-February-2011,
-;;;            last updated on  09-March-2011.
+;;;            last updated on  15-March-2011.
 ;;;
 
 ;;;
@@ -43,7 +43,7 @@
 ;;; Plugins path.  Eventually, will make this updatable from ~/.rahdrc .
 ;;;
 
-(defparameter *plugins-path*
+(defun plugins-path ()
   (concatenate 'string (home-dir) "/.rahd/plugins/"))
 
 ;;;
@@ -59,14 +59,14 @@
 ;;;
 
 (defun prepend-plugins-path (f)
-  (concatenate 'string *plugins-path* f))
+  (concatenate 'string (plugins-path) f))
 
 ;;;
 ;;; Check to see if plugins path and associated files exist.
 ;;;
 
 (defun plugins-path-ok? ()
-  (and (probe-file *plugins-path*)
+  (and (probe-file (plugins-path))
        (let ((out t))
 	 (dolist (f *plugin-files*)
 	   (setq out 
@@ -159,6 +159,6 @@ Error: There is a problem with the following path
  which is required for this build of RAHD:~%
   Path: ~A.~%~%
  Please make sure it exists and contains the 
-  required files.~%~%" *plugins-path*)))
+  required files.~%~%" (plugins-path))))
 
 (refresh-plugins)

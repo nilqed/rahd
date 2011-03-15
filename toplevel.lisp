@@ -334,11 +334,29 @@
    (fmt 0 "Goodbye.~%")))
 
 ;;;
+;;; CONTAINS-OR: Does a formula contain a disjunction?
+;;;
+
+(defun contains-or (f)
+  (cond ((not (consp f)) nil)
+	((equal (car f) 'OR) t)
+	(t (or (contains-or (cadr f))
+	       (contains-or (caddr f))))))
+
+;;;
+;;; Given a parsed qf-conf+disj formula, extract a prover formula.
+;;;
+
+(defun get-prover-formula (f)
+  (if (contains-or f) '(:DISJ-FORMULA)
+    (mapcar #'list (elim-ands f))))
+
+;;;
 ;;; A simple monolithic problem-oriented interface for MetiTarski and
 ;;;  other automated tools.
 ;;;
 
-(defun p-repl ()
+(defun p-repl (&key strategy)
   (handler-bind 
    ((yacc:yacc-parse-error 
      #'(lambda (c)
@@ -372,14 +390,17 @@
                                      (p-formula-str f-attempt 
                                                     :vars-lst
                                                     vars-lst)))
-                                (mapcar #'list (elim-ands raw-f))))))
-		(log-formula :vars-lst vl-str :formula-str f-attempt)
-                (fmt 2 "Formula: ~A.~%~%" prover-formula)
-                (format *standard-output* 
-                        "~A~%" (check prover-formula
-				      :strategy '(RUN ICP-GBRNI-REDLOG)
-                                      :verbosity 1
-                                      )))))))))))
+                                (get-prover-formula raw-f)))))
+		(cond ((equal prover-formula '(:DISJ-FORMULA))
+		       (format *standard-output*
+			       "[Decision]~% unknown~%~%"))
+		      (t ;(log-formula :vars-lst vl-str :formula-str f-attempt)
+		       (fmt 2 "Formula: ~A.~%~%" prover-formula)
+		       (format *standard-output* 
+			       "~A~%" (check prover-formula
+					     :strategy (or strategy '(RUN WATERFALL))
+					     :verbosity 1
+					     )))))))))))))
 
 ;;;
 ;;; Log formula: Used to gather benchmark problems.
@@ -772,6 +793,7 @@
 
 ;;;
 ;;; Parser only for conjunctive formulae.
+;;;  * Updated to handle disjunctions (15-March-2011).
 ;;;
 
 (yacc:define-parser qf-conj-parser
@@ -788,6 +810,7 @@
    atom
    (~ qf-formula #'neg)
    (qf-formula |/\\| qf-formula #'i2p)
+   (qf-formula |\\/| qf-formula #'i2p)
    (|[| qf-formula |]| #'k-2-3)
    (|(| qf-formula |)| #'k-2-3))
 

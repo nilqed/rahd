@@ -20,7 +20,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;;
 ;;; This file: began on         31-July-2008       (not as a plugin),
-;;;            last updated on  02-March-2011.
+;;;            last updated on  15-March-2011.
 ;;;
 
 (in-package RAHD)
@@ -47,33 +47,31 @@
   (run-qepcad c t))
 
 (defun run-qepcad (c generic)
-  (cond ((and (not generic) (not (open-conj c))) c)
-	((not (all-vars-in-conj c)) c)
-	(t (progn
-	     (write-open-cad-file c generic)
-	     (let ((error-code
-		    (#+allegro excl:run-shell-command
-			       #+cmu extensions:run-program
-			       #+sbcl sb-ext:run-program
-			       (prepend-plugins-path "qepcad.bash")
-			       #+sbcl nil)))
-	       (fmt 3 "~% [Plugin:Qepcad] Qepcad.bash exited with code: ~A. ~%" error-code)
-	       (if #+allegro (= error-code 0)
-		 #+cmu t  ;;
-		 #+sbcl t ;; Need to learn how to get error codes for SBCL and CMUCL.
-		 (with-open-file (cad-output (prepend-plugins-path "proofobl.out") :direction :input)
-				 (let ((cad-decision (read-line cad-output nil)))
-				   (fmt 10 "~% [Plugin:Qepcad] Qepcad decision: ~A, Generic? ~A. ~%" cad-decision generic)
-				   (if (equal cad-decision "\"FALSE\"")
-				       (if (not generic)
-					   '(:UNSAT (:OPEN-PREDICATE :EX-INF-MANY-RELAXATION :QEPCAD-B-REDUCES-TO-FALSE))
-					 '(:UNSAT (:GENERIC-PREDICATE :QEPCAD-B-REDUCES-TO-FALSE)))				   
-				     (if (equal cad-decision "\"TRUE\"")
-					 (if (not generic)
-					     '(:SAT (:OPEN-PREDICATE :EX-INF-MANY-RELAXATION :QEPCAD-B-REDUCES-TO-TRUE))
-					   '(:SAT (:GENERIC-PREDICATE :QEPCAD-B-REDUCES-TO-TRUE)))
-				       c))))
-		 c))))))
+  (let ((rahd-pid (sb-posix:getpid)))
+    (cond ((and (not generic) (not (open-conj c))) c)
+	  ((not (all-vars-in-conj c)) c)
+	  (t (progn
+	       (write-open-cad-file c generic rahd-pid)
+	       (sb-ext:run-program (prepend-plugins-path "qepcad.bash")
+				   (list (format nil "~A" rahd-pid)))	       
+	       (if (not (probe-file (prepend-plugins-path (format nil "~A.qepcad.out" rahd-pid))))
+		   c
+		 (if #+allegro (= error-code 0)
+		   #+cmu t  ;;
+		   #+sbcl t ;; Need to learn how to get error codes for SBCL and CMUCL.
+		   (with-open-file (cad-output (prepend-plugins-path (format nil "~A.qepcad.out" rahd-pid)) :direction :input)
+				     (let ((cad-decision (read-line cad-output nil)))
+				       (fmt 10 "~% [Plugin:Qepcad] Qepcad decision: ~A, Generic? ~A. ~%" cad-decision generic)
+				       (if (equal cad-decision "\"FALSE\"")
+					   (if (not generic)
+					       '(:UNSAT (:OPEN-PREDICATE :EX-INF-MANY-RELAXATION :QEPCAD-B-REDUCES-TO-FALSE))
+					     '(:UNSAT (:GENERIC-PREDICATE :QEPCAD-B-REDUCES-TO-FALSE)))				   
+					 (if (equal cad-decision "\"TRUE\"")
+					     (if (not generic)
+						 '(:SAT (:OPEN-PREDICATE :EX-INF-MANY-RELAXATION :QEPCAD-B-REDUCES-TO-TRUE))
+					       '(:SAT (:GENERIC-PREDICATE :QEPCAD-B-REDUCES-TO-TRUE)))
+					   c))))
+		   c)))))))
 
 (defun open-conj (c)
   (let ((is-open? t))
@@ -84,61 +82,10 @@
 		   (or (equal cur-r '<) (equal cur-r '>))))))
     is-open?))
 
-;;;
-;;; RUN-CAD-ON-ENTIRE-GOAL: Run CAD on an entire top-level *G*.
-;;;  Note that this goal, G, must already be processed into RAHD RCF form.
-;;;
 
-#+ccl (defun run-cad-on-entire-goal (goal) (declare (ignore goal)) nil)
-
-#+allegro 
-(defun run-cad-on-entire-goal (goal)
-  (let ((g (tlf-to-bin-ops goal)))
-    (let ((vars-in-g nil))
-      (dolist (c g)
-	(setq vars-in-g (union vars-in-g (all-vars-in-conj c)))
-	vars-in-g)
-      (let ((cad-cnf "")
-	    (count 0))
-	(dolist (c g)
-	  (setq cad-cnf
-		(format nil "~A ~A [~A]"
-			cad-cnf
-			(if (> count 0) " /\\ " "")
-			(disj-to-qcb c nil)))
-	  (setq count (1+ count)))
-
-	(let ((cad-input
-	       (format nil "[ RAHD top-level Goal ]~%~A~%~A~%~A~%finish.~%"
-		       (format nil "(~{~D~#[~:;, ~]~})" vars-in-g)
-		       0
-		       (format nil "~A[~A]." (ex-quant-prefix vars-in-g) cad-cnf))))
-
-	  (with-open-file (cad-file "proofobl.in.raw" :direction :output :if-exists :supersede)
-			  (write-line cad-input cad-file)))
-
-	(let ((start-time (get-internal-real-time)))
-
-	  (let ((error-code
-		 (#+allegro excl:run-shell-command
-			    #+cmu extensions:run-program
-			    "qepcad.bash")))
-
-	    (let* ((end-time (get-internal-real-time))
-		   (total-time (float (/ (- end-time start-time) internal-time-units-per-second))))
-	    
-	      (with-open-file (cad-output "proofobl.out" :direction :input)
-			      (let ((cad-decision (read-line cad-output nil)))
-				(if (equal cad-decision "\"FALSE\"")
-				    (fmt -1 "~% ~A solved by QEPCAD-B from top-level in approx. ~A.~% "
-					 *cur-prob* total-time)
-				  (fmt -1 "~% ~A _NOT_ solved by QEPCAD-B.  It took approx. ~A for QEPCAD-B to fail on this problem.~%"
-				       *cur-prob* total-time)))))))))))
-
-
-(defun write-open-cad-file (c generic)
+(defun write-open-cad-file (c generic rahd-pid)
   (with-open-file 
-   (cad-file (prepend-plugins-path "proofobl.in.raw") 
+   (cad-file (prepend-plugins-path (format nil "~A.qepcad.in.raw" rahd-pid))
 	     :direction :output :if-exists :supersede)
    (dolist (l (open-cad-input c generic))
      (write-line l cad-file))))
