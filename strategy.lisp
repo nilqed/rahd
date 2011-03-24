@@ -127,6 +127,7 @@ Strategy Definition Record
 
 (defparameter *cmf-str-fcn-table*
   `(("simp-arith"       ,#'arith-simplify-case       nil)
+    ("apcad-fd"         ,#'fdep-cad-on-case          (PROJ-ORDER-GREEDY? FACTOR? STAGE THEATRE))
     ("contra-eqs"       ,#'simply-incons*            nil)
     ("demod-num"        ,#'demodulate-numerically    nil)
     ("simp-gls"         ,#'simplify-ground-lits+rtv  nil)
@@ -145,11 +146,11 @@ Strategy Definition Record
     ("interval-cp"      ,#'icp-on-case               (MAX-CONTRACTIONS))
     ("satur-lin"        ,#'saturate-case-with-linear-orientations nil)
     ("full-gbrni"       ,#'full-gb-real-null-on-case nil)
-    ("bounded-gbrni"    ,#'bgbrnull-case-wrapper     (GB-BOUND ICP-PERIOD UNION-CASE SUMMAND-LEVEL))
+    ("bounded-gbrni"    ,#'bgbrnull-case-wrapper     (GB-BOUND ICP-PERIOD UNION-CASE SUMMAND-LEVEL SATURATE-BY))
     ("quick-sat"        ,#'qsi-on-case               (GEN-PT-BOUND))
     ("factor-sign"      ,#'factor-sign-case          nil)
     ("ruleset"          ,#'apply-ruleset-to-case     (NAME))
-    ("fdep-cad"         ,#'fdep-cad-on-case          (PROJ-ORDER-GREEDY? FACTOR?))
+    ("apcad-fd"         ,#'fdep-cad-on-case          (PROJ-ORDER-GREEDY? FACTOR? STAGE THEATRE))
     ("split-ineqs"      ,#'split-ineqs-cmf           nil)
     ))
 
@@ -590,12 +591,16 @@ Strategy Definition Record
   (declare (ignore a))
   `(run ,b))
 
-(defun proc-cmf-av (a b c)
+(defun proc-run-avl (a b c avl d)
+  (declare (ignore c d))
+  (append `(run ,b) avl))
+
+(defun proc-cs-av (a b c)
   (declare (ignore b))
   `(,(intern (symbol-name a) 'keyword)
     ,c))
 
-(defun proc-cmf-avl (a b c)
+(defun proc-cs-avl (a b c)
   (declare (ignore b))
   (append a c))
 
@@ -611,7 +616,7 @@ Strategy Definition Record
 (yacc:define-parser strategy-parser
   (:start-symbol strategy)
   (:terminals 
-   (dim deg nl bw rational int cmf cmf-arg
+   (dim deg nl bw rational int cmf cs-arg
         if when try by then apply run repeat
         strategy-name print-trace
         + - * = ==> |/\\| |\\/| |~| |;|
@@ -633,19 +638,20 @@ Strategy Definition Record
    (|(| strategy |)| #'k-2-3))
 
   (action
-   (apply cmf |(| cmf-avl |)| #'proc-apply-avl)
-   (apply cmf #'proc-apply)
    (cmf #'proc-apply-i)
-   (cmf |(| cmf-avl |)| #'proc-apply-i-avl)
+   (cmf |(| cs-avl |)| #'proc-apply-i-avl)
    (run strategy-name #'proc-run)
+   (run strategy-name |(| cs-avl |)| #'proc-run-avl)
    (print-trace int #'proc-print-trace))
   
-  (cmf-avl
-   cmf-av
-   (cmf-av |,| cmf-avl #'proc-cmf-avl))
+  (cs-avl
+   cs-av
+   (cs-av |,| cs-avl #'proc-cs-avl))
 
-  (cmf-av
-   (cmf-arg |:=| value #'proc-cmf-av))
+  (cs-av
+   (cs-arg |:=| value #'proc-cs-av)
+   (cs-arg |:=| strategy-name)
+   (cs-arg |:=| theatre-name))
 
   (cond
    a-cond
@@ -899,7 +905,7 @@ Strategy Definition Record
                        ((symbolp value) 
                         (cond 
                          ((member value (avail-cmfs-sym)) 'cmf)
-                         ((member value (cmf-args-all)) 'cmf-arg)
+                         ((member value (cmf-args-all)) 'cs-arg)
                          ((member value (all-strats)) 'strategy-name)
                          (t (lex-error "[Lex-strategy] Unexpected symbol"))))
                        (t (lex-error "[Lex-strategy] Unexpected symbol" 

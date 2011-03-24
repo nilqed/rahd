@@ -40,7 +40,7 @@
    int-dom-zpb;
    quick-sat;
    rcr-ineqs;
-   when (dim <= 20) fdep-cad")
+   when (dim <= 20) apcad-fd")
 
 (defstrat 'waterfall-with-qepcad-top
   "if (dim < 5)
@@ -77,7 +77,7 @@
    int-dom-zpb;
    quick-sat;
    rcr-ineqs;
-   fdep-cad")
+   apcad-fd")
 
 (defstrat 'waterfall-with-qepcad-top
   "if (dim < 5)
@@ -114,7 +114,7 @@
    int-dom-zpb;
    quick-sat;
    rcr-ineqs;
-   fdep-cad")
+   apcad-fd")
 
 
 (defstrat 'waterfall-with-icp-qepcad-redlog
@@ -153,7 +153,7 @@
    int-dom-zpb;
    quick-sat;
    rcr-ineqs;
-   fdep-cad;
+   apcad-fd;
    redlog-vts")
 
 
@@ -183,7 +183,7 @@
 
 (defstrat 's-rq-rl-end-no-bg-end
   "interval-cp(max-contractions:=10);
-   bounded-gbrni;
+   bounded-gbrni(gb-bound := nl^2, icp-period:=10);
    when (dim <= 5) qepcad(open? := 1);
    split-ineqs;
    simp-zrhs;
