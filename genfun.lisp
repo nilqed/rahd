@@ -1189,4 +1189,3 @@ RAHD: Real Algebra in High Dimensions ~A
 	       "paths and files FAILURE"))
     (when out
       (refresh-plugins))))
-    

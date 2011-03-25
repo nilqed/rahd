@@ -214,3 +214,6 @@
   "interval-cp(max-contractions:=10);
    bounded-gbrni;
    redlog-vts")
+
+(defstrat 'icp-only-50
+  "interval-cp(max-contractions:=50)")
