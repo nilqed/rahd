@@ -592,9 +592,17 @@ Strategy Definition Record
   `(run ,b))
 
 (defun proc-run-avl (a b c avl d)
-  (declare (ignore c d))
+  (declare (ignore a c d))
   (append `(run ,b) avl))
 
+(defun proc-true (a)
+  (declare (ignore a))
+  't)
+
+(defun proc-false (a)
+  (declare (ignore a))
+  'nil)
+  
 (defun proc-cs-av (a b c)
   (declare (ignore b))
   `(,(intern (symbol-name a) 'keyword)
@@ -618,7 +626,7 @@ Strategy Definition Record
   (:terminals 
    (dim deg nl bw rational int cmf cs-arg
         if when try by then apply run repeat
-        strategy-name print-trace
+        strategy-name print-trace true false
         + - * = ==> |/\\| |\\/| |~| |;|
         |(| |)| > >= = /= != <= < |:=| |,| / ^ |[| |]|))
   (:precedence 
@@ -668,7 +676,9 @@ Strategy Definition Record
    (value > value #'i2p)
    (value >= value #'i2p)
    (value < value #'i2p)
-   (value <= value #'i2p))
+   (value <= value #'i2p)
+   (true #'proc-true)
+   (false #'proc-false))
 
   (value
    measure                                  ; implicit action #'identity
