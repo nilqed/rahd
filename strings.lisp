@@ -10,7 +10,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;; 
 ;;; This file: began on         24-Sept-2008,
-;;;            last updated on  23-Oct-2008.
+;;;            last updated on  31-March-2011.
 ;;;
 
 (in-package RAHD)
@@ -116,7 +116,9 @@ Available goals: ~A.")
 
 (defun format-goal-key (k)
   (if (listp k)
-      (format nil "~{~a~^.~}" k)
+      (format nil "~A.~A"
+	      (format-goal-key (car k))
+	      (write-to-string (cadr k)))
     (write-to-string k)))
 
 ;;;

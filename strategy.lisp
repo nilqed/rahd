@@ -56,7 +56,9 @@
   (if id-nums
       (let ((id 0))
         (dolist (s (all-strats))
-          (fmt 0 " ~A. ~A~%" id s)
+          (fmt 0 " ~A. ~A~%" 
+	       id 
+	       (string-downcase (symbol-name s)))
           (setq id (1+ id))))
     (fmt 0 "~{ ~A~%~}" (all-strats))))
 
@@ -217,47 +219,48 @@ Strategy Definition Record
 ;;;  into an S-expression.
 ;;;
 
-(defun eval-strategy-cond (sc dim deg nl bw)
+(defun eval-strategy-cond (sc dim deg nl bw cid)
   (cond ((not (consp sc))
          (cond ((eq sc 'DIM) dim)
                ((eq sc 'DEG) deg)
                ((eq sc 'NL) nl)
                ((eq sc 'BW) bw)
+	       ((eq sc 'CID) cid)
                ((numberp sc) sc)
                (t (break "Unexpected value in strategy conditional."))))
         ((and (equal (length sc) 2)
               (eq (car sc) '~))
-         (not (eval-strategy-cond (cadr sc) dim deg nl bw)))
+         (not (eval-strategy-cond (cadr sc) dim deg nl bw cid)))
         (t (let ((op (car sc))
                  (x (cadr sc))
                  (y (caddr sc)))
              (case op
-               (+ (+ (eval-strategy-cond x dim deg nl bw)
-                     (eval-strategy-cond y dim deg nl bw)))
-               (- (- (eval-strategy-cond x dim deg nl bw)
-                     (eval-strategy-cond y dim deg nl bw)))
-               (* (* (eval-strategy-cond x dim deg nl bw)
-                     (eval-strategy-cond y dim deg nl bw)))
-               (expt (expt (eval-strategy-cond x dim deg nl bw)
-                           (eval-strategy-cond y dim deg nl bw)))
-               (> (> (eval-strategy-cond x dim deg nl bw)
-                     (eval-strategy-cond y dim deg nl bw)))
-               (>= (>= (eval-strategy-cond x dim deg nl bw)
-                       (eval-strategy-cond y dim deg nl bw)))
-               (= (= (eval-strategy-cond x dim deg nl bw)
-                     (eval-strategy-cond y dim deg nl bw)))
-               (<= (<= (eval-strategy-cond x dim deg nl bw)
-                       (eval-strategy-cond y dim deg nl bw)))
-               (< (< (eval-strategy-cond x dim deg nl bw)
-                     (eval-strategy-cond y dim deg nl bw)))
-               ((!= /=) (not (= (eval-strategy-cond x dim deg nl bw)
-                                (eval-strategy-cond y dim deg nl bw))))
-               (/\\ (and (eval-strategy-cond x dim deg nl bw)
-                         (eval-strategy-cond y dim deg nl bw)))
-               (\\/ (or (eval-strategy-cond x dim deg nl bw)
-                        (eval-strategy-cond y dim deg nl bw)))
-               (==> (or (not (eval-strategy-cond x dim deg nl bw))
-                        (eval-strategy-cond y dim deg nl bw)))
+               (+ (+ (eval-strategy-cond x dim deg nl bw cid)
+                     (eval-strategy-cond y dim deg nl bw cid)))
+               (- (- (eval-strategy-cond x dim deg nl bw cid)
+                     (eval-strategy-cond y dim deg nl bw cid)))
+               (* (* (eval-strategy-cond x dim deg nl bw cid)
+                     (eval-strategy-cond y dim deg nl bw cid)))
+               (expt (expt (eval-strategy-cond x dim deg nl bw cid)
+                           (eval-strategy-cond y dim deg nl bw cid)))
+               (> (> (eval-strategy-cond x dim deg nl bw cid)
+                     (eval-strategy-cond y dim deg nl bw cid)))
+               (>= (>= (eval-strategy-cond x dim deg nl bw cid)
+                       (eval-strategy-cond y dim deg nl bw cid)))
+               (= (= (eval-strategy-cond x dim deg nl bw cid)
+                     (eval-strategy-cond y dim deg nl bw cid)))
+               (<= (<= (eval-strategy-cond x dim deg nl bw cid)
+                       (eval-strategy-cond y dim deg nl bw cid)))
+               (< (< (eval-strategy-cond x dim deg nl bw cid)
+                     (eval-strategy-cond y dim deg nl bw cid)))
+               ((!= /=) (not (= (eval-strategy-cond x dim deg nl bw cid)
+                                (eval-strategy-cond y dim deg nl bw cid))))
+               (/\\ (and (eval-strategy-cond x dim deg nl bw cid)
+                         (eval-strategy-cond y dim deg nl bw cid)))
+               (\\/ (or (eval-strategy-cond x dim deg nl bw cid)
+                        (eval-strategy-cond y dim deg nl bw cid)))
+               (==> (or (not (eval-strategy-cond x dim deg nl bw cid))
+                        (eval-strategy-cond y dim deg nl bw cid)))
                (otherwise (break "Unexpected operation in strategy conditional.")))))))
 
 ;;;
@@ -445,12 +448,13 @@ Strategy Definition Record
                   (let ((dim (case-dim c))
                         (deg (case-deg c))
                         (nl (case-nl c))
-                        (bw (case-bw c)))
+                        (bw (case-bw c))
+			(cid i))
                     (let ((cmf-name (cadr strat))
-                          (pass-guard? 
+                          (pass-guard?
                            (if guard (eval-strategy-cond 
                                       guard
-                                      dim deg nl bw)
+                                      dim deg nl bw cid)
                              t)))
                       (cond (pass-guard?
                              (fmt 1.5 "Executing cmf ~A on case ~A..." cmf-name i)
@@ -498,8 +502,8 @@ Strategy Definition Record
                                     guard))))))))))
       progress?))
    ((eq (car strat) 'THEN)
-    (let* ((progress-0? (run-strategy (cadr strat) :subgoal-strat subgoal-strat))
-           (progress-1? (run-strategy (caddr strat) :subgoal-strat subgoal-strat)))
+    (let* ((progress-0? (run-strategy (cadr strat) :subgoal-strat subgoal-strat :guard guard))
+           (progress-1? (run-strategy (caddr strat) :subgoal-strat subgoal-strat :guard guard)))
       (or progress-0? progress-1?)))
    ((eq (car strat) 'IF)
     (let* ((guard+ (cadr strat))
@@ -528,7 +532,8 @@ Strategy Definition Record
 		    :subgoal-strat subgoal-strat)))
    ((eq (car strat) 'RUN)
     (run-strategy (get-strat (cadr strat))
-		  :subgoal-strat subgoal-strat))
+		  :subgoal-strat subgoal-strat
+		  :guard guard))
    ((eq (car strat) 'REPEAT)
     (let ((strat-to-rep (cadr strat))
           (progress?)
@@ -536,7 +541,8 @@ Strategy Definition Record
       (loop while single-step-progress? do
             (setq single-step-progress?
                   (run-strategy strat-to-rep
-				:subgoal-strat subgoal-strat))
+				:subgoal-strat subgoal-strat
+				:guard guard))
             (when (and (not progress?)
                        single-step-progress?)
               (setq progress? t)))
@@ -624,7 +630,7 @@ Strategy Definition Record
 (yacc:define-parser strategy-parser
   (:start-symbol strategy)
   (:terminals 
-   (dim deg nl bw rational int cmf cs-arg
+   (dim deg nl bw cid rational int cmf cs-arg
         if when try by then apply run repeat
         strategy-name print-trace true false
         + - * = ==> |/\\| |\\/| |~| |;|
@@ -694,8 +700,8 @@ Strategy Definition Record
    dim
    deg
    nl
-   bw)
-
+   bw
+   cid)
 )
 
 ;;;
@@ -854,6 +860,11 @@ Strategy Definition Record
                                       (equal peek-4-c '#\y))
                                  (chunk-prefix "APPLY"))
                                 (t (chunk-char c))))
+                         ((equal c '#\c)
+                          (cond ((and (equal peek-1-c '#\i)
+                                      (equal peek-2-c '#\d))
+                                 (chunk-prefix "CID"))
+                                (t (chunk-char c))))			 
                          ((equal c '#\d)
                           (cond ((and (equal peek-1-c '#\i)
                                       (equal peek-2-c '#\m))
@@ -909,7 +920,7 @@ Strategy Definition Record
                          value 
                          '(+ - * / |(| |)| = > >= <= < ==> |/\\| |\\/| |~| |[|
                              |]| ^ /= != |,| IF BY APPLY RUN REPEAT THEN NL DIM
-                             DEG BW |:=| |;| WHEN CID)) value)
+                             DEG BW CID |:=| |;| WHEN)) value)
                        ((integerp value) 'int)
                        ((rationalp value) 'rational)
                        ((symbolp value) 

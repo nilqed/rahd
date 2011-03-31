@@ -512,8 +512,8 @@
   (setq *gs-max-dim* 0)
   (setq *gs-vt-bindings* nil)
   (when (not no-output)
-    (if keep-hashes (fmt 2 "~% Local goal state reset, but global structures unchanged.~%"
-			 (fmt 2 "~% Full RAHD system state successfully reset.~%"))))
+    (if keep-hashes (fmt 4 "~% Local goal state reset, but global structures unchanged.~%"
+			 (fmt 4 "~% Full RAHD system state successfully reset.~%"))))
   t)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -534,8 +534,8 @@
 		       :goal-set-local-vt-bs *gs-vt-bindings*)
   (setf (gethash *current-goal-key* *goal-sets*) *gs*)
   (when (not no-output)
-    (fmt 2 "~% Proof state for goal ~A has been saved." 
-	 *current-goal-key*))
+    (fmt 4 "~% Proof state for goal ~A has been saved." 
+	 (format-goal-key *current-goal-key*)))
   t)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -583,8 +583,8 @@
 	      ;; Synchronization complete
 	      
 	      (when (not no-output)
-		(fmt 2 "~% Goal ~A loaded into local bindings."
-		     goal-key))
+		(fmt 4 "~% Goal ~A loaded into local bindings."
+		     (format-goal-key goal-key)))
 	      t)
 	  (break (error-string 'g-no-goal-to-load `(,goal-key ',*goal-stack-keys*)))))
 	(break (error-string 'g-no-goal-to-load `(,goal-key ',*goal-stack-keys*))))))
@@ -601,8 +601,24 @@
   (load-goal goal-key no-output)
   (when (not no-output)
     (fmt 2 "~% Goal ~A swapped in as the active goal." 
-	 goal-key))
+	 (format-goal-key goal-key)))
   t)
+
+;;;
+;;; Swap to the nth unknown child of the current goal.
+;;;
+
+(defun swap-to-nth-uchild (&key (n 0))
+  (let ((num-seen 0))
+    (loop for i from 0 to (1- *gs-size*) do
+	  (let ((i-status (aref *gs* i 2)))
+	    (when (and (consp i-status)
+		       (consp (car i-status))
+		       (eq (caar i-status) ':UNKNOWN-WITH-SPAWNED-SUBGOAL))
+	      (when (= num-seen n)
+		(swap-to-goal (cadar i-status)))
+	      (setq num-seen (1+ num-seen)))))))
+	      
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -754,8 +770,8 @@
       (when (equal *current-goal-key* 0)
 	(clrhash *proof-analysis-cache*))
 
-      (fmt 2 "~% Goalset for goal ~A built and locally bound to *gs*." 
-	   *current-goal-key*)
+      (fmt 4 "~% Goalset for goal ~A built and locally bound to *gs*." 
+	   (format-goal-key *current-goal-key*))
       (prgs))))
 
 (defun build-gs (&key do-not-split-ineqs?)
@@ -853,12 +869,12 @@
 	(t (fmt 2 "~%~% ~6D ~A in goalset (goal ~A) awaiting refutation. ~%~%" 
 		*gs-unknown-size*
 		(if (= *gs-unknown-size* 1) "case" "cases")
-		*current-goal-key*)
+		(format-goal-key *current-goal-key*))
 	   (when (or (= *gs-unknown-size* 0) *goal-refuted?*)
 	     (if (equal *current-goal-key* 0)
 		 (fmt 2 "~% Q.E.D.  Theorem proved.~%~%")
 	       (fmt 2 "~% .:. Goal ~A proved.~%~%" 
-		    *current-goal-key*)))))
+		    (format-goal-key *current-goal-key*))))))
   t)
 
 ;;;
@@ -953,9 +969,9 @@
 		    
 		    (if refuted? 
 			(fmt 1 "Trickled refutation up to Case ~A of Goal ~A.~%~%"
-			     child-gs-idx parent-key)
+			     child-gs-idx (format-goal-key parent-key))
 		      (fmt 1 "Trickled satisfaction up to Goal ~A.~%~%"
-			   parent-key)))))))
+			   (format-goal-key parent-key))))))))
 	    
 	(swap-to-goal (car *current-goal-key*))))
 

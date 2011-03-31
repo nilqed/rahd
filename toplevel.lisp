@@ -25,7 +25,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/.
 ;;; 
 ;;; This file: began on         01-November-2010,
-;;;            last updated on  02-March-2011.
+;;;            last updated on  31-March-2011.
 ;;;
 
 ;;;
@@ -296,6 +296,10 @@
                (when (integerp num)
                  (setq watched-case num)
                  (fmt 0 "Watching case ~A.~%~%" watched-case))))
+	    ((equal cmd "cguc")
+	     (let ((n (when (not (equal arg ""))
+			(car (p-int arg)))))
+	       (swap-to-nth-uchild :n (if n n 0))))
             ((equal cmd "status")
              (if (not *g*)
                  (fmt 0 "No goalset built.~% Try 'help build-gs' and 'help check'.~%~%")

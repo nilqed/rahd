@@ -51,14 +51,18 @@
 (defun split-ineqs-cmf (c &key atom max-splits)
   (if (= (num-soft-ineqs c) 0)
       c
-    (let ((cases
-	   (drill-down
-	    (split-ineqs-in-case c :atom atom :max-splits max-splits))))
-      (cons ':CASES cases))))
+    (multiple-value-bind 
+	(splits-executed? formula)
+	(split-ineqs-in-case c :atom atom :max-splits max-splits)
+      (if splits-executed?
+	  (cons ':CASES (drill-down formula))
+	c))))
 
 ;;;
 ;;; SPLIT-INEQS-IN-CASE: Given a case, split its inequalities, 
 ;;;  returning a formula in RAHD implicit CNF.
+;;; We return an MV-pair:
+;;;  (splits-executed? . resulting-formula).
 ;;;
 
 (defun split-ineqs-in-case (c &key atom max-splits)
@@ -68,7 +72,7 @@
 		 (> atom n))
 	    (and (numberp max-splits)
 		 (< max-splits 1)))
-	(mapcar #'list c)
+	(values nil nil)
       (let ((out) (soft-ineq-id 0) (total-splits 0))
 	(dolist (a c)
 	  (let ((op (car a))
@@ -91,7 +95,8 @@
 		     (setq out (cons (list a) out)))
 		   (setq soft-ineq-id (1+ soft-ineq-id)))
 		  (t (setq out (cons (list a) out))))))
-	(reverse out)))))
+	(values (> total-splits 0)
+		(when (> total-splits 0) (reverse out)))))))
 				
 ;;; Before drill down, we need to fire away NOT's and soft inequalities (<=, =>).
 ;;; Updated drill-down to be more optimized for dealing with unit clauses (01-March-2009).
