@@ -33,6 +33,38 @@ e1 [split-ineqs; cg(goal := 0.0); demod-lin;
     when (dim <= 4) qepcad(open? := 1);
    ]
 
+;;;
+;;; a hilariously verbose example showing all interactive style
+;;;  of proving a simple theorem (we could have proved it directly
+;;;  just with bounded-gbrni :-) but this is fun to imagine what
+;;;  eventual RAHD proof scripts might look like in the vain of Coq style.
+;;;  (The proof itself runs in RAHD now, but if we ever did things in
+;;;   this style we'd make the syntax cleaner.)
+;;;
+
+Theorem ex1 Empty({x,y,z : R | x >= y /\ y >= z /\ z > x}).
+Proof:
+ e1 [split-ineqs(atom := 0)]
+ lisp (swap-to-goal '(0 0))
+ e [demod-lin]
+ e [run stable-simp]
+ e1 split-ineqs(atom := 1)
+ lisp (swap-to-goal '((0 0) 0))
+ e1 [split-ineqs(atom := 0)]
+ lisp (swap-to-goal '(((0 0) 0) 0))
+ e [demod-lin; run stable-simp; bounded-gbrni]
+ up 
+ up
+ lisp (swap-to-goal '((0 0) 1))
+ e split-ineqs(atom := 0)
+ lisp (swap-to-goal '(((0 0) 1) 0)))
+ e [demod-lin]
+ e [run stable-simp]
+ e [bounded-gbrni]
+ up 
+ up
+ up
+Qed.
 
 
 ;;; Thoughts on strategy language.
