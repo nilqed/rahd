@@ -44,12 +44,12 @@
 (defun benchmark (&key filename strategy-ids)
   (let ((probs-array (build-probs-array :filename filename)))
     (dolist (strategy-id strategy-ids)
-      (loop for i from 0 to 1000 ;(1- (length probs-array)) do
+      (loop for i from 0 to (1- (length probs-array))
 	    do (let* ((cur-prob (aref probs-array i))
 		      (cur-v (car cur-prob))
 		      (cur-f (cdr cur-prob)))
 		 (fmt 0 "~A, ~A, ~A, " i strategy-id cur-v)
-		 (let ((start-time (get-internal-run-time)))
+		 (let ((start-time (get-internal-real-time)))
 		   (let ((proc
 			  (sb-ext:run-program 
 			   "/Users/grant/Research/Programs/MyCode/rahd/benchrun.bash"
@@ -58,8 +58,8 @@
 			     "-print-model")
 			   :output :stream
 			   :search t)))
-		     (let ((end-time (get-internal-run-time)))
-		       (fmt 0 "~A, " (float (/ (- end-time start-time) internal-time-units-per-second)))
+		     (let ((end-time (get-internal-real-time)))
+		       (fmt 0 "~$, " (float (/ (- end-time start-time) internal-time-units-per-second)))
 		       (with-open-stream (s (sb-ext:process-output proc))
 					 (let ((rahd-out
 						(loop :for line := (read-line s nil nil)

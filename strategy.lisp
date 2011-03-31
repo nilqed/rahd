@@ -23,7 +23,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/.
 ;;; 
 ;;; This file: began on         13-December-2010,
-;;;            last updated on  14-March-2011.
+;;;            last updated on  28-March-2011.
 ;;;
 
 ;;;
@@ -151,7 +151,7 @@ Strategy Definition Record
     ("factor-sign"      ,#'factor-sign-case          nil)
     ("ruleset"          ,#'apply-ruleset-to-case     (NAME))
     ("apcad-fd"         ,#'fdep-cad-on-case          (PROJ-ORDER-GREEDY? FACTOR? STAGE THEATRE))
-    ("split-ineqs"      ,#'split-ineqs-cmf           nil)
+    ("split-ineqs"      ,#'split-ineqs-cmf           (ATOM MAX-SPLITS))
     ))
 
 (defun install-cmf (&key cmf-str cmf-fcn cmf-args)

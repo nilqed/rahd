@@ -48,14 +48,51 @@
 ;;;  It returns a :CASES form.
 ;;;
 
-(defun split-ineqs-cmf (c)
+(defun split-ineqs-cmf (c &key atom max-splits)
   (if (= (num-soft-ineqs c) 0)
       c
     (let ((cases
 	   (drill-down
-	    (expand-formula (mapcar #'list c)))))
+	    (split-ineqs-in-case c :atom atom :max-splits max-splits))))
       (cons ':CASES cases))))
 
+;;;
+;;; SPLIT-INEQS-IN-CASE: Given a case, split its inequalities, 
+;;;  returning a formula in RAHD implicit CNF.
+;;;
+
+(defun split-ineqs-in-case (c &key atom max-splits)
+  (let ((n (num-soft-ineqs c)))
+    (if (or (= n 0)
+	    (and (numberp atom)
+		 (> atom n))
+	    (and (numberp max-splits)
+		 (< max-splits 1)))
+	(mapcar #'list c)
+      (let ((out) (soft-ineq-id 0) (total-splits 0))
+	(dolist (a c)
+	  (let ((op (car a))
+		(x (cadr a))
+		(y (caddr a)))
+	    (cond ((or (eq op '>=) (eq op '<=))
+		   (if (or (and (integerp atom)
+				(= soft-ineq-id atom))
+			   (and (integerp max-splits)
+				(< total-splits max-splits))
+			   (and (not (numberp atom))
+				(not (numberp max-splits))))
+		       (progn
+			 (setq out (cons
+				    (case op
+				      (>= `((> ,x ,y) (= ,x ,y)))
+				      (<= `((< ,x ,y) (= ,x ,y))))
+				    out))
+			 (setq total-splits (1+ total-splits)))
+		     (setq out (cons (list a) out)))
+		   (setq soft-ineq-id (1+ soft-ineq-id)))
+		  (t (setq out (cons (list a) out))))))
+	(reverse out)))))
+				
 ;;; Before drill down, we need to fire away NOT's and soft inequalities (<=, =>).
 ;;; Updated drill-down to be more optimized for dealing with unit clauses (01-March-2009).
 
