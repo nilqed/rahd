@@ -279,6 +279,11 @@
 			   *gs-size*))))
             ((equal cmd "opens")
              (pug))
+	    ((equal cmd "pc")
+	     (let ((n (when (not (equal arg ""))
+			(car (p-int arg)))))
+	       (if (integerp n)
+		   (pug :case n))))
             ((equal cmd "verify-rule")
              (let ((rule-name (intern arg)))
                
