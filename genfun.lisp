@@ -822,9 +822,11 @@
 (defun pug (&key bound case)
   (if (and (> *gs-unknown-size* 0) (not *sat-case-found?*))
       (progn 
-        (if case (fmt 0 "~% Printing case ~A for goal ~A.~%" case *current-goal-key*)
+        (if case (fmt 0 "~% Printing case ~A for goal ~A.~%" case 
+		      (format-goal-key *current-goal-key*))
           (fmt 0 "~% Printing ~A of the open ~A cases for goal ~A.~%" 
-               (if (not bound) "all" (format nil "the first ~R" bound)) *gs-unknown-size* *current-goal-key*))
+               (if (not bound) "all" (format nil "the first ~R" bound)) 
+	       *gs-unknown-size* (format-goal-key *current-goal-key*)))
 	(fmt 0 "~% -------     -------------------------------------------------------------------")
 	(fmt 0 "~% case-id     case")
 	(fmt 0 "~% -------     -------------------------------------------------------------------~%")

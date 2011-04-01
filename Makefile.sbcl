@@ -1,4 +1,4 @@
 (load "rahd")
 (in-package rahd)
 (rahd-reboot)
-(make-sbcl-binary "rahd")
+(make-sbcl-binary "rahd-bin")
