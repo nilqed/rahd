@@ -191,7 +191,7 @@
                                   (let ((prover-formula
                                          (atom-lst (p-formula-str arg :vars-lst vars-lst))))
                                     (setq asserted-atoms-lst
-                                          (append prover-formula asserted-atoms-lst))
+                                          (append asserted-atoms-lst prover-formula))
                                     (fmt 0 "Formula asserted: ~A.~%~%"
                                          prover-formula))))
             ((equal cmd "options")
@@ -265,7 +265,7 @@
 		 (fmt 0 "~%"))))
             ((equal cmd "show")
              (if (member "print-infix" prover-opts :test 'equal)
-                 (show-f-infix (reverse asserted-atoms-lst))
+                 (show-f-infix asserted-atoms-lst)
                (fmt 0 "Current formula: ~A.~%~%" 
                     asserted-atoms-lst)))
             ((or (equal cmd "build-goalset")
@@ -273,7 +273,7 @@
 	     (cond ((not asserted-atoms-lst)
 		    (fmt 0 "Prover error: No atoms asserted.~%~%"))
 		   (t (r)
-		      (g (mapcar #'list (reverse asserted-atoms-lst)))
+		      (g (mapcar #'list asserted-atoms-lst))
 		      (build-gs :do-not-split-ineqs? t)
 		      (fmt 0 "Goalset built with ~A open cases.~%~%"
 			   *gs-size*))))
@@ -453,8 +453,8 @@
                (x (cadr f))
                (y (caddr f)))
            (case op
-             (AND (union (elim-ands x)
-                         (elim-ands y)))
+             (AND (append (elim-ands x)
+			  (elim-ands y)))
              ((>= > = < <=)
               (list f)))))
         (t (list f))))
