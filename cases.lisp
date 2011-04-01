@@ -96,7 +96,7 @@
 		   (setq soft-ineq-id (1+ soft-ineq-id)))
 		  (t (setq out (cons (list a) out))))))
 	(values (> total-splits 0)
-		(when (> total-splits 0) (reverse out)))))))
+		(when (> total-splits 0) out))))))
 				
 ;;; Before drill down, we need to fire away NOT's and soft inequalities (<=, =>).
 ;;; Updated drill-down to be more optimized for dealing with unit clauses (01-March-2009).

@@ -1120,8 +1120,8 @@
 RAHD: Real Algebra in High Dimensions ~A
  designed and programmed by grant o. passmore {g.o.passmore@sms.ed.ac.uk}
   with intellectual contributions from p.b.jackson, b.boyer, g.collins, 
-  h.hong, f.kirchner, j moore, l.de moura, s.owre, n.shankar, a.tiwari,
-  v.weispfenning and many others.  This version of RAHD is using Maxima 
+  j.harrison, h.hong, f.kirchner, j moore, l.de moura, s.owre, n.shankar, 
+  a.tiwari, v.weispfenning and many others.  This version is using Maxima 
   multivariate factorisation & SARAG subresultant PRS + Bernstein bases.~%~%" 
 			*rahd-version*)
 		   (when (and (or (not formula-given?) 
@@ -1142,7 +1142,7 @@ RAHD: Real Algebra in High Dimensions ~A
     -verbosity q      (0<=q<=10)     degree of proof search output (def: 1)
     -run-strat s                     run defined proof strategy named s
     -strategies                      list all defined proof strategies
-    -i                               interactive top-level
+    -i                               interactive toplevel
     -ip                              machine-oriented batch evaluator
     -print-model                     print a counter-model, if found
     -print-proof                     print a proof trace, even on failure
