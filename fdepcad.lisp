@@ -19,7 +19,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;; 
 ;;; This file: began on         03-July-2010,
-;;;            last updated on  06-December-2010.
+;;;            last updated on  03-April-2011.
 ;;;
 
 ;;;
@@ -511,7 +511,7 @@
 	 (vs (if proj-order-greedy? 
 		 (var-ids (vs-proj-order-greedy 
 			   (mapcar #'poly-prover-rep-to-alg-rep ps*)))
-	       (vs-all ps*)))
+	       (vs-proj-order-brown ps*)))
 	 (vs* (mapcar #'(lambda (i) (nth i *vars-table*)) vs))
 	 (ps (mapcar #'poly-prover-rep-to-alg-rep ps*))
 	 (spts (fd-cad ps vs
@@ -568,7 +568,75 @@
 		(t `(:UNSAT 
 		     (:NO-SATISFYING-VECTOR-IN-FULL-DIMENSIONAL-CELLS)))))
       c)))
-	  
+
+;;;
+;;; DEG-VARS-IN-P: Given a polynomial in algebraic notation and a variable,
+;;;  return a hash-table of the form ( (key=var-id , val=max-pow) ) where
+;;;  max-pow is the maximal power that var-id appears in the polynomial.
+;;;
+
+(defun deg-vars-in-p (p)
+  (let ((out (make-hash-table)))
+    (dolist (m p)
+      (let ((pp (cdr m)))
+	(dolist (vp pp)
+	  (let ((var-id (car vp))
+		(pow (cdr vp)))
+	    (multiple-value-bind 
+		(max-pow in-hash?) 
+		(gethash var-id out)
+	      (if in-hash?
+		  (when (>= pow max-pow)
+		    (setf (gethash var-id out) pow))
+		(setf (gethash var-id out) pow)))))))
+    out))
+
+;;;
+;;; MERGE-VIP-HASHES: Given two hash-tables of the form ( (key=var-id , val=max-pow) ),
+;;;  merge them (taking the maximum of the two power entries for any given var-id if
+;;;  it is present in both hash tables.)
+;;;
+
+(defun merge-vip-hashes (h0 h1)
+  (let ((out (make-hash-table)))
+    (loop for var-id being the hash-keys in h0 using (hash-value max-pow)
+	  do (setf (gethash var-id out) max-pow))
+    (loop for h1-var-id being the hash-keys in h1 using (hash-value h1-max-pow)
+	  do 
+	  (multiple-value-bind 
+	      (out-max-pow in-out?) 
+	      (gethash h1-var-id out)
+	    (if in-out?
+		(when (>= h1-max-pow out-max-pow)
+		  (setf (gethash h1-var-id out) h1-max-pow))
+	      (setf (gethash h1-var-id out) h1-max-pow))))
+    out))
+ 
+;;;
+;;; VS-PROJ-ORDER-BROWN: Order variables using more-or-less a heuristic
+;;;  communicated to us by Chris Brown.
+;;;
+;;; Polynomials are given in prover notation.
+;;;
+
+(defun vs-proj-order-brown (ps)
+  (let ((h))
+    (dolist (p ps)
+      (let ((p* (poly-prover-rep-to-alg-rep p)))
+	(if (not h)
+	    (setq h (deg-vars-in-p p*))
+	  (setq h (merge-vip-hashes 
+		   h
+		   (deg-vars-in-p p*))))))
+    (let ((vmp-lst))
+	   (maphash #'(lambda (x y)
+			(setq vmp-lst (cons (cons x y) vmp-lst)))
+		    h)
+	   (let ((sorted-vars-lst 
+		  (sort vmp-lst #'(lambda (x y)
+				    (< (cdr x) (cdr y))))))
+	     (mapcar #'car sorted-vars-lst)))))
+
 ;;;
 ;;; VS-PROJ-ORDER: Given a set of polynomials, compute a projection
 ;;;  order from the variables given.  Right now, we use no heuristics
@@ -576,6 +644,7 @@
 ;;;
 ;;; Polynomials are given in prover notation.
 ;;; Variable list returned is a list of variable IDs (indices in *VARS-TABLE*).
+;;; We then project them away from left to right.
 ;;;
 
 (defun vs-all (ps)

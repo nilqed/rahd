@@ -20,7 +20,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;;
 ;;; This file: began on         31-July-2008       (not as a plugin),
-;;;            last updated on  15-March-2011.
+;;;            last updated on  03-April-2011.
 ;;;
 
 (in-package RAHD)
@@ -98,8 +98,15 @@
     "finish."))
 
 (defun open-cad-vars-lst (c)
-  (let ((all-vars (all-vars-in-conj c)))
-    (format nil "(~{~D~#[~:;, ~]~})" all-vars)))
+  (let ((vars-lst 
+	 (reverse 
+	  (mapcar (lambda (x)
+		    (nth x *vars-table*))
+		  (vs-proj-order-brown
+		   (mapcar (lambda (l)
+			     `(- ,(cadr l) ,(caddr l)))
+			   c))))))
+    (format nil "(~{~D~#[~:;, ~]~})" vars-lst)))
 
 (defun open-cad-conj (c generic)
   (concatenate 
