@@ -9,6 +9,35 @@
            simp-gls;
            simp-arith]")
 
+(defstrat 'calculemus-0
+  "split-ineqs;
+   interval-cp(max-contractions := 10);
+   simp-zrhs;
+   run stable-simp;
+   demod-lin;
+   run stable-simp;
+   simp-real-null;
+   fert-tsos;
+   univ-sturm-ineqs;
+   satur-lin;
+   bounded-gbrni;
+   interval-cp;
+   triv-ideals;
+   canon-tms;
+   run stable-simp;
+   interval-cp;
+   rcr-ineqs;
+   run stable-simp;
+   fert-tsos;
+   run stable-simp;
+   interval-cp;
+   simp-zrhs;
+   interval-cp;
+   int-dom-zpb;
+   rcr-ineqs;
+   when (dim <= 5) [qepcad(open? := 1); qepcad]")
+
+
 (defstrat 'waterfall
   "interval-cp(max-contractions:=20);
    bounded-gbrni;
@@ -41,6 +70,7 @@
    quick-sat;
    rcr-ineqs;
    when (dim <= 20) apcad-fd")
+
 
 (defstrat 'waterfall-with-qepcad-top
   "if (dim < 5)
