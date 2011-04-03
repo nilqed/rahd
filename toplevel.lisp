@@ -254,7 +254,7 @@
             ((equal cmd "check")
              (if (not asserted-atoms-lst)
                  (fmt 0 "Prover error: No atoms asserted.~%~%")
-               (let ((result (check (mapcar #'list (reverse asserted-atoms-lst))                                    
+               (let ((result (check (mapcar #'list asserted-atoms-lst)
                                     :print-model 
                                     (member "print-model" prover-opts :test 'equal)
                                     :verbosity verbosity
