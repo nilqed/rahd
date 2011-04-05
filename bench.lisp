@@ -89,41 +89,29 @@
 ;;;
 
 
-(defun benchmark (&key filename strategy-ids)
-  (let ((probs-array (build-probs-array :filename filename)))
+(defun calculemus-benchmark (&key strategy-ids (verbosity 0) (problem-ids))
+  (let ((probs-lst (mapcar #'car *calculemus-suite*)) (i 0))
     (dolist (strategy-id strategy-ids)
-      (loop for i from 0 to (1- (length probs-array))
-	    do (let* ((cur-prob (aref probs-array i))
-		      (cur-v (car cur-prob))
-		      (cur-f (cdr cur-prob)))
-		 (fmt 0 "~A, ~A, ~A, " i strategy-id cur-v)
-		 (let ((start-time (get-internal-real-time)))
-		   (let ((proc
-			  (sb-ext:run-program 
-			   "/Users/grant/Research/Programs/MyCode/rahd/benchrun.bash"
-			   `("-v" ,cur-v "-f" ,cur-f "-run-strat"
-			     ,(format nil "~A" strategy-id)
-			     "-print-model")
-			   :output :stream
-			   :search t)))
-		     (let ((end-time (get-internal-real-time)))
-		       (fmt 0 "~$, " (float (/ (- end-time start-time) internal-time-units-per-second)))
-		       (with-open-stream (s (sb-ext:process-output proc))
-					 (let ((rahd-out
-						(loop :for line := (read-line s nil nil)
-					     :while line
-					     :collect line)))
-					   (cond ((some #'(lambda (x) (search " unsat" x)) rahd-out)
-						  (fmt 0 "unsat~%"))
-						 ((some #'(lambda (x) (search " model:" x)) rahd-out)
-						  (fmt 0 "sat-model~%"))
-						 ((some #'(lambda (x) (search " sat" x)) rahd-out)
-						  (fmt 0 "sat~%"))
-						 ((some #'(lambda (x) (search " unknown" x)) rahd-out)
-						  (fmt 0 "unknown~%"))
-						 (t (fmt 0 "timeout~%")))))))))))))
+      (setq i 0)
+      (dolist (cur-prob probs-lst)
+	(when (or (not problem-ids)
+		  (member i problem-ids))
+	  (fmt 0 "~A, ~A, " i strategy-id)
+	  (let ((start-time (get-internal-run-time)))
+	    (let ((result
+		   (progn
+		     (rahd-reset-state)
+		     (check cur-prob
+			    :print-model nil
+			    :verbosity verbosity
+			    :strategy `(run ,(get-strat-by-num strategy-id))
+			    :non-recursive? nil))))
+	      (let ((end-time (get-internal-run-time)))
+		(fmt 0 "~A,~A~%"
+		     (float (/ (- end-time start-time) internal-time-units-per-second))
+		     result)))))
+	(setq i (1+ i))))))
 
-  
 
 (defparameter *calculemus-suite* 
 '(
@@ -675,7 +663,7 @@
                  (- A B))))
         0)
      (= (* (+ 2 F G) (+ G 11)) A))) 
- :UNSAT ) 
+ :UNSAT )
 
 ;;;
 ;;; Problem 10 in Redlog format

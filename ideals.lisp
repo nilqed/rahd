@@ -55,10 +55,14 @@
 ;;; above for trivial-ideal.  We should cache this in the future.
 ;;; Note: In answer to the above note, GBases are now cached when possible!
 ;;;
+;;; April 5th, 2011: Extended to handle soft inequalities in cases now as 
+;;;  well (once upon a time, cases in RAHD had only strict inequalities and
+;;;  equations! Oh those younger days... :-)).
+;;;
 
 (defun ineqs-over-quotient-ring (c)
   (let ((eqs (gather-eqs c))
-	(ineqs (gather-strict-ineqs c)))
+	(ineqs (gather-all-ineqs c)))
     (if (and eqs ineqs) 
 	(let ((c-reduced-gbasis
 	       (reduced-gbasis-for-case c)))

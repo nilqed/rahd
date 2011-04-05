@@ -4,39 +4,9 @@
 ;;;
 
 (defstrat 'stable-simp
-  "repeat [contra-eqs;
-           demod-num;
+  "repeat [demod-num;
            simp-gls;
            simp-arith]")
-
-(defstrat 'calculemus-0
-  "split-ineqs;
-   interval-cp(max-contractions := 10);
-   simp-zrhs;
-   run stable-simp;
-   demod-lin;
-   run stable-simp;
-   simp-real-null;
-   fert-tsos;
-   univ-sturm-ineqs;
-   satur-lin;
-   bounded-gbrni;
-   interval-cp;
-   triv-ideals;
-   canon-tms;
-   run stable-simp;
-   interval-cp;
-   rcr-ineqs;
-   run stable-simp;
-   fert-tsos;
-   run stable-simp;
-   interval-cp;
-   simp-zrhs;
-   interval-cp;
-   int-dom-zpb;
-   rcr-ineqs;
-   when (dim <= 5) [qepcad(open? := 1); qepcad]")
-
 
 (defstrat 'waterfall
   "interval-cp(max-contractions:=20);
@@ -247,3 +217,54 @@
 
 (defstrat 'icp-only-50
   "interval-cp(max-contractions:=50)")
+
+(defstrat 'calculemus-0
+  "[when (gd = 0) [split-ineqs(max-splits := 12)]];
+   interval-cp(max-contractions := 10);
+   simp-zrhs;
+   run stable-simp;
+   demod-lin;
+   run stable-simp;
+   simp-real-null;
+   fert-tsos;
+   univ-sturm-ineqs;
+   satur-lin;
+   interval-cp;
+   triv-ideals;
+   run stable-simp;
+   interval-cp;
+   rcr-ineqs;
+   run stable-simp;
+   fert-tsos;
+   run stable-simp;
+   interval-cp;
+   simp-zrhs;
+   interval-cp;
+   int-dom-zpb;
+   rcr-ineqs;
+   when ((dim <= 7) /\\ deg <= 30) 
+     [qepcad(open? := 1); qepcad]")
+
+
+(defstrat 'calculemus-*
+  "[when (gd = 0) [split-ineqs(max-splits := 12)]];
+   simp-zrhs;
+   run stable-simp;
+   demod-lin;
+   run stable-simp;
+   simp-real-null;
+   fert-tsos;
+   univ-sturm-ineqs;
+   satur-lin;
+   interval-cp;
+   triv-ideals;
+   run stable-simp;
+   rcr-ineqs;
+   run stable-simp;
+   fert-tsos;
+   run stable-simp;
+   simp-zrhs;
+   int-dom-zpb;
+   rcr-ineqs;
+   when ((dim <= 7) /\\ deg <= 30) 
+     [qepcad(open? := 1); qepcad]")

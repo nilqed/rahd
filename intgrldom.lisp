@@ -46,7 +46,8 @@
 	  ;;  without simplification.
 	  ;;
 
-	  (let ((cur-x (if (and (equal (caddr eqn) 0)
+	  (let ((cur-x (if (and (consp (cadr eqn))
+				(equal (caddr eqn) 0)
 				(equal (car (cadr eqn)) '*))
 			   (cadr eqn)
 			 (canonicalize-poly `(- ,(cadr eqn) ,(caddr eqn))))))
