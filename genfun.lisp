@@ -1009,8 +1009,6 @@
 		    :subgoal-strat
 		    (when (not non-recursive?) strategy))
       (let ((refuted? (all-cases-refuted)))
-	(fmt 1 "~%[Decision]")
-	(fmt 0 "~%")
 	(cond (refuted? " unsat")
 	      (*sat-case-found?* 
 	       (format nil " sat~A~%"
@@ -1167,6 +1165,7 @@ RAHD: Real Algebra in High Dimensions ~A
 		   (formula-given?
 		    (when div-nz-denoms?
 		      (setq *div-nz-denoms* t))
+		    (fmt 0 "~%[Decision]~%")
 		    (fmt 0 (check (get-formula :formula-str formula-str
 					       :vars-str vars-str)
 				  :verbosity (when (rationalp verbosity)

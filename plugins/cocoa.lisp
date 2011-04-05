@@ -29,12 +29,15 @@
 ;;; If any of this fails, we return NIL.
 ;;;
 
-#+ccl (defun exec-cocoa-gb-for-case (c) (declare (ignore c)) nil)
-
-#+allegro
+#+sbcl 
 (defun exec-cocoa-gb-for-case (c)
   (let ((eqs (gather-eqs c)))
-    (if (not eqs) nil
+    
+    (if (not (subsetp (all-vars-in-conj eqs) *vars-table*))
+	(dolist (v (remove-if (lambda (x) (member x *vars-table*)) (all-vars-in-conj eqs)))
+	  (extend-vars-table v)))
+    
+    (if (or (not eqs) (not (all-vars-in-conj eqs))) nil
 
       ;;
       ;; Create the indeterminate mapping from PROVER-VARS (*vars-table*) --> X[i] CoCoA indeterminate format.
@@ -43,7 +46,7 @@
       ;;       DegRevLex ordering matrix in CoCoA, guarantees this will be the case, so long as active-mo< is
       ;;       #<Function DEG-REV-LEX<>.
       ;;
-      
+    
       (let ((cocoa-vars-map (cocoa-map-vars-to-v-array (sort-vars-under-active-tm-ord (all-vars-in-conj eqs)))))
 
 	;; Map the equations using COCOA-VARS-MAP s.t. all indeterminates of form X[i]
@@ -55,14 +58,16 @@
 	  (let ((eqs-str-in-cocoa-format (mapcar #'string-downcase (cocoa-gb-polys eqs-in-cocoa-format))))
 	    (let ((cocoa-gb-str (cocoa-gb-string eqs-str-in-cocoa-format 
 						 (cocoa-polynomial-ring (length cocoa-vars-map)))))
-	      (with-open-file (cocoa-gb-in (work-pathify "cocoa-gb.in") :direction :output :if-exists :supersede)
+	      (with-open-file (cocoa-gb-in "cocoa-gb.in" :direction :output :if-exists :supersede)
 			      (format cocoa-gb-in cocoa-gb-str))
 	      (#+allegro excl:run-shell-command
 			 #+cmu extensions:run-program
-			 "./cocoa-gb.bash")
+			 #+sbcl sb-ext:run-program 
+			 "./cocoa-gb.bash"
+			 #+sbcl nil)
 	      (let ((computed-gbasis-lst nil))
-		(with-open-file (cocoa-gb-out (work-pathify "cocoa-gb.out") :direction :input)
-		   (do ((l (read-line cocoa-gb-out) (read-line cocoa-gb-out nil 'eof)))
+		(with-open-file (cocoa-gb-out "cocoa-gb.out" :direction :input)
+		   (do ((l (read-line cocoa-gb-out nil 'eof) (read-line cocoa-gb-out nil 'eof)))
 		       ((eq l 'eof) "eof")
 		       (setq computed-gbasis-lst (cons l computed-gbasis-lst))))
 

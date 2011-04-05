@@ -47,9 +47,6 @@
 ;;;  If OP is =, then we place (= p1 p2) as (= p2 p1) if p1=n and p2=v 
 ;;;    (e.g., (= 0 x) ==> (= x 0)).
 ;;;
-;;; Note: <= and >= should not appear in terms here.  We expect these will have been expanded,
-;;;   but will just soundly not transform literals rooted in them if we encounter them.
-;;;
 
 (defun zero-rhs (c)
   (cond ((not (consp c)) (break "ZERO-RHS called with non-sensical clause."))
@@ -62,6 +59,8 @@
 				      (< `(> ,cur-y ,cur-x))
 				      (> `(< ,cur-y ,cur-x))
 				      (= `(= ,cur-y ,cur-x))
+				      (<= `(>= ,cur-y ,cur-x))
+				      (>= `(<= ,cur-y ,cur-x))
 				      (otherwise l)))
 			       ((and (numberp cur-y)                               ; p(x) > k  ==>  p(x) - k > 0
 				     (consp cur-x))

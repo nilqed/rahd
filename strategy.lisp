@@ -23,7 +23,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/.
 ;;; 
 ;;; This file: began on         13-December-2010,
-;;;            last updated on  28-March-2011.
+;;;            last updated on  05-April-2011.
 ;;;
 
 ;;;
@@ -130,7 +130,6 @@ Strategy Definition Record
 (defparameter *cmf-str-fcn-table*
   `(("simp-arith"       ,#'arith-simplify-case       nil)
     ("apcad-fd"         ,#'fdep-cad-on-case          (PROJ-ORDER-GREEDY? FACTOR? STAGE THEATRE))
-    ("contra-eqs"       ,#'simply-incons*            nil)
     ("demod-num"        ,#'demodulate-numerically    nil)
     ("simp-gls"         ,#'simplify-ground-lits+rtv  nil)
     ("fert-tsos"        ,#'fertilize-trivial-squares nil)
@@ -214,68 +213,6 @@ Strategy Definition Record
 (build-cmf-sym-hash)
 
 ;;;
-;;; EVAL-COND: Evaluate a proof strategy condition w.r.t. the given
-;;;  primitive case measures.  This condition has already been parsed 
-;;;  into an S-expression.
-;;;
-
-(defun eval-strategy-cond (sc dim deg nl bw cid)
-  (cond ((not (consp sc))
-         (cond ((eq sc 'DIM) dim)
-               ((eq sc 'DEG) deg)
-               ((eq sc 'NL) nl)
-               ((eq sc 'BW) bw)
-	       ((eq sc 'CID) cid)
-               ((numberp sc) sc)
-               (t (break "Unexpected value in strategy conditional."))))
-        ((and (equal (length sc) 2)
-              (eq (car sc) '~))
-         (not (eval-strategy-cond (cadr sc) dim deg nl bw cid)))
-        (t (let ((op (car sc))
-                 (x (cadr sc))
-                 (y (caddr sc)))
-             (case op
-               (+ (+ (eval-strategy-cond x dim deg nl bw cid)
-                     (eval-strategy-cond y dim deg nl bw cid)))
-               (- (- (eval-strategy-cond x dim deg nl bw cid)
-                     (eval-strategy-cond y dim deg nl bw cid)))
-               (* (* (eval-strategy-cond x dim deg nl bw cid)
-                     (eval-strategy-cond y dim deg nl bw cid)))
-               (expt (expt (eval-strategy-cond x dim deg nl bw cid)
-                           (eval-strategy-cond y dim deg nl bw cid)))
-               (> (> (eval-strategy-cond x dim deg nl bw cid)
-                     (eval-strategy-cond y dim deg nl bw cid)))
-               (>= (>= (eval-strategy-cond x dim deg nl bw cid)
-                       (eval-strategy-cond y dim deg nl bw cid)))
-               (= (= (eval-strategy-cond x dim deg nl bw cid)
-                     (eval-strategy-cond y dim deg nl bw cid)))
-               (<= (<= (eval-strategy-cond x dim deg nl bw cid)
-                       (eval-strategy-cond y dim deg nl bw cid)))
-               (< (< (eval-strategy-cond x dim deg nl bw cid)
-                     (eval-strategy-cond y dim deg nl bw cid)))
-               ((!= /=) (not (= (eval-strategy-cond x dim deg nl bw cid)
-                                (eval-strategy-cond y dim deg nl bw cid))))
-               (/\\ (and (eval-strategy-cond x dim deg nl bw cid)
-                         (eval-strategy-cond y dim deg nl bw cid)))
-               (\\/ (or (eval-strategy-cond x dim deg nl bw cid)
-                        (eval-strategy-cond y dim deg nl bw cid)))
-               (==> (or (not (eval-strategy-cond x dim deg nl bw cid))
-                        (eval-strategy-cond y dim deg nl bw cid)))
-               (otherwise (break "Unexpected operation in strategy conditional.")))))))
-
-;;;
-;;; CASE-DEG: Given a case, return its multivariate total degree.
-;;;
-
-(defun case-deg (c)
-  (let ((max-deg 0))
-    (dolist (a c)
-      (let ((deg0 (poly-deg (poly-prover-rep-to-alg-rep (cadr a))))
-            (deg1 (poly-deg (poly-prover-rep-to-alg-rep (caddr a)))))
-        (setq max-deg (max max-deg deg0 deg1))))
-    max-deg))
-
-;;;
 ;;; CASE-DIM: Given a case, return its dimension.
 ;;;
 
@@ -301,6 +238,77 @@ Strategy Definition Record
             (bw1 (poly-bw (poly-prover-rep-to-alg-rep (caddr a)))))
         (setq total-bw (+ total-bw bw0 bw1))))
     total-bw))
+
+;;;
+;;; CASE-GD: Compute the depth of the goal to which the current case belongs.
+;;;
+
+(defun case-gd (goal-key)
+  (cond ((not (consp goal-key)) 0)
+	(t (1+ (case-gd (car goal-key))))))
+
+;;;
+;;; EVAL-COND: Evaluate a proof strategy condition w.r.t. the given
+;;;  primitive case measures.  This condition has already been parsed 
+;;;  into an S-expression.
+;;;
+
+(defun eval-strategy-cond (sc c cid)
+  (cond ((not (consp sc))
+         (cond ((eq sc 'DIM) (case-dim c))
+               ((eq sc 'DEG) (case-deg c))
+               ((eq sc 'NL) (case-nl c))
+               ((eq sc 'BW) (case-bw c))
+	       ((eq sc 'CID) cid)
+	       ((eq sc 'GD) (case-gd *current-goal-key*))
+               ((numberp sc) sc)
+               (t (break "Unexpected value in strategy conditional."))))
+        ((and (equal (length sc) 2)
+              (eq (car sc) '~))
+         (not (eval-strategy-cond (cadr sc) c cid)))
+        (t (let ((op (car sc))
+                 (x (cadr sc))
+                 (y (caddr sc)))
+             (case op
+               (+ (+ (eval-strategy-cond x c cid)
+                     (eval-strategy-cond y c cid)))
+               (- (- (eval-strategy-cond x c cid)
+                     (eval-strategy-cond y c cid)))
+               (* (* (eval-strategy-cond x c cid)
+                     (eval-strategy-cond y c cid)))
+               (expt (expt (eval-strategy-cond x c cid)
+                           (eval-strategy-cond y c cid)))
+               (> (> (eval-strategy-cond x c cid)
+                     (eval-strategy-cond y c cid)))
+               (>= (>= (eval-strategy-cond x c cid)
+                       (eval-strategy-cond y c cid)))
+               (= (= (eval-strategy-cond x c cid)
+                     (eval-strategy-cond y c cid)))
+               (<= (<= (eval-strategy-cond x c cid)
+                       (eval-strategy-cond y c cid)))
+               (< (< (eval-strategy-cond x c cid)
+                     (eval-strategy-cond y c cid)))
+               ((!= /=) (not (= (eval-strategy-cond x c cid)
+                                (eval-strategy-cond y c cid))))
+               (/\\ (and (eval-strategy-cond x c cid)
+                         (eval-strategy-cond y c cid)))
+               (\\/ (or (eval-strategy-cond x c cid)
+                        (eval-strategy-cond y c cid)))
+               (==> (or (not (eval-strategy-cond x c cid))
+                        (eval-strategy-cond y c cid)))
+               (otherwise (break "Unexpected operation in strategy conditional.")))))))
+
+;;;
+;;; CASE-DEG: Given a case, return its multivariate total degree.
+;;;
+
+(defun case-deg (c)
+  (let ((max-deg 0))
+    (dolist (a c)
+      (let ((deg0 (poly-deg (poly-prover-rep-to-alg-rep (cadr a))))
+            (deg1 (poly-deg (poly-prover-rep-to-alg-rep (caddr a)))))
+        (setq max-deg (max max-deg deg0 deg1))))
+    max-deg))
 
 ;;;
 ;;; APPLY-CMF-TO-CASE: Given a CMF symbol name and a case, 
@@ -445,80 +453,75 @@ Strategy Definition Record
                                :status ':UNSAT 
                                :step ':CONTAINS-NIL))
                  (t 
-                  (let ((dim (case-dim c))
-                        (deg (case-deg c))
-                        (nl (case-nl c))
-                        (bw (case-bw c))
-			(cid i))
-                    (let ((cmf-name (cadr strat))
-                          (pass-guard?
-                           (if guard (eval-strategy-cond 
-                                      guard
-                                      dim deg nl bw cid)
-                             t)))
-                      (cond (pass-guard?
-                             (fmt 1.5 "Executing cmf ~A on case ~A..." cmf-name i)
-			     (finish-output)
-                             (let ((result (apply-cmf-to-case cmf-name c :params (cddr strat))))
-                               (cond 
-                                ((not (equal c result))
-                                 (setq progress? t)
-                                 (if (eq result nil)
-                                     (update-case i :case c 
-                                                  :status ':SAT 
-                                                  :step ':EMPTY-CONJ)
-                                   (case (car result)
-                                     (:UNSAT (update-case i 
-                                                          :status ':UNSAT
-                                                          :step
-                                                          cmf-name)
-                                             (setq *gs-unknown-size*
-                                                   (1- *gs-unknown-size*)))
-                                     (:SAT (update-case i 
-                                                        :status ':SAT
-                                                        :step
-                                                        cmf-name)
-                                           (setq *gs-unknown-size*
-                                                 (1- *gs-unknown-size*))
-                                           (when (and (not *sat-model*)
-						      (aref *gs* i 3))
-                                             (let* ((var-bindings (aref *gs* i 3))
-                                                    (candidate-model 
-                                                     `(:SAT (:MODEL ,var-bindings))))
-                                               (setq *sat-model* candidate-model)))
-                                           (setq *sat-case-found?* (list *current-goal-key* i)))
-				     ((:CASES :DISJ)
-				      (process-subgoal i 
-						       :step cmf-name 
-						       :subgoal-strat subgoal-strat
-						       :result result))
-                                     (otherwise
-                                      (update-case i
-                                                   :status ':UNKNOWN
-                                                   :case result
-                                                   :step cmf-name))))))
-                               (fmt 1.5 "...Done(progress?=~A).~%" progress?)))
-                            (t (fmt 1.5 "Case ~A did not pass guard ~A.~%" i
-                                    guard))))))))))
-      progress?))
-   ((eq (car strat) 'THEN)
-    (let* ((progress-0? (run-strategy (cadr strat) :subgoal-strat subgoal-strat :guard guard))
-           (progress-1? (run-strategy (caddr strat) :subgoal-strat subgoal-strat :guard guard)))
-      (or progress-0? progress-1?)))
-   ((eq (car strat) 'IF)
-    (let* ((guard+ (cadr strat))
-           (strat0 (caddr strat))
-           (strat1 (cadddr strat))
-           (progress-0? 
-            (run-strategy strat0
-                          :guard (if guard `(/\\ ,guard+
-                                                 ,@guard)
-                                   guard+)
-			  :subgoal-strat subgoal-strat))
-           (progress-1?
+		  (let ((cmf-name (cadr strat))
+			(pass-guard?
+			 (if guard (eval-strategy-cond 
+				    guard
+				    c i)
+			   t)))
+		    (cond (pass-guard?
+			   (fmt 1.5 "Executing cmf ~A on case ~A..." cmf-name i)
+			   (finish-output)
+			   (let ((result (apply-cmf-to-case cmf-name c :params (cddr strat))))
+			     (cond 
+			      ((not (equal c result))
+			       (setq progress? t)
+			       (if (eq result nil)
+				   (update-case i :case c 
+						:status ':SAT 
+						:step ':EMPTY-CONJ)
+				 (case (car result)
+				   (:UNSAT (update-case i 
+							:status ':UNSAT
+							:step
+							cmf-name)
+					   (setq *gs-unknown-size*
+						 (1- *gs-unknown-size*)))
+				   (:SAT (update-case i 
+						      :status ':SAT
+						      :step
+						      cmf-name)
+					 (setq *gs-unknown-size*
+					       (1- *gs-unknown-size*))
+					 (when (and (not *sat-model*)
+						    (aref *gs* i 3))
+					   (let* ((var-bindings (aref *gs* i 3))
+						  (candidate-model 
+						   `(:SAT (:MODEL ,var-bindings))))
+					     (setq *sat-model* candidate-model)))
+					 (setq *sat-case-found?* (list *current-goal-key* i)))
+				   ((:CASES :DISJ)
+				    (process-subgoal i 
+						     :step cmf-name 
+						     :subgoal-strat subgoal-strat
+						     :result result))
+				   (otherwise
+				    (update-case i
+						 :status ':UNKNOWN
+						 :case result
+						 :step cmf-name))))))
+			     (fmt 1.5 "...Done(progress?=~A).~%" progress?)))
+			  (t (fmt 1.5 "Case ~A did not pass guard ~A.~%" i
+				  guard)))))))))
+    progress?))
+  ((eq (car strat) 'THEN)
+   (let* ((progress-0? (run-strategy (cadr strat) :subgoal-strat subgoal-strat :guard guard))
+	  (progress-1? (run-strategy (caddr strat) :subgoal-strat subgoal-strat :guard guard)))
+     (or progress-0? progress-1?)))
+  ((eq (car strat) 'IF)
+   (let* ((guard+ (cadr strat))
+	  (strat0 (caddr strat))
+	  (strat1 (cadddr strat))
+	  (progress-0? 
+	   (run-strategy strat0
+			 :guard (if guard `(/\\ ,guard+
+						,guard)
+				  guard+)
+			 :subgoal-strat subgoal-strat))
+	  (progress-1?
             (run-strategy strat1
                           :guard (if guard `(/\\ (~ ,guard+)
-                                                 ,@guard)
+                                                 ,guard)
                                    `(~ ,guard+))
 			  :subgoal-strat subgoal-strat)))
       (or progress-0? progress-1?)))
@@ -527,7 +530,7 @@ Strategy Definition Record
 	  (strat0 (caddr strat)))
       (run-strategy strat0
 		    :guard (if guard `(/\\ ,guard+
-					   ,@guard)
+					   ,guard)
 			     guard+)
 		    :subgoal-strat subgoal-strat)))
    ((eq (car strat) 'RUN)
@@ -630,7 +633,7 @@ Strategy Definition Record
 (yacc:define-parser strategy-parser
   (:start-symbol strategy)
   (:terminals 
-   (dim deg nl bw cid rational int cmf cs-arg
+   (dim deg nl bw cid gd rational int cmf cs-arg
         if when try by then apply run repeat
         strategy-name print-trace true false
         + - * = ==> |/\\| |\\/| |~| |;|
@@ -701,7 +704,8 @@ Strategy Definition Record
    deg
    nl
    bw
-   cid)
+   cid
+   gd)
 )
 
 ;;;
@@ -873,6 +877,10 @@ Strategy Definition Record
                                       (equal peek-2-c '#\g))
                                  (chunk-prefix "DEG"))
                                 (t (chunk-char c))))
+			 ((equal c '#\g)
+			  (cond ((equal peek-1-c '#\d)
+				 (chunk-prefix "GD"))
+				(t (chunk-char c))))
                          ((equal c '#\n)
                           (cond ((equal peek-1-c '#\l)
                                  (chunk-prefix "NL"))
@@ -920,7 +928,7 @@ Strategy Definition Record
                          value 
                          '(+ - * / |(| |)| = > >= <= < ==> |/\\| |\\/| |~| |[|
                              |]| ^ /= != |,| IF BY APPLY RUN REPEAT THEN NL DIM
-                             DEG BW CID |:=| |;| WHEN)) value)
+                             DEG BW CID GD |:=| |;| WHEN)) value)
                        ((integerp value) 'int)
                        ((rationalp value) 'rational)
                        ((symbolp value) 

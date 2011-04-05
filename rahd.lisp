@@ -135,6 +135,7 @@
    "rahd"
    "regression"
    "prfanal"
+   "plugins/cocoa"
    "maxima-package"
    "maxima-rahd")
   (init-maxima)
