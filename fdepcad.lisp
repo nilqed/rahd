@@ -617,6 +617,7 @@
 ;;;  communicated to us by Chris Brown.
 ;;;
 ;;; Polynomials are given in prover notation.
+;;; List of variable-ids is returned.
 ;;;
 
 (defun vs-proj-order-brown (ps)

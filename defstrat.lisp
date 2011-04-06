@@ -219,8 +219,60 @@
   "interval-cp(max-contractions:=50)")
 
 (defstrat 'calculemus-0
+  "split-ineqs(max-splits := 12);
+   simp-zrhs;
+   run stable-simp;
+   demod-lin;
+   run stable-simp;
+   simp-real-null;
+   fert-tsos;
+   univ-sturm-ineqs;
+   satur-lin;
+   triv-ideals;
+   run stable-simp;
+   rcr-ineqs;
+   run stable-simp;
+   fert-tsos;
+   run stable-simp;
+   simp-zrhs;
+   int-dom-zpb;
+   rcr-ineqs;
+   qepcad(open? := 1); 
+   qepcad")
+
+(defstrat 'calculemus-1
   "[when (gd = 0) [split-ineqs(max-splits := 12)]];
    interval-cp(max-contractions := 10);
+   simp-zrhs;
+   run stable-simp;
+   demod-lin;
+   run stable-simp;
+   simp-real-null;
+   fert-tsos;
+   univ-sturm-ineqs;
+   satur-lin;
+   interval-cp;
+   triv-ideals;
+   run stable-simp;
+   interval-cp;
+   rcr-ineqs;
+   run stable-simp;
+   fert-tsos;
+   run stable-simp;
+   interval-cp;
+   simp-zrhs;
+   interval-cp;
+   int-dom-zpb;
+   rcr-ineqs;
+   when ((dim <= 7) /\\ deg <= 30) 
+     [qepcad(open? := 1); qepcad]")
+
+
+(defstrat 'calculemus-2
+  "interval-cp(max-contractions := 10);
+   [when ((dim <= 3) /\\ (deg <= 3)) [qepcad]];
+   [when ((gd = 0) /\\ dim >= 2) [split-ineqs(max-splits := 12)]];
+   interval-cp(max-contractions := 20);
    simp-zrhs;
    run stable-simp;
    demod-lin;

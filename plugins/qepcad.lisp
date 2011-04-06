@@ -20,7 +20,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;;
 ;;; This file: began on         31-July-2008       (not as a plugin),
-;;;            last updated on  03-April-2011.
+;;;            last updated on  06-April-2011.
 ;;;
 
 (in-package RAHD)
@@ -111,10 +111,20 @@
 	vars-lst))
 
 (defun open-cad-conj (c generic &key vars-lst)
+  (let
+  	 ;;
+	 ;; This notices if a variable was eliminated
+	 ;; in the process of canonicalization used by
+	 ;; the proj-order procedure.
+	 ;;
+
+      ((var-elimd? (> (length (all-vars-in-conj c))
+		      (length vars-lst))))
+
   (concatenate 
    'string
    (ex-inf-quant-prefix c generic :vars-lst vars-lst)
-   "[" (conj-to-qcb c "") "]."))
+   "[" (conj-to-qcb c "" :canonicalize-polys? var-elimd?) "].")))
 
 (defparameter qp "")
 
@@ -122,6 +132,7 @@
   (let ((vars 
 	 (if vars-lst vars-lst
 	   (cad-vars-lst c))))
+
     (progn
       (setq qp "")
       (dolist (v vars)
@@ -158,15 +169,16 @@
 		    (gather-vars (caddr use-lit)))))))
     all-vars)
     
-(defun conj-to-qcb (c result)
+(defun conj-to-qcb (c result &key canonicalize-polys?)
   (cond ((endp c) result)
 	(t (let ((cur-lit (car c)))
 	     (conj-to-qcb
 	      (cdr c)
 	      (concatenate 'string
 			   result
-			   (lit-to-qcb cur-lit)
-			   (if (consp (cdr c)) " /\\ " "")))))))
+			   (lit-to-qcb cur-lit :canonicalize-polys? canonicalize-polys?)
+			   (if (consp (cdr c)) " /\\ " ""))
+	      :canonicalize-polys? canonicalize-polys?)))))
 
 (defun disj-to-qcb (d result)
   (cond ((endp d) result)
@@ -179,19 +191,29 @@
 			   (if (consp (cdr d)) " \\/ " "")))))))
 
 
-(defun lit-to-qcb (lit)
+(defun lit-to-qcb (lit &key canonicalize-polys?)
   (concatenate 'string
 	       "["
 	       (let ((cur-r (car lit))
 		     (cur-x (cadr lit))
 		     (cur-y (caddr lit)))
+
+		 (if canonicalize-polys?
+
+		     (concatenate 'string
+				  (term-to-qcb (canonicalize-poly `(- ,cur-x ,cur-y)))
+				  " "
+				  (write-to-string cur-r)
+				  " 0")
+		 
 		 (concatenate 'string
 			      (term-to-qcb cur-x) 
 			      " "
 			      (write-to-string cur-r)
 			      " "
-			      (term-to-qcb cur-y)))
+			      (term-to-qcb cur-y))))
 	       "]"))
+
 
 (defun term-to-qcb (term)
   (cond ((equal term nil) "")

@@ -97,7 +97,7 @@
 	(when (or (not problem-ids)
 		  (member i problem-ids))
 	  (fmt 0 "~A, ~A, " i strategy-id)
-	  (let ((start-time (get-internal-run-time)))
+	  (let ((start-time (get-internal-real-time)))
 	    (let ((result
 		   (progn
 		     (rahd-reset-state)
@@ -106,7 +106,7 @@
 			    :verbosity verbosity
 			    :strategy `(run ,(get-strat-by-num strategy-id))
 			    :non-recursive? nil))))
-	      (let ((end-time (get-internal-run-time)))
+	      (let ((end-time (get-internal-real-time)))
 		(fmt 0 "~A,~A~%"
 		     (float (/ (- end-time start-time) internal-time-units-per-second))
 		     result)))))
@@ -1082,7 +1082,7 @@
 ;;; Problem 23 in RAHD format
 ;;;
 
- ( (((NOT (= N0X 0))) ((NOT (= (* (/ 1 N0X) X) (/ X N0X))))) 
+ ( (((NOT (= N 0))) ((NOT (= (* (/ 1 N) X) (/ X N))))) 
  :UNSAT ) 
 
 ;;;
