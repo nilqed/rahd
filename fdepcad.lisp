@@ -374,6 +374,111 @@
 	     pts))
 
 ;;;
+;;; Basic AP-CAD machinery:
+;;;
+
+(defun exec-covering-width-fcn (css pts)
+  (let ((cell-selection-fcn (car css)) 
+	(covering-width-fcn (cdr css)))
+    (declare (ignorable cell-selection-fcn))
+    (funcall covering-width-fcn pts)))
+
+(defun exec-cell-selection-strategy-step-i (css i pts)
+  (let ((cell-selection-fcn (car css))
+	(covering-width-fcn (cdr css)))
+    (declare (ignorable covering-width-fcn))
+    (funcall cell-selection-fcn pts i)))
+
+(defun exec-formula-construction-fcn (formula-construction-fcn phi pts)
+  (funcall formula-construction-fcn phi pts))
+
+(defun exec-proof-proc (formula rcf-strategy)
+  (try-to-prove 
+   :goal-key 'ap-cad-lifting
+   :formula (mapcar #'list formula)
+   :strategy rcf-strategy 
+   :recursive? t))
+
+;;;
+;;; PROCESS-CELLS-BY-STAGE: Given an AP-CAD stage, apply it to a collection
+;;;  of i-dimensional sample points.
+;;;
+;;; We take as input:
+;;;  - a collection of i-dimensional sample points together with a listing
+;;;    of the variables they correspond to,
+;;;  - the top-level formula, which is a conjunctive case (C),
+;;;  - an AP-CAD stage, which contains:
+;;;        - a cell selection strategy,
+;;;        - a formula construction function (FCF),
+;;;        - a proof strategy (PRFSTRAT).
+;;;
+;;; We return a multiple-values form:
+;;;   (remaining cells, sat-point-found?).
+;;;
+
+(defun process-cells-by-stage (pts phi stage)
+  (let ((cell-selection-strategy (car stage))
+	(formula-construction-fcn (cadr stage))
+	(rcf-proof-strategy (cddr stage)))
+      stage
+    (let ((U (exec-covering-width-fcn cell-selection-strategy pts))
+	  (j 1)
+	  (sample-pts (sort pts #'<)))
+      (loop while (<= j U) do
+	    (let ((selected-pts (exec-cell-selection-strategy-step-i 
+				 cell-selection-strategy
+				 j
+				 sample-pts)))
+	      (let ((rcf-result
+		     (exec-proof-proc 
+		      (exec-formula-construction-fcn 
+		       formula-construction-fcn
+		       phi
+		       selected-pts)
+		      rcf-proof-strategy))
+		    (sample-pts*))
+
+		(cond
+		 ((eq rcf-result ':SAT)
+		  (return ':SAT))
+		 ((and (consp rcf-result)
+		       (eq (car rcf-result) ':SAT)
+		       (return ':SAT))) ; eventually return model here
+		 ((eq rcf-result ':UNSAT)
+		  (setq sample-pts* (sort (set-difference sample-pts selected-pts) #'<)))
+		 (t (setq sample-pts* sample-pts)))
+		  
+		(cond ((eq sample-pts* nil) 
+		       (setq sample-pts nil)
+		       (return nil))
+		      ((equal (length sample-pts*) (length sample-pts))
+		       (setq j (1+ j)))
+		      ((< (length sample-pts*) (length sample-pts))
+		       (setq sample-pts sample-pts*)
+		       (setq U (exec-covering-width-fcn cell-selection-strategy sample-pts))
+		       (setq j 1))))))
+      sample-pts)))
+
+(defun csf0 (pts i)
+  (list (nth (1- i) pts)))
+
+(defun cwf0 (pts)
+  (length pts))
+
+(defun fcf0 (phi pts)
+  (append `((= x ,(car pts))) phi))
+
+(defun make-stage (csf cwf fcf rps)
+  (cons (cons csf cwf)
+	(cons fcf rps)))
+  
+(defparameter *stage0*
+  (make-stage #'csf0
+	      #'cwf0
+	      #'fcf0
+	      '(run stable-simp)))
+
+;;;
 ;;; FD-CAD: Given a set of n-dimensional polynomials construct a CAD of
 ;;;  n-dimensional space using sample points only from full-dimensional
 ;;;  cells.

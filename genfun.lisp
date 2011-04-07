@@ -679,6 +679,26 @@
 ;		goal-key)
 	   t)))
 
+;;;
+;;; TRY-TO-PROVE: Given a goal in RAHD CNF, an explicit proof strategy, and a
+;;;  goal name (not 0), try to refute the goal using the strategy given.
+;;;
+
+(defun try-to-prove (&key goal-key formula strategy recursive?)
+  (let ((ambient-goal-key *current-goal-key*))
+    (when (not (eq goal-key 0))
+      (g formula :goal-key goal-key :overwrite-ok t)
+      (build-gs :do-not-split-ineqs? t)
+      (run-strategy strategy
+		    :subgoal-strat (when recursive? strategy))
+      (let ((result
+	     (cond ((all-cases-refuted) ':UNSAT)
+		   (*sat-case-found?* 
+		    (if *sat-model* *sat-model* ':SAT))
+		   (t ':UNKNOWN))))
+	(when ambient-goal-key (swap-to-goal ambient-goal-key))
+	result))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; SET-GOAL-STACK-DATA: 
