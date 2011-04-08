@@ -141,7 +141,7 @@
   (init-maxima)
   (compile-file-and-load
    "factor"
-   "fdepcad"
+   "apcad"
    "help"
    "toplevel"
    "strategy" ; expects we have Maxima
