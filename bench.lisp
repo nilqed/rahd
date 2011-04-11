@@ -1102,3 +1102,48 @@
 
 
 ))
+
+;;; Good APCAD examples.
+
+; good with interval theatre, bad with tiwari
+(wrv 2.5 (apcad-fd-on-case 
+	  (mapcar #'car (expand-formula 
+			 '(((> C 1)) ((> D 0)) ((< A 1)) ((< B 1))
+			   ((< C 2)) ((< D 1))
+			   ((< (+ (* (* A A) C) (- A (* B C)))
+			       0)) ((> (- C B) C)) ((> B C)))))  
+	  #'interval-theatre))
+
+(wrv 2.5 (apcad-fd-on-case (mapcar #'car (expand-formula 
+					  '(((> C 1)) ((> D 0)) ((< A 1)) ((< B 1))
+					    ((< C 2)) ((< D C))
+					    ((< (+ (* (* A A) C) (- A (* B C)))
+						0)) ((> (- C B) C)) ((> B C)))))  
+			   #'interval-theatre))
+
+; interval theatre does much better than without!
+(wrv 2.5 (apcad-fd-on-case (mapcar #'car (expand-formula 
+					  '(((< (- (* 2 (+ (* X Z) (+ (* X Y) (* Y Z))))
+							 (+ (* X X) (+ (* Y Y) (* Z Z))))
+						      0))
+					    ((< X 125841/50000))
+					    ((< Y 125841/50000))
+					    ((< Z 125841/50000))
+					    ((< 2 X))
+					    ((< 2 Y))
+					    ((< 2 Z)))))
+			   #'interval-theatre))
+
+; interval theatre eliminates one extra sample point at R^2
+(wrv 2.5 (apcad-fd-on-case (mapcar #'car (expand-formula
+					  '(((NOT (>= (+ (* A D) (+ (* C B) (* B D))) 0)))
+					    ((> B 0))
+					    ((> C 0))
+					    ((> D (- B C)))
+					    ((< (+ (* C C) (+ (- (* C D) (* D D)) 1))
+						0)))))
+					  #'interval-theatre))
+
+(wrv 2.5 (apcad-fd-on-case (mapcar #'car (expand-formula
+
+			   #'interval-theatre))

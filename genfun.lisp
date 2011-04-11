@@ -600,7 +600,7 @@
   (save-current-goal no-output)
   (load-goal goal-key no-output)
   (when (not no-output)
-    (fmt 2 "~% Goal ~A swapped in as the active goal." 
+    (fmt 4 "~% Goal ~A swapped in as the active goal." 
 	 (format-goal-key goal-key)))
   t)
 
@@ -685,7 +685,8 @@
 ;;;
 
 (defun try-to-prove (&key goal-key formula strategy recursive?)
-  (let ((ambient-goal-key *current-goal-key*))
+  (let ((ambient-goal-key *current-goal-key*)
+	(ambient-vars-table *vars-table*))
     (when (not (eq goal-key 0))
       (g formula :goal-key goal-key :overwrite-ok t)
       (build-gs :do-not-split-ineqs? t)
@@ -697,6 +698,7 @@
 		    (if *sat-model* *sat-model* ':SAT))
 		   (t ':UNKNOWN))))
 	(when ambient-goal-key (swap-to-goal ambient-goal-key))
+	(setq *vars-table* ambient-vars-table)
 	result))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -883,12 +885,12 @@
 
 (defun prgs ()
   (cond ((equal *g* nil)
-	 (fmt 2 "~%~% No goal is currently installed.  Use (g <goal-in-cnf>).~%~%"))
+	 (fmt 2.5 "~%~% No goal is currently installed.  Use (g <goal-in-cnf>).~%~%"))
 	((and (<= *gs-size* 0) (not *goal-refuted?*))
-	 (fmt 2 "~%~% No cases installed in goalset (*gs*).  Use (b).~%~%"))
+	 (fmt 2.5 "~%~% No cases installed in goalset (*gs*).  Use (b).~%~%"))
 	(*sat-case-found?*
 	 (fmt 2 "~%~% Counter-example found.  Installed goal SAT, so unrefutable. ~%~%"))
-	(t (fmt 2 "~%~% ~6D ~A in goalset (goal ~A) awaiting refutation. ~%~%" 
+	(t (fmt 2.5 "~%~% ~6D ~A in goalset (goal ~A) awaiting refutation. ~%~%" 
 		*gs-unknown-size*
 		(if (= *gs-unknown-size* 1) "case" "cases")
 		(format-goal-key *current-goal-key*))
