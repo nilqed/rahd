@@ -2,13 +2,13 @@
 ;;; RAHD: Real Algebra in High Dimensions v0.6
 ;;; A proof procedure for the existential theory of real closed fields.
 ;;;
-;;; Full-dimensional abstract partial cylindrical algebraic decomposition.
+;;; Abstract Partial Cylindrical Algebraic Decomposition,
+;;;   the full-dimensional case.
 ;;;
 ;;; (Explained in my PhD dissertation).
 ;;;
 ;;;  Note: We support one projection operator -- 
-;;;   (-) Brown-McCallum projection (which is valid for f.d. lifting).
-;;;
+;;;    o Brown-McCallum projection (which is valid for f.d. lifting).
 ;;;
 ;;;
 ;;; Written by Grant Olney Passmore
@@ -19,7 +19,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;; 
 ;;; This file: began on         03-July-2010,
-;;;            last updated on  03-April-2011.
+;;;            last updated on  08-April-2011.
 ;;;
 
 ;;;
@@ -244,7 +244,7 @@
 	(cached-pfs pfs-present?)
 	(gethash hash-key *cad-pfs-cache*)
       (cond (pfs-present? 
-	     (fmt 3 "~%   Projection factor set found in PFS cache! ~%")
+	     (fmt 2 "~%   Projection factor set found in PFS cache! ~%")
 	     cached-pfs)
 	    (t (let ((pfs (fd-cad-project* ps var-order :factor? factor?)))
 		 (setf (gethash hash-key *cad-pfs-cache*) pfs)
@@ -266,7 +266,7 @@
 	  (proj-fs-array (make-array top-dim)))
       (setf (aref proj-fs-array (1- top-dim)) sqr-free-base)
       
-      (fmt 3 "~%   cad pfs component for dimension ~A:~%    ~A.~%"
+      (fmt 2 "~%   cad pfs component for dimension ~A:~%    ~A.~%"
 	   cur-dim 
 	   (mapcar #'poly-alg-rep-to-prover-rep sqr-free-base))
 
@@ -295,7 +295,7 @@
 					    rs
 					    :test 'equal)))))))
 
-	      (fmt 3 "~%   cad pfs component for (R^~A) (eliminated ~A):~%    ~A.~%"
+	      (fmt 2 "~%   cad pfs component for (R^~A) (eliminated ~A):~%    ~A.~%"
 		   (1- cur-dim) 
 		   cur-var
 		   (mapcar #'poly-alg-rep-to-prover-rep cur-proj-fs))
@@ -389,8 +389,8 @@
     (declare (ignorable covering-width-fcn))
     (funcall cell-selection-fcn pts i)))
 
-(defun exec-formula-construction-fcn (formula-construction-fcn phi pts)
-  (funcall formula-construction-fcn phi pts))
+(defun exec-formula-construction-fcn (formula-construction-fcn phi pts vars)
+  (funcall formula-construction-fcn phi pts vars))
 
 (defun exec-proof-proc (formula rcf-strategy)
   (try-to-prove 
@@ -416,48 +416,74 @@
 ;;;   (remaining cells, sat-point-found?).
 ;;;
 
-(defun process-cells-by-stage (pts phi stage)
+(defun lex-order< (v0 v1)
+  (cond ((and (numberp v0)
+	      (numberp v1)) (< v0 v1))
+	((and (consp v0)
+	      (consp v1))
+	 (or (lex-order< (car v0) (car v1))
+	     (lex-order< (cdr v0) (cdr v1))))))
+
+(defun process-cells-by-stage (pts vars phi stage)
   (let ((cell-selection-strategy (car stage))
 	(formula-construction-fcn (cadr stage))
 	(rcf-proof-strategy (cddr stage)))
       stage
     (let ((U (exec-covering-width-fcn cell-selection-strategy pts))
 	  (j 1)
-	  (sample-pts (sort pts #'<)))
+	  (sample-pts (sort pts #'lex-order<)))
       (loop while (<= j U) do
 	    (let ((selected-pts (exec-cell-selection-strategy-step-i 
 				 cell-selection-strategy
 				 j
 				 sample-pts)))
-	      (let ((rcf-result
-		     (exec-proof-proc 
-		      (exec-formula-construction-fcn 
-		       formula-construction-fcn
-		       phi
-		       selected-pts)
-		      rcf-proof-strategy))
-		    (sample-pts*))
-
-		(cond
-		 ((eq rcf-result ':SAT)
-		  (return ':SAT))
-		 ((and (consp rcf-result)
-		       (eq (car rcf-result) ':SAT)
-		       (return ':SAT))) ; eventually return model here
-		 ((eq rcf-result ':UNSAT)
-		  (setq sample-pts* (sort (set-difference sample-pts selected-pts) #'<)))
-		 (t (setq sample-pts* sample-pts)))
-		  
-		(cond ((eq sample-pts* nil) 
-		       (setq sample-pts nil)
-		       (return nil))
-		      ((equal (length sample-pts*) (length sample-pts))
-		       (setq j (1+ j)))
-		      ((< (length sample-pts*) (length sample-pts))
-		       (setq sample-pts sample-pts*)
-		       (setq U (exec-covering-width-fcn cell-selection-strategy sample-pts))
-		       (setq j 1))))))
+	      (if selected-pts
+		  (let ((rcf-result
+			 (exec-proof-proc 
+			  (exec-formula-construction-fcn 
+			   formula-construction-fcn
+			   phi
+			   selected-pts
+			   vars)
+			  rcf-proof-strategy))
+			(sample-pts*))
+		    
+		    (cond
+		     ((eq rcf-result ':SAT)
+		      (return ':SAT))
+		     ((and (consp rcf-result)
+			   (eq (car rcf-result) ':SAT)
+			   (return ':SAT))) ; eventually return model here
+		     ((eq rcf-result ':UNSAT)
+		      (setq sample-pts* (sort (set-difference sample-pts selected-pts) #'lex-order<)))
+		     (t (setq sample-pts* sample-pts)))
+		    
+		    (cond ((eq sample-pts* nil) 
+			   (setq sample-pts nil)
+			   (return nil))
+			  ((equal (length sample-pts*) (length sample-pts))
+			   (setq j (1+ j)))
+			  ((< (length sample-pts*) (length sample-pts))
+			   (setq sample-pts sample-pts*)
+			   (setq U (exec-covering-width-fcn cell-selection-strategy sample-pts))
+			   (setq j 1))))
+		(setq j (1+ j)))))
       sample-pts)))
+
+;;;
+;;; Given a cell selection function, its covering width function,
+;;;  a formula construction function and an RCF proof procedure
+;;;  expressed as a RAHD strategy, make the corresponding AP-CAD
+;;;  stage object.
+;;;
+
+(defun make-stage (csf cwf fcf rps)
+  (cons (cons csf cwf)
+	(cons fcf rps)))
+
+;;;
+;;; A few example stages.
+;;;
 
 (defun csf0 (pts i)
   (list (nth (1- i) pts)))
@@ -465,18 +491,195 @@
 (defun cwf0 (pts)
   (length pts))
 
-(defun fcf0 (phi pts)
-  (append `((= x ,(car pts))) phi))
-
-(defun make-stage (csf cwf fcf rps)
-  (cons (cons csf cwf)
-	(cons fcf rps)))
+(defun fcf0 (phi pts vars)
+  phi)
   
 (defparameter *stage0*
   (make-stage #'csf0
 	      #'cwf0
 	      #'fcf0
 	      '(run stable-simp)))
+
+(defun theatre0 (n)
+  (declare (ignore n))
+  *stage0*)
+
+;;;;
+; A stage for divide-and-conquer interval analysis.
+;;;;
+
+;
+; If a list is even, we give its first and second halves.
+; If it is odd, then the extra item goes in the first `half'.
+;
+
+(defun first-half (l)
+  (let ((len (length l)))
+    (if (evenp len)
+	(subseq l 0 (/ len 2))
+      (subseq l 0 (+ (/ (- len 1) 2) 1)))))
+
+(defun second-half (l)
+  (let ((len (length l)))
+    (if (evenp len)
+	(subseq l (/ len 2))
+      (subseq l (/ (+ 1 len) 2)))))
+
+(defun div-conq (l i)
+  (cond ((<= i 1) l)
+	((evenp i) (first-half (div-conq l (/ i 2))))
+	((oddp i) (second-half (div-conq l (/ (- i 1) 2))))))
+
+(defun proj-pts (pts idx)
+  (mapcar (lambda (p) (nth idx p)) pts))
+
+(defun interval-fcf (phi pts vars)
+  (let ((vs vars) (idx 0) (new-conjs))
+    (dolist (v vs)
+      (let ((v-pts (proj-pts pts idx)))
+	(let ((v-pts-min (apply #'min v-pts))
+	      (v-pts-max (apply #'max v-pts)))
+	  (setq new-conjs
+		(cons `(>= ,v ,v-pts-min)
+		      (cons `(<= ,v ,v-pts-max)
+			    new-conjs)))))
+      (setq idx (1+ idx)))
+    (append new-conjs phi)))
+    
+(defparameter *stage-interval-3* 
+  (make-stage #'div-conq 
+	      (lambda (i) (declare (ignore i)) 3) 
+	      #'interval-fcf
+	      '(THEN (APPLY SIMP-ZRHS)
+		     (THEN (RUN STABLE-SIMP)
+			   (THEN (APPLY SATUR-LIN) (APPLY INTERVAL-CP :MAX-CONTRACTIONS 30))))))
+
+(defparameter *stage-tiwari* 
+  (make-stage #'div-conq 
+	      (lambda (i) (declare (ignore i)) 3) 
+	      #'interval-fcf
+	      '(THEN (APPLY SIMP-ZRHS)
+		     (THEN (RUN STABLE-SIMP)
+			   (THEN (APPLY SATUR-LIN) (APPLY BOUNDED-GBRNI))))))
+
+
+(defun interval-theatre (n)
+  (declare (ignore n))
+  *stage-interval-3*)
+
+(defun tiwari-theatre (n)
+  (declare (ignore n))
+  *stage-tiwari*)
+
+
+#|
+(apcad-fd-on-case (mapcar #'car (expand-formula '(((>= A 0)) ((>= B 0)) ((>= C 0)) ((>= D 0)) ((<= A 1)) ((<= B 1))
+    ((<= C 1)) ((<= D 1))
+    ((< (+ (* (- 1 (* A A B B)) (- 1 (* C D)) (- (* A D) (* B C))
+              (- (* A D) (* B C)))
+           (* (* 2 A B) (- (* C D) (* A B)) (- 1 (* A B)) (- C D)
+              (- C D))
+           (* (- (* A A B B) (* C C D D)) (- 1 (* C D)) (- A B)
+              (- A B)))
+        0)))))  #'interval-theatre)
+|#
+
+;;;
+;;; APCAD-FD: Full-dimensional Apstract Partial CAD.
+;;; We return an array of n-dimensional sample points.
+;;;
+
+(defun apcad-fd (ps var-order theatre &key epsilon formula factor?)
+  (fmt 2 "~% [cad: Computing projection factor set (pfs)]")
+  (let ((projfs (fd-cad-project ps var-order :factor? factor?))
+	(lift-vars (reverse var-order))
+	(lower-vars) (latest-pts) (short-circuit?))
+    (fmt 2 "~% [cad: Beginning full-dimensional lifting]")
+    (loop for d from 0 to (1- (length lift-vars)) 
+	  while (not short-circuit?) do
+      (let ((cur-var (car lift-vars))
+	    (cur-pfs (aref projfs d)))
+	(cond ((= d 0)
+	       (fmt 2 "~%   Computing base phase (R^1):")
+	       (setq latest-pts
+		     (mapcar #'list 
+			     (coerce 
+			      (ps-rational-sample-pts cur-pfs :epsilon epsilon)
+			      'list)))
+	       (fmt 2 "~%    ~A base rational sample points isolated: ~A.~%" 
+		    (length latest-pts) latest-pts))
+	      (t (fmt 2 "~%   Computing lifting from (R^~A) to (R^~A):~%" d (1+ d))
+		 (fmt 2 "    Substituting ~A sample points in (R^~A) into (R^~A) pfs: ~%"
+		      (length latest-pts) d (1+ d))
+		 (fmt 2.5 "     pfs:  ~A,~%" (mapcar #'poly-alg-rep-to-prover-rep
+						 cur-pfs))
+		 (fmt 2.5 "     pts:  ~A,~%" latest-pts)
+		 (fmt 2.5 "     lvs:  ~A.~%" (mapcar #'(lambda (i) 
+						    (nth i *vars-table*)) 
+						lower-vars))
+		 (let ((new-pfs-instances
+			(mapcar #'clean-rcs 
+				(spts-subst-alg cur-pfs latest-pts lower-vars))))
+		   (fmt 2.5 "     npfs: ~A.~%" 
+			(mapcar #'(lambda (ps) 
+				    (mapcar #'poly-alg-rep-to-prover-rep ps))
+				new-pfs-instances))
+		   (fmt 2 "~%    Isolating roots and sample points of induced univariate families: ~%")
+		   (let ((new-latest-pts) (cur-instance 0))
+		     (dolist (pfs-instance new-pfs-instances)
+		       (let ((new-roots 
+			      (coerce (ps-rational-sample-pts pfs-instance :epsilon epsilon) 'list))
+			     (parent-sample-pt (nth cur-instance latest-pts)))
+			 (fmt 2.5 "     upts: ~A.~%" new-roots)
+			 (let ((hd-sample-pts
+				(mapcar #'(lambda (r) (cons r parent-sample-pt)) new-roots)))
+			   (fmt 2.5 "     nhds: ~A.~%" hd-sample-pts)
+			   (setq new-latest-pts (append hd-sample-pts new-latest-pts))))
+		       (setq cur-instance (1+ cur-instance)))
+		     (setq latest-pts new-latest-pts)))))
+	(setq lower-vars (cons cur-var lower-vars)))
+
+      ;;
+      ;; Direct partial CAD check: Remove the new sample points which lead to direct
+      ;;  inconsistency, if formula (conjunctive case) is given.
+      ;;
+
+      (when (and formula (cdr lift-vars))
+
+	(let ((num-cells-before (length latest-pts)))
+
+	  (let ((latest-pts* (direct-exclude-cells 
+			      formula 
+			      latest-pts
+			      (mapcar #'(lambda (i) (nth i *vars-table*)) lower-vars))))
+	    (when (not (= num-cells-before (length latest-pts*)))
+
+	      (fmt 2 "~%  :: Direct cell exclusion reduced number of new cells from ~A to ~A.~%"
+		   num-cells-before (length latest-pts*))
+	      (setq num-cells-before (length latest-pts*)))
+
+	    (when (> num-cells-before 0)
+	      (fmt 2 "~% Running AP-CAD stage given as n-theatre(~A).~%" d))
+
+	    (setq latest-pts (process-cells-by-stage 
+			      latest-pts*
+			      (mapcar #'(lambda (i) (nth i *vars-table*)) lower-vars)
+			      formula
+			      (funcall theatre d))))
+	  (let ((num-cells-after (length latest-pts)))
+	    (when (not (= num-cells-before num-cells-after))
+	      (fmt 2 "~%  !! AP-CAD Cell exclusion reduced number of new cells from ~A to ~A.~%"
+		   num-cells-before num-cells-after))
+	      (when (= num-cells-after 0)
+		(setq short-circuit? t)
+		(fmt 2 "  :: Cell exclusion has reduced number of cells to 0, so we can short-circuit cad construction!~%~%")))))
+
+      (setq lift-vars (cdr lift-vars)))
+    (fmt 2 "~%  Final var-order: ~A." (mapcar #'(lambda (i) (nth i *vars-table*)) lower-vars))
+    (fmt 2 "~%  Success!  Cell decomposition complete (~A sample pts).~%" (length latest-pts))
+    (fmt 2.5 "  Printing ~A sample points from full-dimensional cells homeomorphic to (R^~A):~%~%    ~A.~%~%"
+	 (length latest-pts) (length lower-vars) latest-pts)
+    latest-pts))
 
 ;;;
 ;;; FD-CAD: Given a set of n-dimensional polynomials construct a CAD of
@@ -645,6 +848,86 @@
 	       (fmt 3 "~% Satisfiable!~%  Satisfying assignment: ~A.~%" model))
 	      (t (fmt 3 "~% Unsatisfiable!~%")))
       (when sat? model)))))
+
+;;;
+;;; APCAD-FD-SAT?
+;;;
+
+(defun apcad-fd-sat? (c theatre &key epsilon partial? factor? proj-order-greedy? var-order)
+  (let* ((ps* (mapcar #'(lambda (l)
+			  `(- ,(cadr l)
+			      ,(caddr l)))
+		      c))
+	 (vs (if var-order
+		 (mapcar (lambda (x)
+			   (let ((id 0))
+			     (dolist (v *vars-table*)
+			       (if (eq v x) (return id)
+				 (setq id (1+ id))))))
+			 var-order)
+	       (if proj-order-greedy? 
+		   (var-ids (vs-proj-order-greedy 
+			     (mapcar #'poly-prover-rep-to-alg-rep ps*)))
+	       (vs-proj-order-brown ps*))))
+	 (vs* (if var-order var-order 
+		(mapcar #'(lambda (i) (nth i *vars-table*)) vs)))
+	 (ps (mapcar #'poly-prover-rep-to-alg-rep ps*))
+	 (spts (apcad-fd ps vs theatre
+		       :epsilon epsilon
+		       :formula (when partial? c)
+		       :factor? factor?)))
+    (fmt 3 "~% Extracted polynomials: ~A.~%" ps*)
+    (fmt 3 "~% Sample points computed.~%")
+    (fmt 3 "~% Beginning evaluation of formula.~%")
+    (let ((sat? nil))
+      (while (and (not sat?) (consp spts))
+	(let ((spt (car spts)))
+	  (setq sat? (when (eval-spt-subst
+			    c
+			    vs*
+			    spt)
+		       spt))
+	  (setq spts (cdr spts))))
+      (let ((model))
+	(cond (sat?
+	       (let ((sat-pt sat?))
+		 (loop for i from 0 to (1- (length vs*)) do
+		       (setq model (cons (list (car vs*) (car sat-pt)) model))
+		       (setq vs* (cdr vs*))
+		       (setq sat-pt (cdr sat-pt))))
+	       (fmt 3 "~% Satisfiable!~%  Satisfying assignment: ~A.~%" model))
+	      (t (fmt 3 "~% Unsatisfiable!~%")))
+      (when sat? model)))))
+
+;;;
+;;; APCAD-FD-ON-CASE: Apply APCAD-FD-SAT to a conjunctive case.
+;;;    To do so, we first extract only the strict inequalities.
+;;;   Note that unless c consists only of strict inequalities, then
+;;;    we can't trust SAT answers, only UNSAT.
+;;;
+
+(defun apcad-fd-on-case (c theatre &key (factor? t) proj-order-greedy? var-order)
+  (let ((sc (gather-strict-ineqs c)))
+    (if sc 
+	(let ((s? (apcad-fd-sat? 
+		   sc 
+		   theatre
+		   :partial? t
+		   :factor? factor?
+		   :proj-order-greedy? proj-order-greedy?
+		   :var-order var-order)))
+	  (cond (s? (if (= (length sc) (length c))
+			(let ((judgment 
+                               `(:SAT (:MODEL 
+                                       ,(union (get-active-vt-bindings)
+                                               s?
+                                               :test 'equal)))))
+			  (setq *sat-model* judgment)
+			  judgment)
+		      c))
+		(t `(:UNSAT 
+		     (:NO-SATISFYING-VECTOR-IN-FULL-DIMENSIONAL-CELLS)))))
+      c)))
 
 ;;;
 ;;; FDEP-CAD-ON-CASE: Apply FD-CAD-SAT to a conjunctive case.
@@ -890,3 +1173,18 @@
 ;;     (let ((trunc-set-ps (trunc-set ps var-id)))
 ;;       (dolist ((
 ;;     proj-factor-set))
+
+;; Some APCAD examples:
+
+(apcad-fd-on-case '((> (* x x) (+ (* x w) y)) 
+		    (> y z) (> z w) (> (* w x) x) 
+		    (> x 0) (< x 1) 
+		    (> y 0) (< y 10))
+       #'interval-theatre)
+
+; vs
+
+(fdep-cad-on-case '((> (* x x) (+ (* x w) y)) 
+		    (> y z) (> z w) (> (* w x) x) 
+		    (> x 0) (< x 1) 
+		    (> y 0) (< y 10)))

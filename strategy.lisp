@@ -460,7 +460,7 @@ Strategy Definition Record
 				    c i)
 			   t)))
 		    (cond (pass-guard?
-			   (fmt 1.5 "Executing cmf ~A on case ~A..." cmf-name i)
+			   (fmt 2.5 "Executing cmf ~A on case ~A..." cmf-name i)
 			   (finish-output)
 			   (let ((result (apply-cmf-to-case cmf-name c :params (cddr strat))))
 			     (cond 
@@ -500,8 +500,8 @@ Strategy Definition Record
 						 :status ':UNKNOWN
 						 :case result
 						 :step cmf-name))))))
-			     (fmt 1.5 "...Done(progress?=~A).~%" progress?)))
-			  (t (fmt 1.5 "Case ~A did not pass guard ~A.~%" i
+			     (fmt 2.5 "...Done(progress?=~A).~%" progress?)))
+			  (t (fmt 2.5 "Case ~A did not pass guard ~A.~%" i
 				  guard)))))))))
     progress?))
   ((eq (car strat) 'THEN)
