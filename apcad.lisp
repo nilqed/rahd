@@ -589,7 +589,7 @@
 ;;; We return an array of n-dimensional sample points.
 ;;;
 
-(defun apcad-fd (ps var-order theatre &key epsilon formula factor?)
+(defun apcad-fd (ps var-order theatre &key epsilon formula factor? theatre-only?)
   (fmt 2 "~% [cad: Computing projection factor set (pfs)]")
   (let ((projfs (fd-cad-project ps var-order :factor? factor?))
 	(lift-vars (reverse var-order))
@@ -606,10 +606,10 @@
 			     (coerce 
 			      (ps-rational-sample-pts cur-pfs :epsilon epsilon)
 			      'list)))
-	       (fmt 2 "~%    ~A base rational sample points isolated: ~A.~%" 
+	       (fmt 1 "~%    ~A base rational sample points isolated: ~A.~%" 
 		    (length latest-pts) latest-pts))
 	      (t (fmt 2 "~%   Computing lifting from (R^~A) to (R^~A):~%" d (1+ d))
-		 (fmt 2 "    Substituting ~A sample points in (R^~A) into (R^~A) pfs: ~%"
+		 (fmt 1 "    Substituting ~A sample points in (R^~A) into (R^~A) pfs: ~%"
 		      (length latest-pts) d (1+ d))
 		 (fmt 2.5 "     pfs:  ~A,~%" (mapcar #'poly-alg-rep-to-prover-rep
 						 cur-pfs))
@@ -648,13 +648,15 @@
 
 	(let ((num-cells-before (length latest-pts)))
 
-	  (let ((latest-pts* (direct-exclude-cells 
-			      formula 
-			      latest-pts
-			      (mapcar #'(lambda (i) (nth i *vars-table*)) lower-vars))))
+	  (let ((latest-pts* (if (not theatre-only?) 
+				 (direct-exclude-cells 
+				  formula 
+				  latest-pts
+				  (mapcar #'(lambda (i) (nth i *vars-table*)) lower-vars))
+			       latest-pts)))
 	    (when (not (= num-cells-before (length latest-pts*)))
 
-	      (fmt 2 "~%  :: Direct cell exclusion reduced number of new cells from ~A to ~A.~%"
+	      (fmt 1 "~%  :: Direct cell exclusion reduced number of new cells from ~A to ~A.~%"
 		   num-cells-before (length latest-pts*))
 	      (setq num-cells-before (length latest-pts*)))
 
@@ -668,15 +670,15 @@
 			      (funcall theatre d))))
 	  (let ((num-cells-after (length latest-pts)))
 	    (when (not (= num-cells-before num-cells-after))
-	      (fmt 2 "~%  !! AP-CAD Cell exclusion reduced number of new cells from ~A to ~A.~%"
+	      (fmt 1 "~%  !! AP-CAD Cell exclusion reduced number of new cells from ~A to ~A.~%"
 		   num-cells-before num-cells-after))
 	      (when (= num-cells-after 0)
 		(setq short-circuit? t)
-		(fmt 2 "  :: Cell exclusion has reduced number of cells to 0, so we can short-circuit cad construction!~%~%")))))
+		(fmt 1 "  :: Cell exclusion has reduced number of cells to 0, so we can short-circuit cad construction!~%~%")))))
 
       (setq lift-vars (cdr lift-vars)))
     (fmt 2 "~%  Final var-order: ~A." (mapcar #'(lambda (i) (nth i *vars-table*)) lower-vars))
-    (fmt 2 "~%  Success!  Cell decomposition complete (~A sample pts).~%" (length latest-pts))
+    (fmt 1 "~%  Success!  Cell decomposition complete (~A sample pts).~%" (length latest-pts))
     (fmt 2.5 "  Printing ~A sample points from full-dimensional cells homeomorphic to (R^~A):~%~%    ~A.~%~%"
 	 (length latest-pts) (length lower-vars) latest-pts)
     latest-pts))
@@ -701,22 +703,22 @@
   (let ((projfs (fd-cad-project ps var-order :factor? factor?))
 	(lift-vars (reverse var-order))
 	(lower-vars) (latest-pts) (short-circuit?))
-    (fmt 3 "~% [cad: Beginning full-dimensional lifting]")
+    (fmt 2 "~% [cad: Beginning full-dimensional lifting]")
     (loop for d from 0 to (1- (length lift-vars)) 
 	  while (not short-circuit?) do
       (let ((cur-var (car lift-vars))
 	    (cur-pfs (aref projfs d)))
 	(cond ((= d 0)
-	       (fmt 3 "~%   Computing base phase (R^1):")
+	       (fmt 2 "~%   Computing base phase (R^1):")
 	       (setq latest-pts
 		     (mapcar #'list 
 			     (coerce 
 			      (ps-rational-sample-pts cur-pfs :epsilon epsilon)
 			      'list)))
-	       (fmt 3 "~%    ~A base rational sample points isolated: ~A.~%" 
+	       (fmt 1 "~%    ~A base rational sample points isolated: ~A.~%" 
 		    (length latest-pts) latest-pts))
-	      (t (fmt 3 "~%   Computing lifting from (R^~A) to (R^~A):~%" d (1+ d))
-		 (fmt 3 "    Substituting ~A sample points in (R^~A) into (R^~A) pfs: ~%"
+	      (t (fmt 2 "~%   Computing lifting from (R^~A) to (R^~A):~%" d (1+ d))
+		 (fmt 1 "    Substituting ~A sample points in (R^~A) into (R^~A) pfs: ~%"
 		      (length latest-pts) d (1+ d))
 		 (fmt 4 "     pfs:  ~A,~%" (mapcar #'poly-alg-rep-to-prover-rep
 						 cur-pfs))
@@ -759,16 +761,16 @@
 			    (mapcar #'(lambda (i) (nth i *vars-table*)) lower-vars)))
 	  (let ((num-cells-after (length latest-pts)))
 	    (when (not (= num-cells-before num-cells-after))
-	      (fmt 3 "~%  :: Direct cell exclusion reduced number of new cells from ~A to ~A.~%"
+	      (fmt 1 "~%  :: Direct cell exclusion reduced number of new cells from ~A to ~A.~%"
 		   num-cells-before num-cells-after)
 	      (when (= num-cells-after 0)
 		(setq short-circuit? t)
-		(fmt 3 "  :: Direct cell exclusion has reduced number of cells to 0, so we can short-circuit cad construction!~%~%"))))))
+		(fmt 1 "  :: Direct cell exclusion has reduced number of cells to 0, so we can short-circuit cad construction!~%~%"))))))
 
       (setq lift-vars (cdr lift-vars)))
-    (fmt 3 "~%  Final var-order: ~A." (mapcar #'(lambda (i) (nth i *vars-table*)) lower-vars))
-    (fmt 3 "~%  Success!  Cell decomposition complete (~A sample pts).~%" (length latest-pts))
-    (fmt 4 "  Printing ~A sample points from full-dimensional cells homeomorphic to (R^~A):~%~%    ~A.~%~%"
+    (fmt 2 "~%  Final var-order: ~A." (mapcar #'(lambda (i) (nth i *vars-table*)) lower-vars))
+    (fmt 1 "~%  Success!  Cell decomposition complete (~A sample pts).~%" (length latest-pts))
+    (fmt 2.5 "  Printing ~A sample points from full-dimensional cells homeomorphic to (R^~A):~%~%    ~A.~%~%"
 	 (length latest-pts) (length lower-vars) latest-pts)
     latest-pts))
 
@@ -811,24 +813,31 @@
 ;;;  gather-strict-ineqs is the entire case!
 ;;;
 
-(defun fd-cad-sat? (c &key epsilon partial? factor? proj-order-greedy?)
+(defun fd-cad-sat? (c &key epsilon partial? factor? proj-order-greedy? var-order)
   (let* ((ps* (mapcar #'(lambda (l)
 			  `(- ,(cadr l)
 			      ,(caddr l)))
 		      c))
-	 (vs (if proj-order-greedy? 
-		 (var-ids (vs-proj-order-greedy 
-			   (mapcar #'poly-prover-rep-to-alg-rep ps*)))
-	       (vs-proj-order-brown ps*)))
+	 (vs (if var-order
+		 (mapcar (lambda (x)
+			   (let ((id 0))
+			     (dolist (v *vars-table*)
+			       (if (eq v x) (return id)
+				 (setq id (1+ id))))))
+			 var-order)
+	       (if proj-order-greedy? 
+		   (var-ids (vs-proj-order-greedy 
+			     (mapcar #'poly-prover-rep-to-alg-rep ps*)))
+	       (vs-proj-order-brown ps*))))
 	 (vs* (mapcar #'(lambda (i) (nth i *vars-table*)) vs))
 	 (ps (mapcar #'poly-prover-rep-to-alg-rep ps*))
 	 (spts (fd-cad ps vs
 		       :epsilon epsilon
 		       :formula (when partial? c)
 		       :factor? factor?)))
-    (fmt 3 "~% Extracted polynomials: ~A.~%" ps*)
-    (fmt 3 "~% Sample points computed.~%")
-    (fmt 3 "~% Beginning evaluation of formula.~%")
+    (fmt 2 "~% Extracted polynomials: ~A.~%" ps*)
+    (fmt 2 "~% Sample points computed.~%")
+    (fmt 2 "~% Beginning evaluation of formula.~%")
     (let ((sat? nil))
       (while (and (not sat?) (consp spts))
 	(let ((spt (car spts)))
@@ -845,15 +854,15 @@
 		       (setq model (cons (list (car vs*) (car sat-pt)) model))
 		       (setq vs* (cdr vs*))
 		       (setq sat-pt (cdr sat-pt))))
-	       (fmt 3 "~% Satisfiable!~%  Satisfying assignment: ~A.~%" model))
-	      (t (fmt 3 "~% Unsatisfiable!~%")))
+	       (fmt 2 "~% Satisfiable!~%  Satisfying assignment: ~A.~%" model))
+	      (t (fmt 2 "~% Unsatisfiable!~%")))
       (when sat? model)))))
 
 ;;;
 ;;; APCAD-FD-SAT?
 ;;;
 
-(defun apcad-fd-sat? (c theatre &key epsilon partial? factor? proj-order-greedy? var-order)
+(defun apcad-fd-sat? (c theatre &key epsilon partial? factor? proj-order-greedy? var-order theatre-only?)
   (let* ((ps* (mapcar #'(lambda (l)
 			  `(- ,(cadr l)
 			      ,(caddr l)))
@@ -875,7 +884,8 @@
 	 (spts (apcad-fd ps vs theatre
 		       :epsilon epsilon
 		       :formula (when partial? c)
-		       :factor? factor?)))
+		       :factor? factor?
+		       :theatre-only? theatre-only?)))
     (fmt 3 "~% Extracted polynomials: ~A.~%" ps*)
     (fmt 3 "~% Sample points computed.~%")
     (fmt 3 "~% Beginning evaluation of formula.~%")
@@ -906,16 +916,17 @@
 ;;;    we can't trust SAT answers, only UNSAT.
 ;;;
 
-(defun apcad-fd-on-case (c theatre &key (factor? t) proj-order-greedy? var-order)
+(defun apcad-fd-on-case (c theatre &key (factor? t) proj-order-greedy? var-order (partial? t) theatre-only?)
   (let ((sc (gather-strict-ineqs c)))
     (if sc 
 	(let ((s? (apcad-fd-sat? 
 		   sc 
 		   theatre
-		   :partial? t
+		   :partial? partial?
 		   :factor? factor?
 		   :proj-order-greedy? proj-order-greedy?
-		   :var-order var-order)))
+		   :var-order var-order
+		   :theatre-only? theatre-only?)))
 	  (cond (s? (if (= (length sc) (length c))
 			(let ((judgment 
                                `(:SAT (:MODEL 
@@ -936,14 +947,15 @@
 ;;;    we can't trust SAT answers, only UNSAT.
 ;;;
 
-(defun fdep-cad-on-case (c &key (factor? t) proj-order-greedy?)
+(defun fdep-cad-on-case (c &key (factor? t) proj-order-greedy? var-order partial?)
   (let ((sc (gather-strict-ineqs c)))
     (if sc 
 	(let ((s? (fd-cad-sat? 
 		   sc 
-		   :partial? t
+		   :partial? partial?
 		   :factor? factor?
-		   :proj-order-greedy? proj-order-greedy?)))
+		   :proj-order-greedy? proj-order-greedy?
+		   :var-order var-order)))
 	  (cond (s? (if (= (length sc) (length c))
 			(let ((judgment 
                                `(:SAT (:MODEL 
@@ -1176,15 +1188,15 @@
 
 ;; Some APCAD examples:
 
-(apcad-fd-on-case '((> (* x x) (+ (* x w) y)) 
-		    (> y z) (> z w) (> (* w x) x) 
-		    (> x 0) (< x 1) 
-		    (> y 0) (< y 10))
-       #'interval-theatre)
+;; (apcad-fd-on-case '((> (* x x) (+ (* x w) y)) 
+;; 		    (> y z) (> z w) (> (* w x) x) 
+;; 		    (> x 0) (< x 1) 
+;; 		    (> y 0) (< y 10))
+;;        #'interval-theatre)
 
-; vs
+;; ; vs
 
-(fdep-cad-on-case '((> (* x x) (+ (* x w) y)) 
-		    (> y z) (> z w) (> (* w x) x) 
-		    (> x 0) (< x 1) 
-		    (> y 0) (< y 10)))
+;; (fdep-cad-on-case '((> (* x x) (+ (* x w) y)) 
+;; 		    (> y z) (> z w) (> (* w x) x) 
+;; 		    (> x 0) (< x 1) 
+;; 		    (> y 0) (< y 10)))

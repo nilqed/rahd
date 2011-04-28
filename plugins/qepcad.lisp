@@ -20,7 +20,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;;
 ;;; This file: began on         31-July-2008       (not as a plugin),
-;;;            last updated on  06-April-2011.
+;;;            last updated on  28-April-2011.
 ;;;
 
 (in-package RAHD)
@@ -46,32 +46,67 @@
 (defun full-qepcad (c)
   (run-qepcad c t))
 
-(defun run-qepcad (c generic)
-  (let ((rahd-pid (sb-posix:getpid)))
-    (cond ((and (not generic) (not (open-conj c))) c)
-	  ((not (all-vars-in-conj c)) c)
-	  (t (progn
-	       (write-open-cad-file c generic rahd-pid)
-	       (sb-ext:run-program (prepend-plugins-path "qepcad.bash")
-				   (list (format nil "~A" rahd-pid)))	       
-	       (if (not (probe-file (prepend-plugins-path (format nil "~A.qepcad.out" rahd-pid))))
-		   c
-		 (if #+allegro (= error-code 0)
-		   #+cmu t  ;;
-		   #+sbcl t ;; Need to learn how to get error codes for SBCL and CMUCL.
-		   (with-open-file (cad-output (prepend-plugins-path (format nil "~A.qepcad.out" rahd-pid)) :direction :input)
-				     (let ((cad-decision (read-line cad-output nil)))
-				       (fmt 10 "~% [Plugin:Qepcad] Qepcad decision: ~A, Generic? ~A. ~%" cad-decision generic)
-				       (if (equal cad-decision "\"FALSE\"")
-					   (if (not generic)
-					       '(:UNSAT (:OPEN-PREDICATE :EX-INF-MANY-RELAXATION :QEPCAD-B-REDUCES-TO-FALSE))
-					     '(:UNSAT (:GENERIC-PREDICATE :QEPCAD-B-REDUCES-TO-FALSE)))				   
-					 (if (equal cad-decision "\"TRUE\"")
-					     (if (not generic)
-						 '(:SAT (:OPEN-PREDICATE :EX-INF-MANY-RELAXATION :QEPCAD-B-REDUCES-TO-TRUE))
-					       '(:SAT (:GENERIC-PREDICATE :QEPCAD-B-REDUCES-TO-TRUE)))
-					   c))))
-		   c)))))))
+(defun run-qepcad (c generic?)
+  (cond ((and (not generic?) (not (open-conj c))) c)
+	((not (all-vars-in-conj c)) c)
+	(t (let ((proc
+		  (sb-ext:run-program 
+		   "qepcad"
+		   '("+N800000" nil)
+		   :input :stream
+		   :output :stream
+		   :wait nil
+		   :search t)))
+	     (let ((final-out c))
+	       (ignore-errors 
+		 (unwind-protect
+		     (let ((q-in (sb-ext:process-input proc)))
+		       (when (eq (sb-ext:process-status proc) ':RUNNING)
+			 (mapcar (lambda (x) 
+				   (format q-in "~A~%" x) 
+				   (fmt 5 "To Qepcad: ~A~%" x)
+				   (finish-output q-in) 
+				   (finish-output))
+				 (open-cad-input c generic?)))
+		       (with-open-stream (s (sb-ext:process-output proc))
+					 (let ((q-out 
+						(loop :for line := (read-line s nil nil)
+						      :while line
+						      :collect line)))
+					   (cond ((some #'(lambda (x) (search "TRUE" x)) q-out)
+						  (setq final-out '(:SAT :QEPCAD)))
+						 ((some #'(lambda (x) (search "FALSE" x)) q-out)
+						  (setq final-out '(:UNSAT :QEPCAD)))
+						 (t nil)))))
+		   (when proc (sb-ext:process-close proc))))
+	       final-out)))))
+
+;; (defun run-qepcad (c generic)
+;;   (let ((rahd-pid (sb-posix:getpid)))
+;;     (cond ((and (not generic) (not (open-conj c))) c)
+;; 	  ((not (all-vars-in-conj c)) c)
+;; 	  (t (progn
+;; 	       (write-open-cad-file c generic rahd-pid)
+;; 	       (sb-ext:run-program (prepend-plugins-path "qepcad.bash")
+;; 				   (list (format nil "~A" rahd-pid)))	       
+;; 	       (if (not (probe-file (prepend-plugins-path (format nil "~A.qepcad.out" rahd-pid))))
+;; 		   c
+;; 		 (if #+allegro (= error-code 0)
+;; 		   #+cmu t  ;;
+;; 		   #+sbcl t ;; Need to learn how to get error codes for SBCL and CMUCL.
+;; 		   (with-open-file (cad-output (prepend-plugins-path (format nil "~A.qepcad.out" rahd-pid)) :direction :input)
+;; 				     (let ((cad-decision (read-line cad-output nil)))
+;; 				       (fmt 10 "~% [Plugin:Qepcad] Qepcad decision: ~A, Generic? ~A. ~%" cad-decision generic)
+;; 				       (if (equal cad-decision "\"FALSE\"")
+;; 					   (if (not generic)
+;; 					       '(:UNSAT (:OPEN-PREDICATE :EX-INF-MANY-RELAXATION :QEPCAD-B-REDUCES-TO-FALSE))
+;; 					     '(:UNSAT (:GENERIC-PREDICATE :QEPCAD-B-REDUCES-TO-FALSE)))				   
+;; 					 (if (equal cad-decision "\"TRUE\"")
+;; 					     (if (not generic)
+;; 						 '(:SAT (:OPEN-PREDICATE :EX-INF-MANY-RELAXATION :QEPCAD-B-REDUCES-TO-TRUE))
+;; 					       '(:SAT (:GENERIC-PREDICATE :QEPCAD-B-REDUCES-TO-TRUE)))
+;; 					   c))))
+;; 		   c)))))))
 
 (defun open-conj (c)
   (let ((is-open? t))
@@ -153,21 +188,7 @@
 		(format nil "~D" v) ") ")))
     qp))
 
-(defparameter all-vars nil)
 
-(defun all-vars-in-conj (c)
-  (setq all-vars nil)
-  (dolist (lit c)
-    (let ((use-lit 
-	   (if (equal (car lit) 'NOT)
-	       (cadr lit)
-	     lit)))
-      (setq all-vars 
-	    (union all-vars
-		   (union 
-		    (gather-vars (cadr use-lit))
-		    (gather-vars (caddr use-lit)))))))
-    all-vars)
     
 (defun conj-to-qcb (c result &key canonicalize-polys?)
   (cond ((endp c) result)
@@ -233,35 +254,32 @@
 	      (format nil " ~d " (write-to-string cur-f)))
 	    (term-to-qcb cur-y) ")")))))
 		   
-(defun varp (term)
-  (and (symbolp term)
-       (not (equal term '=))
-       (not (equal term '>))
-       (not (equal term '<))
-       (not (equal term '<=))
-       (not (equal term '>=))))
+
 
 
 ;;;
 ;;; Install the plugin as a cmf.
 ;;;
 
-(install-plugin
- :cmf-str "qepcad"
- :cmf-fcn #'qepcad-plugin
- :cmf-args '(open?)
- :cmf-tests '( ( ((> x y) (< y z)) . 
-		 (:SAT (:GENERIC-PREDICATE :QEPCAD-B-REDUCES-TO-TRUE)) )
-	       ( ((> (* x y) y) (= x z) (> z (* x y))) . 
-		 (:SAT (:GENERIC-PREDICATE :QEPCAD-B-REDUCES-TO-TRUE)) )
-	       ( ((> x 10) (< x 11) (> y (* z z)) (>= (* z x) (+ x y))) .
-		 (:SAT (:GENERIC-PREDICATE :QEPCAD-B-REDUCES-TO-TRUE)) )
-	       ( ((> (* x x) y) (< (* x x) y)) .
-		 (:UNSAT (:GENERIC-PREDICATE :QEPCAD-B-REDUCES-TO-FALSE)) )
-	       ( ((> 0
-		     (- (* 2 (+ (* X Z) (+ (* X Y) (* Y Z))))
-			(+ (* X X) (+ (* Y Y) (* Z Z)))))
-		  (<= X 4) (<= Y 4) (<= Z 4) (<= 2 X) (<= 2 Y) (<= 2 Z)) .
-		 (:UNSAT (:GENERIC-PREDICATE :QEPCAD-B-REDUCES-TO-FALSE)) )		 
-	       ))
+(defun install-qepcad ()
+  (install-plugin
+   :cmf-str "qepcad"
+   :cmf-fcn #'qepcad-plugin
+   :cmf-args '(open?)
+   :cmf-tests '( ( ((> x y) (< y z)) . 
+		   (:SAT :QEPCAD) )
+		 ( ((> (* x y) y) (= x z) (> z (* x y))) . 
+		   (:SAT :QEPCAD) )
+		 ( ((> x 10) (< x 11) (> y (* z z)) (>= (* z x) (+ x y))) .
+		   (:SAT :QEPCAD) )
+		 ( ((> (* x x) y) (< (* x x) y)) .
+		   (:UNSAT :QEPCAD) )
+		 ( ((> 0
+		       (- (* 2 (+ (* X Z) (+ (* X Y) (* Y Z))))
+			  (+ (* X X) (+ (* Y Y) (* Z Z)))))
+		    (<= X 4) (<= Y 4) (<= Z 4) (<= 2 X) (<= 2 Y) (<= 2 Z)) .
+		    (:UNSAT :QEPCAD) )
+		 )))
+
+(install-qepcad)
 

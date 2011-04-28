@@ -23,7 +23,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/.
 ;;; 
 ;;; This file: began on         23-February-2011,
-;;;            last updated on  15-March-2011.
+;;;            last updated on  28-April-2011.
 ;;;
 
 ;;;
@@ -79,18 +79,18 @@
 ;;; Run plugin cmf tests.
 ;;;
 
-(defun plugin-cmf-tests (&key cmf-fcn cmf-tests)
-  (fmt 0 "~% Performing plugin cmf tests (~A). ~%" (length cmf-tests))
+(defun plugin-cmf-tests (&key cmf-str cmf-fcn cmf-tests)
+  (fmt 0 "~%    :: {~A} Performing plugin cmf tests (~A). ~%" cmf-str (length cmf-tests))
   (let ((passed? t) (i 0))
     (dolist (test cmf-tests)
       (setq i (1+ i))
       (let ((p? (equal (apply cmf-fcn (list (car test))) (cdr test))))
 	(cond 
-	 (p? (fmt 0 "  test ~A passed.~%" i))
-	 (t (fmt 0 "  test ~A failed.~%" i)
+	 (p? (fmt 0 "           test ~A passed.~%" i))
+	 (t (fmt 0 "           test ~A failed.~%" i)
 	    (setq passed? nil)))))
     (when passed?
-      (fmt 0 " All tests passed.~%~%"))
+      (fmt 0 "         All tests passed.~%~%"))
     passed?))
 
 ;;;
@@ -112,7 +112,8 @@
 ;;;
 
 (defun install-plugin (&key cmf-str cmf-fcn cmf-args cmf-tests)
-  (let ((passed-tests? (plugin-cmf-tests 
+  (let ((passed-tests? (plugin-cmf-tests
+			:cmf-str cmf-str
 			:cmf-fcn cmf-fcn
 			:cmf-tests cmf-tests)))
     (cond (passed-tests?
@@ -120,7 +121,7 @@
 			:cmf-fcn cmf-fcn
 			:cmf-args cmf-args)
 	   (build-cmf-sym-hash)
-	   (fmt 0 "  .:. cmf ~A has been installed.~%~%" cmf-str))
+	   (fmt 0 "   .:. cmf ~A has been installed.~%~%" cmf-str))
 	  (t (fmt 0 "
  Unfortunately, cmf ~A did not pass its tests.~%
  This probably means that you have not configured 
@@ -161,4 +162,13 @@ Error: There is a problem with the following path
  Please make sure it exists and contains the 
   required files.~%~%" (plugins-path))))
 
-(refresh-plugins)
+;(refresh-plugins)
+
+
+  (load "plugins/qepcad")
+  (load "plugins/redlog")
+
+
+(defun check-plugins ()
+  (install-qepcad)
+  (install-redlog))
