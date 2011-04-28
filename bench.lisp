@@ -1126,9 +1126,9 @@
 					  '(((< (- (* 2 (+ (* X Z) (+ (* X Y) (* Y Z))))
 							 (+ (* X X) (+ (* Y Y) (* Z Z))))
 						      0))
-					    ((< X 125841/50000))
-					    ((< Y 125841/50000))
-					    ((< Z 125841/50000))
+					    ((< (* X Z) 12/5))
+					    ((< Y 12/5))
+					    ((< Z 12/5))
 					    ((< 2 X))
 					    ((< 2 Y))
 					    ((< 2 Z)))))
@@ -1144,6 +1144,210 @@
 						0)))))
 					  #'interval-theatre))
 
+
+; SAT AP-CAD example I walk through in my thesis:
+
+(wrv 2.5 (apcad-fd-on-case (mapcar #'car (expand-formula
+					  '(((< (+ (* X1 X4) (+ (* X3 X2) (* X2 X4))) 0))
+					    ((> X2 0))
+					    ((> X3 0))
+					    ((> X4 0))
+					    ((< (+ (* X3 X3) (+ (- (* X3 X4) (* X4 X4)) 1))
+						0)))))
+			   #'interval-theatre :theatre-only? nil :var-order '(X4 X3 X2 X1)))
+
 (wrv 2.5 (apcad-fd-on-case (mapcar #'car (expand-formula
 
+					  '(((NOT (>= (+ (* X (* X (* X X)))
+							 (+ (* 2 (* (* X X) Z))
+							    (+ (- (* X X) (* 2 (* X (* Y Z))))
+							       (+ (* 2 (* (* Y Y) (* Z Z)))
+								  (+ (* 2 (* Y (* Z Z)))
+								     (+ (- (* 2 (* Z Z)) (* 2 X))
+									(+ (* 2 (* Y Z)) 1)))))))
+						      0))))))
 			   #'interval-theatre))
+
+
+
+(wrv 2.5 (apcad-fd-on-case (mapcar #'car (expand-formula
+					  '(((< (+ (* A D) (+ (* C B) (* B D))) 0))
+					    ((> D 1))
+					    ((> (+ (* A A) (- (* A B) (* B B))) 0))
+					    ((> (+ (* 2 A) B) (+ B D)))
+					    ((> B (* D D)))
+					    ((< (+ (* C C) (- (* C D) (* D D))) D)))))
+					  
+			   #'interval-theatre))
+
+; possibility:
+
+(wrv 3 (fdep-cad-on-case (mapcar #'car (expand-formula
+					  '(((< (+ (* A D) (+ (* C B) (* B D))) 0))
+					    ((> D 1))
+					    ((> (+ (* A A) (- (* A B) (* B B))) 0))
+					    ((> (+ (* 2 A) B) (+ B D)))
+					    ((> B (* D D)))
+					    ((< (+ (* C C) (- (* C D) (* D D))) D))))) :partial? t))
+
+
+; example from partial CAD paper
+
+
+
+(wrv 2.5 (apcad-fd-on-case '((> (* 17/16 T) 6) (< (* 17/16 T) 10) (> (- X (* 17/16 T)) -1)
+			     (< (- X (* 17/16 T)) 1) (> (- Y (* 17/16 T)) -9)
+			     (< (- Y (* 17/16 T)) -7) (< (+ (* (- X T) (- X T)) (* Y Y)) 1))
+					  
+			   #'interval-theatre))
+
+(wrv 2.5 (apcad-fd-on-case '((< (+ (+ (* X X) (* Y Y)) (* Z Z)) 1)
+			     (< (+ (* X X) (* (- (+ Y Z) 2) (- (+ Y Z) 2))) 1))
+			   #'interval-theatre))
+
+
+(wrv 2.5 (apcad-fd-on-case '((<
+                           (+
+                            (+
+                             (+ (* (* (* A A) (* B B)) (* (- A B) (- A B)))
+                                (* (* (* (- A B) (- A B)) (* C (* C C)))
+                                   (* D (* D D))))
+                             (+
+                              (-
+                               (* (* (* (* A D) (* A D)) (- 1 (* A B)))
+                                  (- (+ 1 (* A B)) (* 2 (* B B))))
+                               (* (* (* A D) (* B C))
+                                  (+
+                                   (+ (- 2 (* (* 4 A) B)) (* B (* A (* A A))))
+                                   (* A (* B (* B B))))))
+                              (* (* (* (* B C) (* B C)) (- 1 (* A B)))
+                                 (- (+ 1 (* A B)) (* 2 (* A A))))))
+                            (*
+                             (*
+                              (+
+                               (-
+                                (* (* (* (* C C) B) (- 1 (* A B)))
+                                   (- (- (* 2 A) B) (* A (* B B))))
+                                (* (* C D)
+                                   (-
+                                    (+ (+ (* A A) (* B B))
+                                       (* (* 2 (* A (* A A))) (* B (* B B))))
+                                    (* (* 4 (* A A)) (* B B)))))
+                               (* (* (* (* D D) A) (- 1 (* A B)))
+                                  (- (- (* 2 B) A) (* (* A A) B))))
+                              C)
+                             D))
+                           0)
+			     (> A 0) (< A 0) (> B 0) (< B 0) (> C 0) (< C 0)
+                          (> D 0) (< D 0)) #'interval-theatre))
+
+
+;;;
+;;;;
+;;;;; Walk-through AP-CAD example in thesis:
+;;;;
+;;;
+
+; Lifting variant I
+(wrv 1 (fdep-cad-on-case (mapcar #'car (expand-formula
+					  '(((< (+ (* X1 X4) (+ (* X3 X2) (* X2 X4))) 0))
+					    ((> X2 0))
+					    ((> X3 0))
+					    ((> X4 0))
+					    ((< (+ (* X3 X3) (+ (- (* X3 X4) (* X4 X4)) 1))
+						0)))))
+			   :var-order '(X4 X3 X2 X1) :partial? nil))
+
+
+; Lifting variant II
+(wrv 1 (fdep-cad-on-case (mapcar #'car (expand-formula
+					  '(((< (+ (* X1 X4) (+ (* X3 X2) (* X2 X4))) 0))
+					    ((> X2 0))
+					    ((> X3 0))
+					    ((> X4 0))
+					    ((< (+ (* X3 X3) (+ (- (* X3 X4) (* X4 X4)) 1))
+						0)))))
+			   :var-order '(X4 X3 X2 X1) :partial? t))
+
+
+
+; Lifting variant III
+(wrv 1 (apcad-fd-on-case (mapcar #'car (expand-formula
+					  '(((< (+ (* X1 X4) (+ (* X3 X2) (* X2 X4))) 0))
+					    ((> X2 0))
+					    ((> X3 0))
+					    ((> X4 0))
+					    ((< (+ (* X3 X3) (+ (- (* X3 X4) (* X4 X4)) 1))
+						0)))))
+			   #'interval-theatre :var-order '(X4 X3 X2 X1) :theatre-only? t))
+
+; Lifting variant IV
+(wrv 2.5 (fdep-cad-on-case (mapcar #'car (expand-formula
+					  '(((< (+ (* X1 X4) (+ (* X3 X2) (* X2 X4))) 0))
+					    ((> X2 0))
+					    ((> X3 0))
+					    ((> X4 0))
+					    ((< (+ (* X3 X3) (+ (- (* X3 X4) (* X4 X4)) 1))
+						0)))))
+			   :var-order '(X4 X3 X2 X1) :partial? t))
+
+
+(defun compare-liftings (c)
+  (fmt 0 "~%~% Variant I: ~%")
+  (wrv 1 (fdep-cad-on-case c :partial? nil))
+  (fmt 0 "~%~% Variant II: ~%")
+  (wrv 1 (fdep-cad-on-case c :partial? t))
+  (fmt 0 "~%~% Variant III: ~%")
+  (wrv 1 (apcad-fd-on-case c #'interval-theatre :theatre-only? t))
+  (fmt 0 "~%~% Variant IV: ~%")
+  (wrv 1 (apcad-fd-on-case c #'interval-theatre :theatre-only? nil)))
+
+
+(compare-liftings '((< (+ (* A D) (+ (* C B) (* B D))) 0) (> B 0) (> C 0) (> D (- B C))
+		    (< (+ (* C C) (+ (- (* C D) (* D D)) 1)) 0)))
+ 
+#|
+ Above Gives:
+    4 & 2 & 2 & 2
+   20 & 5 & 10 & 5
+   60 & 3 & 30 & 3
+  120 & 6 & 60 & 6
+|#
+
+(compare-liftings '((< (- (* 2 (+ (* X Z) (+ (* X Y) (* Y Z)))) (+ (* X X) (+ (* Y Y) (* Z Z))))
+    0)
+ (< (* X Z) 12/5) (< Y 12/5) (< Z 12/5) (< 2 X) (< 2 Y) (< 2 Z)))
+
+#|
+ Above Gives:
+   16 & 8 & 0 & 0
+   140 & 0 & - & -
+   664 & - & - & -
+|#
+
+
+(compare-liftings '((> C 1) (> D 0) (< A 1) (< B 1) (< C 2) (< D 1)
+ (< (+ (* (* A A) C) (- A (* B C))) 0) (> (- C B) C) (> B C)))
+
+#|
+ Above Gives:
+   12  & 10  & 0 & 0
+   88  & 19  & - & -
+   264 & 19  & - & -
+  1320 & 95  & - & -
+|#
+
+
+(compare-liftings '( (< (+ (* A D) (+ (* C B) (* B D))) 0)
+		     (> B 0) (> C 0)
+		     (> D 1) (> (+ (* A A) (- (* A B) (* B B)) 1))
+		     (< (+ (* 2 A) B) 1)
+		     (< (+ (* C C) (+ (- (* C D) (* D D)) 1)) 0)))
+
+#|
+ Above Gives:
+   8   &  3  & 4 & 3
+   64  &  8  & 32 & 8
+   512 &  8  & 56 & 8
+  2560 &  40  & 1280 & 40
+|#

@@ -20,7 +20,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;;
 ;;; This file: began on         24-February-2011       (before, was part of 
-;;;            last updated on  15-March-2011.          qepcad.lisp)
+;;;            last updated on  28-April-2011.          qepcad.lisp)
 ;;;
 
 ;;;
@@ -29,9 +29,8 @@
 ;;;  from the existential closure of the case.
 ;;;
 
-(defun redlog-vts-plugin (c &key vars)
-  (let* ((rahd-pid (sb-posix:getpid))
-	 (case-to-redlog
+(defun redlog-vts-plugin (c)
+  (let* ((case-to-redlog
 	  (goal-to-redlog 
 	   (mapcar #'list c)))
 	 (out-str
@@ -43,59 +42,113 @@ off nat;
 off echo;
 ~A
 result := rlqe phi;
-out \"~A/~A.redlog.out\";
-write result;
-shut \"~A/~A.redlog.out\";
-quit;"
-case-to-redlog
-(plugins-path)
-rahd-pid
-(plugins-path)
-rahd-pid)))
+result;
+quit;
+"
+case-to-redlog)))
 
-    ;;
-    ;; Write Redlog input to file
-    ;;
+    (let ((final-out c)
+	  (proc
+	   (sb-ext:run-program 
+	    "redpsl"
+	    nil
+	    :input :stream
+	    :output :stream
+	    :wait nil
+	    :search t)))
+      
+      (ignore-errors
+	(unwind-protect
+	    (progn
+	      (let ((r-in (sb-ext:process-input proc)))
+		(format r-in out-str)
+		(fmt 5 "To redlog: ~A~%" out-str)
+		(finish-output r-in)
+		(finish-output))
+	      
+	      (with-open-stream (s (sb-ext:process-output proc))
+				(let ((q-out 
+				       (loop :for line := (read-line s nil nil)
+					     :while line
+					     :collect line)))
+				  (fmt 5 "From Redlog: ~A~%" q-out)
+				  (finish-output)
+				  (cond ((some #'(lambda (x) (search "true$" x)) q-out)
+					 (setq final-out '(:SAT :REDLOG-RLQE)))
+					((some #'(lambda (x) (search "false$" x)) q-out)
+					 (setq final-out '(:UNSAT :REDLOG-RLQE)))
+					(t nil)))))
+	  (when proc (sb-ext:process-close proc))))
+      final-out)))
 
-    (with-open-file 
-     (redlog-file (prepend-plugins-path (format nil "~A.redlog.in" rahd-pid))
-		  :direction :output :if-exists :supersede)
-     (write-line out-str redlog-file))
 
-    ;;
-    ;; Execute redlog.bash with RAHD pid as argument.
-    ;;
+;; (defun redlog-vts-plugin (c &key vars)
+;;   (let* ((rahd-pid (sb-posix:getpid))
+;; 	 (case-to-redlog
+;; 	  (goal-to-redlog 
+;; 	   (mapcar #'list c)))
+;; 	 (out-str
+;; 	  (format nil 
+;; "% RAHD<->Redlog plugin generated problem
+;; load_package redlog;
+;; rlset ofsf;
+;; off nat;
+;; off echo;
+;; ~A
+;; result := rlqe phi;
+;; out \"~A/~A.redlog.out\";
+;; write result;
+;; shut \"~A/~A.redlog.out\";
+;; quit;"
+;; case-to-redlog
+;; (plugins-path)
+;; rahd-pid
+;; (plugins-path)
+;; rahd-pid)))
 
-    (sb-ext:run-program (prepend-plugins-path "redlog.bash")
-			(list (format nil "~A" rahd-pid)))
+;;     ;;
+;;     ;; Write Redlog input to file
+;;     ;;
 
-    ;;
-    ;; Result of Redlog was written to <rahd-pid>.redlog.out, 
-    ;;  so let's read it back.
-    ;;
-    ;; Right now, we'll just go for an endgame solver and
-    ;;  read back true or false.
-    ;;
+;;     (with-open-file 
+;;      (redlog-file (prepend-plugins-path (format nil "~A.redlog.in" rahd-pid))
+;; 		  :direction :output :if-exists :supersede)
+;;      (write-line out-str redlog-file))
 
-(if (not (probe-file (prepend-plugins-path (format nil "~A.redlog.out.final" rahd-pid))))
-    c
+;;     ;;
+;;     ;; Execute redlog.bash with RAHD pid as argument.
+;;     ;;
+
+;;     (sb-ext:run-program (prepend-plugins-path "redlog.bash")
+;; 			(list (format nil "~A" rahd-pid)))
+
+;;     ;;
+;;     ;; Result of Redlog was written to <rahd-pid>.redlog.out, 
+;;     ;;  so let's read it back.
+;;     ;;
+;;     ;; Right now, we'll just go for an endgame solver and
+;;     ;;  read back true or false.
+;;     ;;
+
+;; (if (not (probe-file (prepend-plugins-path (format nil "~A.redlog.out.final" rahd-pid))))
+;;     c
     
-  (let ((result))
+;;   (let ((result))
 
-    (with-open-file
-     (redlog-file (prepend-plugins-path (format nil "~A.redlog.out.final" rahd-pid))
-		  :direction :input)
-     (let ((rl (read-line redlog-file nil)))
-       (if (equal rl "false$")
-	   (setq result ':UNSAT)
-	 (if (equal rl "true$")
-	     (setq result ':SAT))))
+;;     (with-open-file
+;;      (redlog-file (prepend-plugins-path (format nil "~A.redlog.out.final" rahd-pid))
+;; 		  :direction :input)
+;;      (let ((rl (read-line redlog-file nil)))
+;;        (if (equal rl "false$")
+;; 	   (setq result ':UNSAT)
+;; 	 (if (equal rl "true$")
+;; 	     (setq result ':SAT))))
      
-     (cond ((equal result ':UNSAT)
-	    '(:UNSAT :REDLOG-RLQE))
-	   ((equal result ':SAT)
-	    '(:SAT :REDLOG-RLQE))
-	   (t c)))))))
+;;      (cond ((equal result ':UNSAT)
+;; 	    '(:UNSAT :REDLOG-RLQE))
+;; 	   ((equal result ':SAT)
+;; 	    '(:SAT :REDLOG-RLQE))
+;; 	   (t c)))))))
 
 ;;;
 ;;; Functions for exporting REDLOG input.
@@ -177,22 +230,25 @@ rahd-pid)))
 ;;; Install the plugin as a cmf.
 ;;;
 
-(install-plugin
- :cmf-str "redlog-vts"
- :cmf-fcn #'redlog-vts-plugin
- :cmf-args '(vars)
- :cmf-tests '( ( ((> x y) (< y z)) . 
-		 (:SAT :REDLOG-RLQE) )
-	       ( ((> (* x y) y) (= x z) (> z (* x y))) . 
-		 (:SAT :REDLOG-RLQE) )
-	       ( ((> x 10) (< x 11) (> y (* z z)) (>= (* z x) (+ x y))) .
-		 (:SAT :REDLOG-RLQE) )
-	       ( ((> (* x x) y) (< (* x x) y)) .
-		 (:UNSAT :REDLOG-RLQE) )
-	       ( ((> 0
-		     (- (* 2 (+ (* X Z) (+ (* X Y) (* Y Z))))
-			(+ (* X X) (+ (* Y Y) (* Z Z)))))
-		  (<= X 4) (<= Y 4) (<= Z 4) (<= 2 X) (<= 2 Y) (<= 2 Z)) .
-		  (:UNSAT :REDLOG-RLQE) )
-	       ))
+(defun install-redlog ()
+  (install-plugin
+   :cmf-str "redlog-vts"
+   :cmf-fcn #'redlog-vts-plugin
+   :cmf-args '(vars)
+   :cmf-tests '( ( ((> x y) (< y z)) . 
+		   (:SAT :REDLOG-RLQE) )
+		 ( ((> (* x y) y) (= x z) (> z (* x y))) . 
+		   (:SAT :REDLOG-RLQE) )
+		 ( ((> x 10) (< x 11) (> y (* z z)) (>= (* z x) (+ x y))) .
+		   (:SAT :REDLOG-RLQE) )
+		 ( ((> (* x x) y) (< (* x x) y)) .
+		   (:UNSAT :REDLOG-RLQE) )
+		 ( ((> 0
+		       (- (* 2 (+ (* X Z) (+ (* X Y) (* Y Z))))
+			  (+ (* X X) (+ (* Y Y) (* Z Z)))))
+		    (<= X 4) (<= Y 4) (<= Z 4) (<= 2 X) (<= 2 Y) (<= 2 Z)) .
+		    (:UNSAT :REDLOG-RLQE) )
+		 )))
+
+(install-redlog)
 

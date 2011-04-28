@@ -1215,16 +1215,33 @@ RAHD: Real Algebra in High Dimensions ~A
 ;;;
 
 (defun self-test ()
-  (let ((out (plugins-path-ok?)))
-    (fmt 0 " RAHD self test: ~%
-  Checking plugin paths and files...
-   Required path $HOME/.rahd/
-   Required path $HOME/.rahd/plugins/
-   Required file $HOME/.rahd/plugins/qepcad.lisp
-   Required file $HOME/.rahd/plugins/redlog.lisp
-   Required file $HOME/.rahd/plugins/qepcad.bash
-   Required file $HOME/.rahd/plugins/redlog.bash
-  ... ~A.~%" (if out "paths and files OK"
-	       "paths and files FAILURE"))
-    (when out
-      (refresh-plugins))))
+  (fmt 0 " :: RAHD self test: ~% -- Checking plugins {qepcad, redlog}...")
+    (check-plugins))
+
+;;;
+;;; VARP recogniser.
+;;;
+
+(defun varp (term)
+  (and (symbolp term)
+       (not (equal term '=))
+       (not (equal term '>))
+       (not (equal term '<))
+       (not (equal term '<=))
+       (not (equal term '>=))))
+
+(defparameter all-vars nil)
+
+(defun all-vars-in-conj (c)
+  (setq all-vars nil)
+  (dolist (lit c)
+    (let ((use-lit 
+	   (if (equal (car lit) 'NOT)
+	       (cadr lit)
+	     lit)))
+      (setq all-vars 
+	    (union all-vars
+		   (union 
+		    (gather-vars (cadr use-lit))
+		    (gather-vars (caddr use-lit)))))))
+    all-vars)
