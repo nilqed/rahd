@@ -196,6 +196,16 @@
 (defstrat 'qepcad-only
   "qepcad")
 
+(defstrat 'icp*-then-qepcad-only
+  "interval-cp(max-contractions := 20);
+   satur-lin;
+   interval-cp(max-contractions := 30);
+   qepcad")
+
+(defstrat 'icp-then-qepcad-only
+  "interval-cp(max-contractions := 20);
+   qepcad")
+
 (defstrat 'qepcad-only-open
   "qepcad(open? := 1)")
 

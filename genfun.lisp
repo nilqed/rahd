@@ -1099,7 +1099,8 @@
   rahd-v0.6 -v \"a b c x\" -f \"a*x^2 + b*x + c = 0 /\\ b^2 - 4*a*c < 0\"~%~%" c)
              (invoke-restart restart))))))
    (let ((opts #+ccl ccl:*command-line-argument-list* 
-	       #+sbcl sb-ext:*posix-argv*))
+	       #+sbcl sb-ext:*posix-argv*)
+	 (given-strat-num nil))
      (multiple-value-bind (vars-given? vars-str)
 	 (cl-find-option "-v" opts t)
        (multiple-value-bind (formula-given? formula-str)
@@ -1119,8 +1120,10 @@
                        (let ((strat-sym (intern (string-upcase run-strat)))
                              (strat-num (car (p-rational run-strat))))
                          (if strat-num
-                             (setq strategy-to-use 
-                                   `(run ,(get-strat-by-num strat-num)))
+			     (progn
+			       (setq given-strat-num strat-num)
+			       (setq strategy-to-use 
+				     `(run ,(get-strat-by-num strat-num))))
                            (setq strategy-to-use
                                  `(run ,strat-sym)))))
 	     (let ((print-model? (cl-find-option "-print-model" opts nil))
@@ -1170,33 +1173,32 @@ RAHD: Real Algebra in High Dimensions ~A
                                       a failure report (unrefuted cases)
     -self-test                       check environment (including plugins)
 
-  where n is natural, q is rational presented `a/b' or `a' for integers a,b,
-        $ is either `on', `off' or `only' (def: `on'), 
-        % is either `sturm' or `bernstein' (def: `sturm'),
-        s is a name or ID number of a defined proof strategy (def: `waterfall'),
-        # is an explicitly given proof strategy.~%"
-			
+  where q is rational presented `a/b' or `a' for integers a,b,
+        s is a name or ID number of a defined proof strategy (def: `waterfall').~%"			
 			(car opts)
 			(car opts)))))
-	     (cond (regression? (wrv (if (rationalp verbosity) verbosity 1) 
-				     (rahd-regression-suite)))
-		   (self-test? (self-test))
-		   (interactive? (r-repl))
-		   (ip-evaluator? (p-repl :strategy strategy-to-use))
-                   (strategies? (print-all-strats :id-nums t))
-		   (formula-given?
-		    (when div-nz-denoms?
-		      (setq *div-nz-denoms* t))
-		    (fmt 0 "~%[Decision]~%")
-		    (fmt 0 (check (get-formula :formula-str formula-str
-					       :vars-str vars-str)
-				  :verbosity (when (rationalp verbosity)
-					       (min verbosity 10))
-				  :print-model print-model?
-				  :strategy strategy-to-use
-				  :non-recursive? non-recursive?))
-		    (fmt 0 "~%~%")))
-	     (fmt 0 "~%"))))))))))))
+	       (setq *persistent-qepcad-process* nil)
+	       (cond (regression? (wrv (if (rationalp verbosity) verbosity 1) 
+				       (rahd-regression-suite)))
+		     (self-test? (self-test))
+		     (interactive? (r-repl))
+		     (ip-evaluator? (p-repl :strategy strategy-to-use
+					    :strat-num given-strat-num))
+		     (strategies? (print-all-strats :id-nums t))
+		     (formula-given?
+		      (when div-nz-denoms?
+			(setq *div-nz-denoms* t))
+		      (fmt 0 "~%[Decision]~%")
+		      (fmt 0 (check (get-formula :formula-str formula-str
+						 :vars-str vars-str)
+				    :verbosity (when (rationalp verbosity)
+						 (min verbosity 10))
+				    :print-model print-model?
+				    :strategy strategy-to-use
+				    :non-recursive? non-recursive?))
+		      (fmt 0 "~%~%")))
+	       (cleanup-qepcad-proc)
+	       (fmt 0 "~%"))))))))))))
   
 ;;;
 ;;; Print all goals.

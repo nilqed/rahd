@@ -25,7 +25,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/.
 ;;; 
 ;;; This file: began on         01-November-2010,
-;;;            last updated on  31-March-2011.
+;;;            last updated on  29-April-2011.
 ;;;
 
 ;;;
@@ -74,13 +74,26 @@
 ;;;
 ;;; We eliminate (only) initial white-space at the beginning/end of the string.
 ;;;
+;;; If :terminate-by-dot? is t, then we concatenate all lines read until one
+;;;  of them contains a dot.
+;;; Note that "." is trimmed from the final string.  So, we should never have
+;;;  command which begin with a "."
+;;;
 
-(defun prompt-and-read (p)
+(defun prompt-and-read (p &key terminate-by-dot?)
   (finish-output)
   (format *standard-output* p)
   (finish-output)
   ;(clear-input)
-  (string-trim " " (read-line *standard-input* nil 'EOF)))
+  (if (not terminate-by-dot?) 
+      (string-trim " " (read-line *standard-input* nil 'EOF))
+    (let ((prev "") (out ""))
+      (loop for line = (setq prev (read-line *standard-input* nil 'EOF))
+	    until (search "." line)
+	    do
+	    (setq out (concatenate 'string out " " line)))
+      ; Must get the final line which contained ".", stored in prev
+      (string-trim "." (string-trim " " (concatenate 'string out " " prev))))))
 
 ;;;
 ;;; A simple command string parser for RAHD interaction.
@@ -357,15 +370,14 @@
 ;;;
 
 (defun get-prover-formula (f)
-  (if (contains-or f) '(:DISJ-FORMULA)
-    (mapcar #'list (elim-ands f))))
+  (mapcar #'list (elim-ands f)))
 
 ;;;
 ;;; A simple monolithic problem-oriented interface for MetiTarski and
 ;;;  other automated tools.
 ;;;
 
-(defun p-repl (&key strategy)
+(defun p-repl (&key strategy strat-num)
   (handler-bind 
    ((yacc:yacc-parse-error 
      #'(lambda (c)
@@ -377,11 +389,12 @@
      #'(lambda (c)
          (let ((restart (find-restart 'continue-with-new-cmd)))
            (when restart
-             (fmt 0 "Lexer error: ~A.~%Have you declared all~
+             (fmt 0 "Lexer error: ~A.~%Have you declared all ~
   variables?~%~%" c)
              (invoke-restart restart))))))
    (let ((exit?) (vl-str))
      (while (not exit?)
+       (fmt 0 "{RAHD strategy ID = ~A}~%" strat-num)
        (let ((vars-lst
               (let ((vl-attempt (prompt-and-read "~%v>~%")))
 		(setq vl-str vl-attempt)
@@ -390,27 +403,33 @@
                     (setq exit? t)
                   (p-vars-lst vl-attempt)))))
          (when (not exit?)
-           (let ((f-attempt (prompt-and-read "~%f>~%")))
+           (let ((f-attempt (prompt-and-read "~%f>~%" :terminate-by-dot? t)))
              (with-simple-restart 
               (continue-with-new-cmd
                "Continue and enter a new RAHD formula.")
-              (let ((prover-formula 
-                     (reverse (let ((raw-f 
-                                     (p-formula-str f-attempt 
-                                                    :vars-lst
-                                                    vars-lst)))
-                                (get-prover-formula raw-f)))))
-		(cond ((equal prover-formula '(:DISJ-FORMULA))
-		       (format *standard-output*
-			       "[Decision]~% unknown~%~%"))
-		      (t ;(log-formula :vars-lst vl-str :formula-str f-attempt)
-		       (fmt 2 "Formula: ~A.~%~%" prover-formula)
-		       (format *standard-output* 
-			       "~A~%" (check prover-formula
-					     :strategy (or strategy '(RUN WATERFALL))
-					     :verbosity 1
-					     )))))))))))))
-
+              (let ((raw-parsed-f (p-formula-str f-attempt :vars-lst vars-lst)))
+		(cond ((not (contains-or raw-parsed-f))
+		       (let ((prover-formula 
+			      (reverse (get-prover-formula raw-parsed-f))))
+			 (fmt 2 "Formula: ~A.~%~%" prover-formula)
+			 (format *standard-output* 
+				 "~A~%" (check prover-formula
+					       :strategy (or strategy '(RUN WATERFALL))
+					       :verbosity 1))))
+		      (t ; Our formula contains a disjunction.
+		       (let ((qepcad-output
+			      (run-qepcad raw-parsed-f t :disj? t)))
+			 (fmt 0 "~%[Decision]~% ~A~%"
+			      (cond ((not (consp qepcad-output))
+				     "unknown")
+				    ((eq (car qepcad-output) ':SAT)
+				     "sat")
+				    ((eq (car qepcad-output) ':UNSAT)
+				     "unsat")
+				    (t "unknown")))))))))))))))
+			   
+		       
+		       
 ;;;
 ;;; Log formula: Used to gather benchmark problems.
 ;;;

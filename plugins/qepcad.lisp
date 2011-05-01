@@ -20,7 +20,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;;
 ;;; This file: began on         31-July-2008       (not as a plugin),
-;;;            last updated on  28-April-2011.
+;;;            last updated on  29-April-2011.
 ;;;
 
 (in-package RAHD)
@@ -46,39 +46,56 @@
 (defun full-qepcad (c)
   (run-qepcad c t))
 
-(defun run-qepcad (c generic?)
-  (cond ((and (not generic?) (not (open-conj c))) c)
-	((not (all-vars-in-conj c)) c)
-	(t (let ((proc
-		  (sb-ext:run-program 
-		   "qepcad"
-		   '("+N800000" nil)
-		   :input :stream
-		   :output :stream
-		   :wait nil
-		   :search t)))
+(defparameter *persistent-qepcad-process* nil)
+
+(defun cleanup-qepcad-proc ()
+  (when (sb-ext:process-p *persistent-qepcad-process*)
+    (ignore-errors
+      (sb-ext:process-close *persistent-qepcad-process*)
+      (sb-ext:process-kill *persistent-qepcad-process* 9)
+      (setq *persistent-qepcad-process* nil))))
+
+(defun run-qepcad (c generic? &key disj? close-proc?)
+  (when (or (not *persistent-qepcad-process*)
+	    (not (eq (sb-ext:process-status *persistent-qepcad-process*)
+		     ':RUNNING)))
+    (setq *persistent-qepcad-process*
+	  (sb-ext:run-program 
+	   "qepcad"
+	   '("+N800000" nil)
+	   :input :stream
+	   :output :stream
+	   :wait nil
+	   :search t)))
+  (cond ((and (not disj?) (not generic?) (not (open-conj c))) c)
+	((and (not disj?) (not (all-vars-in-conj c))) c)
+	(t (let ((proc *persistent-qepcad-process*))
 	     (let ((final-out c))
-	       (ignore-errors 
+	       (ignore-errors
 		 (unwind-protect
 		     (let ((q-in (sb-ext:process-input proc)))
 		       (when (eq (sb-ext:process-status proc) ':RUNNING)
 			 (mapcar (lambda (x) 
-				   (format q-in "~A~%" x) 
 				   (fmt 5 "To Qepcad: ~A~%" x)
-				   (finish-output q-in) 
-				   (finish-output))
-				 (open-cad-input c generic?)))
-		       (with-open-stream (s (sb-ext:process-output proc))
-					 (let ((q-out 
-						(loop :for line := (read-line s nil nil)
-						      :while line
-						      :collect line)))
-					   (cond ((some #'(lambda (x) (search "TRUE" x)) q-out)
-						  (setq final-out '(:SAT :QEPCAD)))
-						 ((some #'(lambda (x) (search "FALSE" x)) q-out)
-						  (setq final-out '(:UNSAT :QEPCAD)))
-						 (t nil)))))
-		   (when proc (sb-ext:process-close proc))))
+				   (finish-output)
+				   (format q-in "~A~%" x) 
+				   (finish-output q-in))
+				 (open-cad-input c generic? :disj? disj?)))
+		       (let ((s (sb-ext:process-output proc)))
+			 (let ((q-out)) 
+			   (loop :for line := (read-line s nil nil)
+				 :until (progn
+					  (setq q-out line)
+					  ;(fmt 0 "~% Line is ~A.~%" q-out)
+					  (or (search "TRUE" line)
+					      (search "FALSE" line))))
+			   (cond ((search "TRUE" q-out)
+				  (setq final-out '(:SAT :QEPCAD)))
+				 ((search "FALSE" q-out)
+				  (setq final-out '(:UNSAT :QEPCAD)))
+				 (t nil)))))
+		   (when (and proc close-proc?) 
+		     (cleanup-qepcad-proc))))
 	       final-out)))))
 
 ;; (defun run-qepcad (c generic)
@@ -125,14 +142,19 @@
    (dolist (l (open-cad-input c generic))
      (write-line l cad-file))))
 
-(defun open-cad-input (c generic)
+(defun open-cad-input (c generic &key disj?)
   (let ((vars-proj-order
-	 (cad-vars-lst c)))
+	 (cad-vars-lst (if disj? (extract-lits c) c))))
   `("[ RAHD Goal ]"
     ,(format nil "(~{~D~#[~:;, ~]~})" vars-proj-order)
     "0"
-    ,(open-cad-conj c generic :vars-lst vars-proj-order)
-    "finish.")))
+    ,(open-cad-conj c generic :vars-lst vars-proj-order :disj? disj?)
+    "go
+go
+go
+solution T
+continue
+")))
 
 (defun cad-vars-lst (c)
   (let ((vars-lst 
@@ -145,7 +167,11 @@
 			   c))))))
 	vars-lst))
 
-(defun open-cad-conj (c generic &key vars-lst)
+;;;
+;;; We now allow disjunctive formulas to be passed to QEPCAD here.
+;;;
+
+(defun open-cad-conj (c generic &key vars-lst disj?)
   (let
   	 ;;
 	 ;; This notices if a variable was eliminated
@@ -153,13 +179,41 @@
 	 ;; the proj-order procedure.
 	 ;;
 
-      ((var-elimd? (> (length (all-vars-in-conj c))
+      ((var-elimd? (> (length (all-vars-in-conj 
+			       (if disj? (extract-lits c) c)))
 		      (length vars-lst))))
 
   (concatenate 
    'string
    (ex-inf-quant-prefix c generic :vars-lst vars-lst)
-   "[" (conj-to-qcb c "" :canonicalize-polys? var-elimd?) "].")))
+   "[" (if disj?
+	   (fml-to-qcb c :canonicalize-polys? var-elimd?)
+	 (conj-to-qcb c "" :canonicalize-polys? var-elimd?)) "].")))
+
+
+;;;
+;;; If we're given a general formula which contains a disjunction,
+;;;  we want to just pass it through to QEPCAD.
+;;;
+
+(defun fml-to-qcb (fml &key canonicalize-polys?)
+  (cond ((not (consp fml)) (format nil "~D" fml))
+	((eq (car fml) 'AND)
+	 (format nil "[~A /\\ ~A]"
+		 (fml-to-qcb (cadr fml) :canonicalize-polys? canonicalize-polys?)
+		 (fml-to-qcb (caddr fml) :canonicalize-polys? canonicalize-polys?)))
+	((eq (car fml) 'OR)
+	 (format nil "[~A \\/ ~A]"
+		 (fml-to-qcb (cadr fml) :canonicalize-polys? canonicalize-polys?)
+		 (fml-to-qcb (caddr fml) :canonicalize-polys? canonicalize-polys?)))
+	((eq (car fml) 'NOT)
+	 (format nil "[~~ ~A]" 
+		 (fml-to-qcb (cadr fml) :canonicalize-polys? canonicalize-polys?)))
+	((member (car fml) '(> >= = <= <))
+	 (format nil "~A"
+		 (lit-to-qcb fml :canonicalize-polys? canonicalize-polys?)))
+	(t (error "Bad formula for FML-TO-QCB"))))
+
 
 (defparameter qp "")
 
@@ -254,8 +308,19 @@
 	      (format nil " ~d " (write-to-string cur-f)))
 	    (term-to-qcb cur-y) ")")))))
 		   
+;;;
+;;; Extract literals from a general formula 
+;;;  (the kind the top-level parser returns).
+;;;
 
-
+(defun extract-lits (f)
+  (cond ((not (consp f)) nil)
+	((member (car f) '(AND OR))
+	 (union (extract-lits (cadr f))
+		(extract-lits (caddr f))))
+	((eq (car f) 'NOT)
+	 (extract-lits (cadr f)))
+	(t (list f))))
 
 ;;;
 ;;; Install the plugin as a cmf.
