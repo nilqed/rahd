@@ -21,7 +21,7 @@
 ;;;  very much for their support.
 ;;; 
 ;;; This file: began on         22-Sept-2008,
-;;;            last updated on  31-March-2011.
+;;;            last updated on  03-May-2011.
 ;;;
 
 ;;;
@@ -46,7 +46,7 @@
 ;;; Current version of RAHD.
 ;;;
 
-(defparameter *rahd-version* "v0.6a2 (April, 2011)")
+(defparameter *rahd-version* "v0.6a3 (May, 2011)")
 
 ;;;
 ;;; Declare our global compiler optimization setting.
