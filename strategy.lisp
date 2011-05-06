@@ -23,7 +23,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/.
 ;;; 
 ;;; This file: began on         13-December-2010,
-;;;            last updated on  05-April-2011.
+;;;            last updated on  06-May-2011.
 ;;;
 
 ;;;
@@ -413,6 +413,26 @@ Strategy Definition Record
     t))
 
 ;;;
+;;; CMF-COUNT-HASH: A hash-table for logging which CMFs contributed to
+;;;  the current proof effort.
+;;;
+
+(defparameter *cmf-count-hash* (make-hash-table :test 'eq))
+
+;;;
+;;; COUNT-CMF: Given a CMF symbol, count it in the cmf-count-hash.
+;;;
+
+(defun count-cmf (cmf-sym)
+  (multiple-value-bind  (count exists?)
+      (gethash cmf-sym *cmf-count-hash*)
+    (if exists?
+	(setf (gethash cmf-sym *cmf-count-hash*)
+	      (1+ count))
+      (setf (gethash cmf-sym *cmf-count-hash*)
+	    1))))
+
+;;;
 ;;; RUN-STRATEGY: A proof strategy interpreter (mapped over open cases).
 ;;;
 ;;; This function accepts a (parsed) S-expression presentation of a proof
@@ -466,6 +486,10 @@ Strategy Definition Record
 			     (cond 
 			      ((not (equal c result))
 			       (setq progress? t)
+			       (count-cmf 
+				(if (cddr strat)
+				    (intern (format nil "~A ~A" cmf-name (cddr strat)))
+				  cmf-name))
 			       (if (eq result nil)
 				   (update-case i :case c 
 						:status ':SAT 

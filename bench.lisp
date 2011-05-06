@@ -82,18 +82,32 @@
 ;
 ;;;
 
+(defun print-cmf-counts (p-id p-cch)
+  (fmt 0 "~% ~A:~%" p-id)
+  (maphash (lambda (x y)
+	     (fmt 0 "~%    ~A --> ~A"
+		  x y))
+	  p-cch))
+
+(defun print-prob-cmf-counts (cchh)
+  (maphash
+   (lambda (p-id p-cch)
+     (print-cmf-counts p-id p-cch))
+   cchh))
+
 ;;;
 ;;
 ;; New benchmarking of different strategies on calculemus problems.
 ;;
 ;;;
 
-
 (defun calculemus-benchmark (&key strategy-ids (verbosity 0) (problem-ids))
-  (let ((probs-lst (mapcar #'car *calculemus-suite*)) (i 0))
+  (let ((probs-lst (mapcar #'car *calculemus-suite*)) (i 0)
+	(cmf-count-hash-hash (make-hash-table :test 'eq)))
     (dolist (strategy-id strategy-ids)
       (setq i 0)
       (dolist (cur-prob probs-lst)
+	(clrhash *cmf-count-hash*)
 	(when (or (not problem-ids)
 		  (member i problem-ids))
 	  (fmt 0 "~A, ~A, " i strategy-id)
@@ -109,9 +123,12 @@
 	      (let ((end-time (get-internal-real-time)))
 		(fmt 0 "~A,~A~%"
 		     (float (/ (- end-time start-time) internal-time-units-per-second))
-		     result)))))
+		     result))))
+	  (fmt 0 " Prob: ~A" i)
+	  (maphash (lambda (x y) (fmt 0 "~%   ~A --> ~A" x y)) *cmf-count-hash*)
+	  (fmt 0 "~%~%")
+	  (setf (gethash i cmf-count-hash-hash) *cmf-count-hash*))
 	(setq i (1+ i))))))
-
 
 (defparameter *calculemus-suite* 
 '(
