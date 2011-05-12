@@ -124,11 +124,75 @@
 		(fmt 0 "~A,~A~%"
 		     (float (/ (- end-time start-time) internal-time-units-per-second))
 		     result))))
-	  (fmt 0 " Prob: ~A" i)
+	  (fmt 0 " Prob: ~A (total leaves in proof tree: ~A)" i (num-leaves 0))
 	  (maphash (lambda (x y) (fmt 0 "~%   ~A --> ~A" x y)) *cmf-count-hash*)
 	  (fmt 0 "~%~%")
 	  (setf (gethash i cmf-count-hash-hash) *cmf-count-hash*))
 	(setq i (1+ i))))))
+
+(defun calc-bench-tables (&key (strategy-ids '(3 2 1)) (verbosity 0))
+  (let ((probs-lst (mapcar #'car *calculemus-suite*)) (i 0)
+	(h-calc-0) (h-calc-1) (h-calc-2)
+	(p-calc-0) (p-calc-1) (p-calc-2)
+	(t-calc-0) (t-calc-1) (t-calc-2) (cur-t))
+    (dolist (cur-prob probs-lst)
+      (dolist (strategy-id strategy-ids)
+	(clrhash *cmf-count-hash*)
+	(fmt 0 "\% Strat ~A, Prob ~A, " strategy-id i)
+	(let ((start-time (get-internal-real-time)))
+	  (let ((result
+		 (progn
+		   (rahd-reset-state)
+		   (check cur-prob
+			  :print-model nil
+			  :verbosity verbosity
+			  :strategy `(run ,(get-strat-by-num strategy-id))
+			  :non-recursive? nil))))
+	    (let ((end-time (get-internal-real-time)))
+	      (fmt 0 "~A,~A~%"
+		   (setq cur-t (float (/ (- end-time start-time) internal-time-units-per-second)))
+		   result))))
+	(case strategy-id
+	  (3 (setq h-calc-0 (copy-hash-table *cmf-count-hash*))
+	     (setq p-calc-0 (num-leaves 0))
+	     (setq t-calc-0 cur-t)) ; ID 3 is calc-0, etc.
+	  (2 (setq h-calc-1 (copy-hash-table *cmf-count-hash*))
+	     (setq p-calc-1 (num-leaves 0))
+	     (setq t-calc-1 cur-t))
+	  (1 (setq h-calc-2 (copy-hash-table *cmf-count-hash*))
+	     (setq p-calc-2 (num-leaves 0))
+	     (setq t-calc-2 cur-t))))
+      (fmt 0 "~%~% \% Auto-generated profiling table for problem ~A.~%" i)
+      (fmt 0 "\\begin\{tabular\}\{| l | l l l |\}")
+      (fmt 0 "\\hline~%")
+      (fmt 0 "P~A & calc-0 & calc-1 & calc-2 \\\\~%\\hline~%" i)
+      (fmt 0 "\\#(Proof-tree) & ~A & ~A & ~A \\\\~%"
+	   p-calc-0 p-calc-1 p-calc-2)
+      (make-calc-table h-calc-0 h-calc-1 h-calc-2)
+      (fmt 0 "\\hline~% & ~3$ & ~3$ & ~3$ \\\\~% \\hline~%\\end\{tabular\}~%~%"
+	   t-calc-0 t-calc-1 t-calc-2)
+      (setq i (1+ i)))))
+
+
+(defun make-calc-table (c0-h c1-h c2-h)
+  (let ((cmfs) (hs (list c0-h c1-h c2-h)))
+    (dolist (h hs)
+      (loop for key being the hash-keys of h
+	    do (setq cmfs (union (list key) cmfs))))
+    (dolist (cmf (reverse cmfs))
+      (fmt 0 "\\tt ~A & ~A & ~A & ~A \\\\~%"
+	   cmf
+	   (cmf-use-str c0-h cmf)
+	   (cmf-use-str c1-h cmf)
+	   (cmf-use-str c2-h cmf)))))
+
+(defun cmf-use-str (h cmf)
+  (multiple-value-bind (d ex?)
+      (gethash cmf h)
+    (if ex?
+	(format nil "~A (~3$)" (car d) (cdr d))
+      "-")))
+  
 
 (defparameter *calculemus-suite* 
 '(

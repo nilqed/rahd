@@ -252,9 +252,11 @@
 	  (let ((cur-gs-unsat-just (aref *gs* i 2)))
 	    (setq lc
 		  (+ lc
-		     (if (equal (cadr cur-gs-unsat-just)
-				':DISCHARGED-BY-SUBGOAL)
-			 (let ((out (num-leaves (caddr cur-gs-unsat-just))))
+		     (if (and (consp cur-gs-unsat-just)
+			      (consp (car cur-gs-unsat-just))
+			      (eq (cadar cur-gs-unsat-just)
+				  ':DISCHARGED-BY-SUBGOAL))
+			 (let ((out (num-leaves (caddar cur-gs-unsat-just))))
 			   (with-rahd-verbosity 0 (swap-to-goal goal-key))
 			   out)
 		       1)))))

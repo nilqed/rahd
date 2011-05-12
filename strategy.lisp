@@ -371,7 +371,10 @@ Strategy Definition Record
   (let ((out t))
     (loop for i from 0 to (1- *gs-size*) do
 	  (let ((c-status (car (aref *gs* i 2))))
-	    (setq out (and (eq c-status ':UNSAT) out))))
+	    (setq out (and (or (eq c-status ':UNSAT)
+			       (and (consp c-status)
+				    (eq (car c-status) ':UNSAT)))
+			   out))))
     out))
 
 ;;;
@@ -399,7 +402,7 @@ Strategy Definition Record
     (when subgoal-strat
       (run-strategy subgoal-strat :subgoal-strat subgoal-strat))
     (let ((subgoal-decision
-	   (cond ((all-cases-refuted) ':UNSAT)
+	   (cond ((all-cases-refuted) `(:UNSAT :DISCHARGED-BY-SUBGOAL ,new-key))
 		 (*sat-case-found?* ':SAT)
 		 (t `(:UNKNOWN-WITH-SPAWNED-SUBGOAL ,new-key)))))
       (swap-to-goal parent-key)
@@ -407,6 +410,8 @@ Strategy Definition Record
 		   :status subgoal-decision
 		   :step `(subgoal-spawned-from ,step then ,subgoal-strat))
       (when (or (eq subgoal-decision ':UNSAT)
+		(and (consp subgoal-decision)
+		     (eq (car subgoal-decision) ':UNSAT))
                 (eq subgoal-decision ':SAT))
 	(setq *gs-unknown-size* (1- *gs-unknown-size*))))
     (setq *vars-table* vars-table)
@@ -421,16 +426,21 @@ Strategy Definition Record
 
 ;;;
 ;;; COUNT-CMF: Given a CMF symbol, count it in the cmf-count-hash.
+;;;  Note: We also count time now.  So, the values in the cmf-count-hash
+;;;  are pairs (count, time).
 ;;;
 
-(defun count-cmf (cmf-sym)
-  (multiple-value-bind  (count exists?)
+(defun count-cmf (cmf-sym i added-time)
+  (multiple-value-bind  (ct-pair exists?)
       (gethash cmf-sym *cmf-count-hash*)
     (if exists?
-	(setf (gethash cmf-sym *cmf-count-hash*)
-	      (1+ count))
+	(let ((count (car ct-pair))
+	      (time (cdr ct-pair)))
+	  (setf (gethash cmf-sym *cmf-count-hash*)
+		(cons (+ i count)
+		      (float (+ time added-time)))))
       (setf (gethash cmf-sym *cmf-count-hash*)
-	    1))))
+	    (cons i (float added-time))))))
 
 ;;;
 ;;; RUN-STRATEGY: A proof strategy interpreter (mapped over open cases).
@@ -455,7 +465,7 @@ Strategy Definition Record
            (case-ub* (if case case (if to to (1- *gs-size*))))
            (case-lb (max case-lb* 0))
            (case-ub (min case-ub* (1- *gs-size*)))
-           (progress?))
+           (progress?) (time-before) (time-used))
       (loop for i from case-lb to case-ub while (not *sat-case-found?*) do
             (setq *current-tactic-case* i)
 	    (setq progress? nil)
@@ -482,14 +492,19 @@ Strategy Definition Record
 		    (cond (pass-guard?
 			   (fmt 2.5 "Executing cmf ~A on case ~A..." cmf-name i)
 			   (finish-output)
+			   (setq time-before (get-internal-real-time))
 			   (let ((result (apply-cmf-to-case cmf-name c :params (cddr strat))))
+			     (setq time-used (/ (- (get-internal-real-time) time-before)
+						internal-time-units-per-second))
 			     (cond 
 			      ((not (equal c result))
 			       (setq progress? t)
 			       (count-cmf 
 				(if (cddr strat)
 				    (intern (format nil "~A ~A" cmf-name (cddr strat)))
-				  cmf-name))
+				  cmf-name)
+				1
+				time-used)
 			       (if (eq result nil)
 				   (update-case i :case c 
 						:status ':SAT 
@@ -523,7 +538,14 @@ Strategy Definition Record
 				    (update-case i
 						 :status ':UNKNOWN
 						 :case result
-						 :step cmf-name))))))
+						 :step cmf-name)))))
+			      (t ; CMF didn't make progress, but we still log it to profiling.
+			       			       (count-cmf 
+							(if (cddr strat)
+							    (intern (format nil "~A ~A" cmf-name (cddr strat)))
+							  cmf-name)
+							0
+							time-used)))
 			     (fmt 2.5 "...Done(progress?=~A).~%" progress?)))
 			  (t (fmt 2.5 "Case ~A did not pass guard ~A.~%" i
 				  guard)))))))))
