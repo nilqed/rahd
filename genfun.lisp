@@ -671,7 +671,7 @@
 	   (if *goal-stack-keys* (rahd-reset-state :keep-hashes t))
 	   (push goal-key *goal-stack-keys*)
 	   (setq *goal-stack-keys* (remove-duplicates *goal-stack-keys*))
-	   (setf (gethash goal-key *goal-stack-data*) (make-array 7))
+	   (setf (gethash goal-key *goal-stack-data*) (make-array 8))
 	   (set-goal-stack-data goal-key :goal-in-cnf f)
 	   (setq *g* f)
 	   (setq *current-goal-key* goal-key)
@@ -1174,7 +1174,7 @@ RAHD: Real Algebra in High Dimensions ~A
     -self-test                       check environment (including plugins)
 
   where q is rational presented `a/b' or `a' for integers a,b,
-        s is a name or ID number of a defined proof strategy (def: `waterfall').~%"			
+        s is a name or ID number of a defined proof strategy.~%"			
 			(car opts)
 			(car opts)))))
 	       (setq *persistent-qepcad-process* nil)

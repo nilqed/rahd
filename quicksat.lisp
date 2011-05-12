@@ -202,18 +202,35 @@
 	    (let ((out-str "")
 		  (count 0)
 		  (total (length m*)))
-	      (dolist (b m*)
-		(let ((var (car b))
-		      (val (cadr b)))
-		  (setq out-str (format nil "~A~A" out-str
-					(format nil (if (= count 0) 
-							"~A=~A~A"
-						      "         ~A=~A~A") 
-						var (if (rationalp val) 
-							val
-						      (simp-val val m* b))
-						(if (= count (1- total))
-						    (format nil "].~%")
-						  (format nil ",~%"))))))
-		(setq count (1+ count)))
-	      out-str))))))
+	      (let ((sorted-m*
+		     (sort m* (lambda (x y)
+				(let ((x-v (cadr x))
+				      (y-v (cadr y)))
+				  (or (and (rationalp x-v)
+					   (not (rationalp y-v)))
+				      (and (not (rationalp x-v))
+					   (not (rationalp y-v))
+					   (< (length (all-vars-in-conj
+						       `((= ,x-v 0))))
+					      (length (all-vars-in-conj 
+						       `((= ,y-v 0))))))))))))
+		(let ((enhanced-sorted-m* sorted-m*))
+		  (dolist (b sorted-m*)
+		    (let ((var (car b))
+			  (val (cadr b)))
+		      
+		      (setq out-str (format nil "~A~A" out-str
+					    (format nil (if (= count 0) 
+							    "~A=~A~A"
+							  "         ~A=~A~A") 
+						    var (if (rationalp val) 
+							    val
+							  (let ((simpd-val (simp-val val enhanced-sorted-m* b)))
+							    (setq enhanced-sorted-m*
+								  (cons (list var simpd-val) enhanced-sorted-m*))
+							    simpd-val))
+						    (if (= count (1- total))
+							(format nil "].~%")
+						      (format nil ",~%"))))))
+		    (setq count (1+ count))))
+	      out-str)))))))

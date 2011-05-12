@@ -62,7 +62,7 @@
     (setq *persistent-qepcad-process*
 	  (sb-ext:run-program 
 	   "qepcad"
-	   '("+N800000" nil)
+	   '("+N8000000" nil)
 	   :input :stream
 	   :output :stream
 	   :wait nil
@@ -88,12 +88,16 @@
 					  (setq q-out line)
 					  ;(fmt 0 "~% Line is ~A.~%" q-out)
 					  (or (search "TRUE" line)
-					      (search "FALSE" line))))
+					      (search "FALSE" line)
+					      (search "FAIL" line)
+					      ;(not (eq (sb-ext:process-status *persistent-qepcad-process*)
+					      ;':RUNNING))
+					      )))
 			   (cond ((search "TRUE" q-out)
 				  (setq final-out '(:SAT :QEPCAD)))
 				 ((search "FALSE" q-out)
 				  (setq final-out '(:UNSAT :QEPCAD)))
-				 (t nil)))))
+				 (t c)))))
 		   (when (and proc close-proc?) 
 		     (cleanup-qepcad-proc))))
 	       final-out)))))
@@ -156,15 +160,19 @@ solution T
 continue
 ")))
 
+(defparameter *do-not-proj-order-vars?* nil)
+
 (defun cad-vars-lst (c)
-  (let ((vars-lst 
-	 (reverse 
-	  (mapcar (lambda (x)
-		    (nth x *vars-table*))
-		  (vs-proj-order-brown
-		   (mapcar (lambda (l)
-			     `(- ,(cadr l) ,(caddr l)))
-			   c))))))
+  (let ((vars-lst
+	 (if *do-not-proj-order-vars?*
+	     (all-vars-in-conj c)
+	   (reverse 
+	    (mapcar (lambda (x)
+		      (nth x *vars-table*))
+		    (vs-proj-order-brown
+		     (mapcar (lambda (l)
+			       `(- ,(cadr l) ,(caddr l)))
+			     c)))))))
 	vars-lst))
 
 ;;;

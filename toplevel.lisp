@@ -179,8 +179,8 @@
   (Try 'help vars')~%~%" c)
              (invoke-restart restart))))))
    (let ((exit?) (vars-lst) (asserted-atoms-lst)
-	 (default-strategy-str "[run waterfall]")
-	 (default-strategy-parsed '(RUN WATERFALL))
+	 (default-strategy-str "[run calculemus-0]") ; Change back to waterfall.
+	 (default-strategy-parsed '(RUN CALCULEMUS-0)) ; Here, too.
          (prover-opts '("print-infix")) (verbosity 0)
          (watched-case))
      (while (not exit?)
@@ -205,7 +205,7 @@
                                          (atom-lst (p-formula-str arg :vars-lst vars-lst))))
                                     (setq asserted-atoms-lst
                                           (append asserted-atoms-lst prover-formula))
-                                    (fmt 0 "Formula asserted: ~A.~%~%"
+                                    (fmt 0 "Formula asserted.~%~%"
                                          prover-formula))))
             ((equal cmd "options")
              (fmt 0 "Prover options: ~A.~%~%" prover-opts))
