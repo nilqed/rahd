@@ -10,7 +10,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;; 
 ;;; This file: began on         21-Nov-2009,
-;;;            last updated on  31-May-2010.
+;;;            last updated on  18-Oct-2011.
 ;;;
 
 ;;;
@@ -217,6 +217,8 @@
 				(new-spolys s-reduct-via-G G (cdr s-pair-lst)))
 			  (setq G (cons s-reduct-via-G G))))
 		 (when (equal (mod count icp-period) 0)
+                   (fmt 2 "Sending system to ICP: ( Polys: ~A~%, >-vars: ~A~%, >=-vars: ~A) ~%" 
+                        (mapcar #'poly-print G) >-vars >=-vars)
 		   (setq unsat-witness-found? 
 			 (equal (car (check-sat-eq-sys 
 				      (mapcar #'poly-alg-rep-to-prover-rep G) 

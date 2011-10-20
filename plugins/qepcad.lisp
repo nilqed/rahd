@@ -82,8 +82,9 @@
 				   (finish-output q-in))
 				 (open-cad-input c generic? :disj? disj?)))
 		       (let ((s (sb-ext:process-output proc)))
-			 (let ((q-out)) 
+			 (let ((q-out))
 			   (loop :for line := (read-line s nil nil)
+                                 :while line
 				 :until (progn
 					  (setq q-out line)
 					  ;(fmt 0 "~% Line is ~A.~%" q-out)
