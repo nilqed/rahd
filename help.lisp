@@ -90,6 +90,11 @@ This promotion from a collection of assertions to a goalset
  * See default-strategy for setting the default strategy.
  * See show for viewing the current context.
  * See reset for clearing the current context.~%~%")
+    ("clvars" .
+     "Usage: clvars~%
+ Clear variable list for current context.
+ 
+ * See vars for how to set or view the context's variables.~%~%")
     ("cmfs" .
      "Usage: cmfs~%
  List available CMFs.
@@ -275,7 +280,7 @@ Stop watching a case in the current goalset.
   (cond (assoc-str (fmt 0 assoc-str))
         (t  (fmt 0 "Help with RAHD toplevel.  Try 'help <keyword>' ~
   where keywords are:~%
-   assert build-gs check cg cmfs default-strategy defrule defruleset 
-   defstrat e e1 goal goals goalset help lisp options opens proj-order 
-   quit reset rules rulesets set set? show status strategies up unset 
-   unwatch vars verbosity watch. ~%~%")))))
+   assert build-gs check cg clvars cmfs default-strategy defrule 
+   defruleset defstrat e e1 goal goals goalset help lisp options 
+   opens proj-order quit reset rules rulesets set set? show status 
+   strategies up unset unwatch vars verbosity watch. ~%~%")))))

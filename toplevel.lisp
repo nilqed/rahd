@@ -193,6 +193,8 @@
             ((or (equal cmd "quit")
                  (equal cmd 'EOF))
              (setq exit? t))
+            ((equal cmd "clvars")
+             (setq vars-lst nil))
             ((equal cmd "vars")
              (cond ((equal arg "")
                     (fmt 0 "Current vars: ~A.~%~%" vars-lst))
