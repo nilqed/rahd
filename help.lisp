@@ -23,7 +23,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/.
 ;;; 
 ;;; This file: began on         12-December-2010,
-;;;            last updated on  02-March-2011.
+;;;            last updated on  20-October-2011.
 ;;;
 
 (defparameter *help-alist*
@@ -90,6 +90,13 @@ This promotion from a collection of assertions to a goalset
  * See default-strategy for setting the default strategy.
  * See show for viewing the current context.
  * See reset for clearing the current context.~%~%")
+    ("cguc" .
+     "Usage: cguc~%
+ Change the active goal to the subgoal corresponding to
+  the first open case for which a subgoal has been generated.
+
+ * See opens for viewing open cases of the active goal.
+ * See watch for monitoring the progress of specific cases.~%~%")
     ("clvars" .
      "Usage: clvars~%
  Clear variable list for current context.
@@ -141,6 +148,13 @@ This promotion from a collection of assertions to a goalset
  * See default-strategy for setting the default strategy.
  * See opens for viewing open cases.
  * See watch for how to monitor progress of CMFs upon cases.~%~%")
+    ("factor" .
+     "Usage: factor <polynomial>~%
+ Factor an explicitly given polynomial and print the result.
+
+ Example: factor x^2 + 2*x*y + y^2
+
+ * See cmfs for proof methods which apply factorisations.~%~%")
     ("goals" .
      "Usage: goals~%
  List all known (sub)goals.
@@ -280,7 +294,7 @@ Stop watching a case in the current goalset.
   (cond (assoc-str (fmt 0 assoc-str))
         (t  (fmt 0 "Help with RAHD toplevel.  Try 'help <keyword>' ~
   where keywords are:~%
-   assert build-gs check cg clvars cmfs default-strategy defrule 
-   defruleset defstrat e e1 goal goals goalset help lisp options 
-   opens proj-order quit reset rules rulesets set set? show status 
-   strategies up unset unwatch vars verbosity watch. ~%~%")))))
+   assert build-gs check cguc clvars cmfs default-strategy defrule 
+   defruleset defstrat e e1 factor goal goals help lisp options opens 
+   proj-order quit reset rules rulesets set set? show status strategies 
+   up unset unwatch vars verbosity watch. ~%~%")))))

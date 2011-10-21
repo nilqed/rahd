@@ -25,7 +25,7 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/.
 ;;; 
 ;;; This file: began on         01-November-2010,
-;;;            last updated on  29-April-2011.
+;;;            last updated on  20-October-2011.
 ;;;
 
 ;;;
@@ -307,7 +307,17 @@
              (cond (asserted-atoms-lst
                     (fmt 0 "Optimal projection order (Brown-McCallum projection): ~A.~%~%"
                          (wrv verbosity (vs-proj-order-greedy-on-case asserted-atoms-lst))))
-                   (t (fmt 0 "No atoms asserted, so no projection order to compute.~%~%"))))
+                   (t (fmt 0 "No atoms asserted, so no projection order to
+            compute.~%~%"))))
+            ((equal cmd "factor")
+             (with-simple-restart (continue-with-new-cmd
+                                   "Continue and enter a new RAHD command.")
+                                  (let* ((poly
+                                          (p-poly-str arg :vars-lst vars-lst))
+                                         (f
+                                          (factor poly)))                                    
+                                    (fmt 0 "~A = ~A.~%~%"
+                                         poly f))))
             ((equal cmd "goal")
              (fmt 0 "You are at goal ~A.~%~%" *current-goal-key*))
             ((equal cmd "watch")
@@ -905,6 +915,27 @@
    (|(| poly |)| #'k-2-3))
 )
 
+;;;
+;;; Parser only for polynomials.
+;;;
+
+(yacc:define-parser poly-parser
+  (:start-symbol poly)
+  (:terminals 
+   (rational int var + - * / ^))
+  (:precedence 
+   ((:left * /) (:left + -)))
+
+  (poly
+   var                                  ; implicit action #'identity
+   int
+   rational
+   (poly + poly #'i2p)
+   (poly - poly #'i2p)
+   (poly * poly #'i2p)
+   (poly ^ int #'i2p-expt)
+   (|(| poly |)| #'k-2-3))
+)
 
 ;;;
 ;;; Parser for rule definitions.  These take the form
@@ -973,6 +1004,19 @@
     (let ((stls (str-to-lex-syms s live-vars-lst)))
       (yacc:parse-with-lexer (lst-lexer stls) 
                              qf-conj-parser))))
+
+;;;
+;;; P-POLY-STR: Given a RAHD poly string, part it into an
+;;;  S-expression!
+;;;
+
+(defun p-poly-str (s &key vars-str vars-lst)
+  (let ((live-vars-lst
+         (cond (vars-str (p-vars-lst vars-str))
+               (vars-lst vars-lst))))
+    (let ((stls (str-to-lex-syms s live-vars-lst)))
+      (yacc:parse-with-lexer (lst-lexer stls) 
+                             poly-parser))))
 
 ;;;
 ;;; P-LITERAL-STR: Given a RAHD literal string, parse it into
