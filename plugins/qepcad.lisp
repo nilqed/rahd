@@ -356,4 +356,4 @@ continue
 		 )))
 
 (install-qepcad)
-
+(setq *persistent-qepcad-process* nil)
