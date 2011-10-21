@@ -606,10 +606,10 @@
 			     (coerce 
 			      (ps-rational-sample-pts cur-pfs :epsilon epsilon)
 			      'list)))
-	       (fmt 1 "~%    ~A base rational sample points isolated: ~A.~%" 
+	       (fmt 1.5 "~%    ~A base rational sample points isolated: ~A.~%" 
 		    (length latest-pts) latest-pts))
 	      (t (fmt 2 "~%   Computing lifting from (R^~A) to (R^~A):~%" d (1+ d))
-		 (fmt 1 "    Substituting ~A sample points in (R^~A) into (R^~A) pfs: ~%"
+		 (fmt 1.5 "    Substituting ~A sample points in (R^~A) into (R^~A) pfs: ~%"
 		      (length latest-pts) d (1+ d))
 		 (fmt 2.5 "     pfs:  ~A,~%" (mapcar #'poly-alg-rep-to-prover-rep
 						 cur-pfs))
@@ -656,7 +656,7 @@
 			       latest-pts)))
 	    (when (not (= num-cells-before (length latest-pts*)))
 
-	      (fmt 1 "~%  :: Direct cell exclusion reduced number of new cells from ~A to ~A.~%"
+	      (fmt 1.5 "~%  :: Direct cell exclusion reduced number of new cells from ~A to ~A.~%"
 		   num-cells-before (length latest-pts*))
 	      (setq num-cells-before (length latest-pts*)))
 
@@ -670,15 +670,15 @@
 			      (funcall theatre d))))
 	  (let ((num-cells-after (length latest-pts)))
 	    (when (not (= num-cells-before num-cells-after))
-	      (fmt 1 "~%  !! AP-CAD Cell exclusion reduced number of new cells from ~A to ~A.~%"
+	      (fmt 1.5 "~%  !! AP-CAD Cell exclusion reduced number of new cells from ~A to ~A.~%"
 		   num-cells-before num-cells-after))
 	      (when (= num-cells-after 0)
 		(setq short-circuit? t)
-		(fmt 1 "  :: Cell exclusion has reduced number of cells to 0, so we can short-circuit cad construction!~%~%")))))
+		(fmt 1.5 "  :: Cell exclusion has reduced number of cells to 0, so we can short-circuit cad construction!~%~%")))))
 
       (setq lift-vars (cdr lift-vars)))
     (fmt 2 "~%  Final var-order: ~A." (mapcar #'(lambda (i) (nth i *vars-table*)) lower-vars))
-    (fmt 1 "~%  Success!  Cell decomposition complete (~A sample pts).~%" (length latest-pts))
+    (fmt 1.5 "~%  Success!  Cell decomposition complete (~A sample pts).~%" (length latest-pts))
     (fmt 2.5 "  Printing ~A sample points from full-dimensional cells homeomorphic to (R^~A):~%~%    ~A.~%~%"
 	 (length latest-pts) (length lower-vars) latest-pts)
     latest-pts))
@@ -715,10 +715,10 @@
 			     (coerce 
 			      (ps-rational-sample-pts cur-pfs :epsilon epsilon)
 			      'list)))
-	       (fmt 1 "~%    ~A base rational sample points isolated: ~A.~%" 
+	       (fmt 2 "~%    ~A base rational sample points isolated: ~A.~%" 
 		    (length latest-pts) latest-pts))
 	      (t (fmt 2 "~%   Computing lifting from (R^~A) to (R^~A):~%" d (1+ d))
-		 (fmt 1 "    Substituting ~A sample points in (R^~A) into (R^~A) pfs: ~%"
+		 (fmt 2 "    Substituting ~A sample points in (R^~A) into (R^~A) pfs: ~%"
 		      (length latest-pts) d (1+ d))
 		 (fmt 4 "     pfs:  ~A,~%" (mapcar #'poly-alg-rep-to-prover-rep
 						 cur-pfs))
@@ -761,15 +761,15 @@
 			    (mapcar #'(lambda (i) (nth i *vars-table*)) lower-vars)))
 	  (let ((num-cells-after (length latest-pts)))
 	    (when (not (= num-cells-before num-cells-after))
-	      (fmt 1 "~%  :: Direct cell exclusion reduced number of new cells from ~A to ~A.~%"
+	      (fmt 1.5 "~%  :: Direct cell exclusion reduced number of new cells from ~A to ~A.~%"
 		   num-cells-before num-cells-after)
 	      (when (= num-cells-after 0)
 		(setq short-circuit? t)
-		(fmt 1 "  :: Direct cell exclusion has reduced number of cells to 0, so we can short-circuit cad construction!~%~%"))))))
+		(fmt 1.5 "  :: Direct cell exclusion has reduced number of cells to 0, so we can short-circuit cad construction!~%~%"))))))
 
       (setq lift-vars (cdr lift-vars)))
     (fmt 2 "~%  Final var-order: ~A." (mapcar #'(lambda (i) (nth i *vars-table*)) lower-vars))
-    (fmt 1 "~%  Success!  Cell decomposition complete (~A sample pts).~%" (length latest-pts))
+    (fmt 1.5 "~%  Success!  Cell decomposition complete (~A sample pts).~%" (length latest-pts))
     (fmt 2.5 "  Printing ~A sample points from full-dimensional cells homeomorphic to (R^~A):~%~%    ~A.~%~%"
 	 (length latest-pts) (length lower-vars) latest-pts)
     latest-pts))
