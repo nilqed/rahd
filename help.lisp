@@ -27,15 +27,7 @@
 ;;;
 
 (defparameter *help-alist*
-  '(("apply" .
-     "Usage: apply <cmf-name>~%
- Applies CMF cmf-name to the open cases of the current goal.
- Example:
-  apply simp-zrhs
-
- * See cmfs for available CMFs.
- * See run for how to execute proof strategies.
- * See watch for how to monitor progress of CMFs upon cases.~%~%")
+  '(
     ("assert" .
      "Usage: assert <formula>~%
  Asserts a formula as an assumption in the current context.~%
@@ -106,7 +98,7 @@ This promotion from a collection of assertions to a goalset
      "Usage: cmfs~%
  List available CMFs.
 
- * See apply for more on executing CMFs.
+ * See e and e1 for more on executing CMFs.
  * See run for more on executing proof strategies.~%~%")
     ("e" .
      "Usage: e <explicit-proof-strategy>~%
