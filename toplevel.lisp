@@ -922,7 +922,7 @@
 (yacc:define-parser poly-parser
   (:start-symbol poly)
   (:terminals 
-   (rational int var + - * / ^))
+   (rational int var + - * / ^ |(| |)|))
   (:precedence 
    ((:left * /) (:left + -)))
 
