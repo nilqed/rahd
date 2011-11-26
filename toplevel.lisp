@@ -199,12 +199,14 @@
              (cond ((equal arg "")
                     (fmt 0 "Current vars: ~A.~%~%" vars-lst))
                    (t (setq vars-lst (p-vars-lst arg))
-                      (fmt 0 "Current vars: ~A.~%~%" vars-lst))))
+                      (fmt 0 "Current vars: ~A.~%~%" vars-lst))))           
             ((equal cmd "assert")
              (with-simple-restart (continue-with-new-cmd
                                    "Continue and enter a new RAHD command.")
                                   (let ((prover-formula
-                                         (atom-lst (p-formula-str arg :vars-lst vars-lst))))
+                                         (atom-lst (p-formula-str 
+                                                    arg 
+                                                    :vars-lst vars-lst))))
                                     (setq asserted-atoms-lst
                                           (append asserted-atoms-lst prover-formula))
                                     (fmt 0 "Formula asserted.~%~%"
@@ -936,6 +938,7 @@
    (poly ^ int #'i2p-expt)
    (|(| poly |)| #'k-2-3))
 )
+
 
 ;;;
 ;;; Parser for rule definitions.  These take the form

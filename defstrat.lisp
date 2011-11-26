@@ -116,6 +116,8 @@
    rcr-ineqs;
    apcad-fd")
 
+(defstrat 'simple-counterexample-finder
+ "[quick-sat]")
 
 (defstrat 'waterfall-with-icp-qepcad-redlog
   "interval-cp(max-contractions:=20);
