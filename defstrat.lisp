@@ -116,8 +116,6 @@
    rcr-ineqs;
    apcad-fd")
 
-(defstrat 'simple-counterexample-finder
- "[quick-sat]")
 
 (defstrat 'waterfall-with-icp-qepcad-redlog
   "interval-cp(max-contractions:=20);
@@ -332,3 +330,6 @@
    rcr-ineqs;
    when ((dim <= 7) /\\ deg <= 30) 
      [qepcad(open? := 1); qepcad]")
+
+(defstrat 'simple-counterexample-finder
+ "[quick-sat; run calculemus-0]")
