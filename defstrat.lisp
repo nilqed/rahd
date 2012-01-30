@@ -209,22 +209,6 @@
 (defstrat 'qepcad-only-open
   "qepcad(open? := 1)")
 
-(defstrat 'redlog-only
-  "redlog-vts")
-
-(defstrat 'qepcad-redlog
-  "qepcad;
-   redlog-vts")
-
-(defstrat 'qepcad-redlog
-  "qepcad(open? := 1);
-   redlog-vts")
-
-(defstrat 'icp-gbrni-redlog
-  "interval-cp(max-contractions:=10);
-   bounded-gbrni;
-   redlog-vts")
-
 (defstrat 'icp-only-50
   "interval-cp(max-contractions:=50)")
 
@@ -333,3 +317,27 @@
 
 (defstrat 'simple-counterexample-finder
  "[quick-sat; run calculemus-0]")
+
+(defstrat 'weak-icp-then-qepcad-[dim<=3]-then-redlog-[dim<=7]
+  "interval-cp(max-contractions:=20);
+   when (dim <= 3) [qepcad];
+   if (dim <= 7) qepcad(open? := 1)
+     redlog-vts;
+   quick-sat")
+
+(defstrat 'redlog-only
+  "redlog-vts")
+
+(defstrat 'qepcad-redlog
+  "qepcad;
+   redlog-vts")
+
+(defstrat 'qepcad-open-then-redlog
+  "qepcad(open? := 1);
+   redlog-vts")
+
+(defstrat 'icp-gbrni-redlog
+  "interval-cp(max-contractions:=10);
+   bounded-gbrni;
+   redlog-vts;
+   qepcad")
